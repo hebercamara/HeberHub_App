@@ -1,0 +1,79 @@
+name: Deploy
+
+# Push na main publica no ambiente de testes (dev).
+# Produção (prod) só sai pelo botão "Run workflow", escolhendo prod.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: Ambiente de destino
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+concurrency:
+  group: deploy-${{ inputs.ambiente || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Cada ambiente do GitHub (Settings > Environments) guarda:
+    #   secret   FIREBASE_SERVICE_ACCOUNT  -> JSON da conta de serviço
+    #   variáveis VITE_FIREBASE_*          -> configuração do app Web
+    environment: ${{ inputs.ambiente || 'dev' }}
+    env:
+      AMBIENTE: ${{ inputs.ambiente || 'dev' }}
+    steps:
+      - name: Conferir credencial
+        id: credencial
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::notice::Secret FIREBASE_SERVICE_ACCOUNT ausente no ambiente $AMBIENTE. Deploy ignorado."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.credencial.outputs.ok == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.credencial.outputs.ok == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            app/package-lock.json
+            functions/package-lock.json
+
+      - name: Instalar dependências
+        if: steps.credencial.outputs.ok == 'true'
+        run: npm run install:all
+
+      - name: Build
+        if: steps.credencial.outputs.ok == 'true'
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          VITE_APP_ENV: ${{ env.AMBIENTE }}
+          VITE_USE_EMULATORS: 'false'
+        run: npm run build
+
+      - uses: google-github-actions/auth@v2
+        if: steps.credencial.outputs.ok == 'true'
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Publicar no Firebase
+        if: steps.credencial.outputs.ok == 'true'
+        run: npx firebase deploy --project "$AMBIENTE" --non-interactive --force

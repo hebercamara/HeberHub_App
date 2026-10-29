@@ -1,0 +1,17 @@
+{
+  "name": "heberhub",
+  "private": true,
+  "description": "Check-in georreferenciado da frota",
+  "scripts": {
+    "install:all": "npm ci && npm --prefix app ci && npm --prefix functions ci",
+    "dev": "npm --prefix app run dev",
+    "build": "npm --prefix app run build && npm --prefix functions run build",
+    "lint": "npm --prefix app run lint",
+    "typecheck": "npm --prefix app run typecheck && npm --prefix functions run typecheck",
+    "test": "npm --prefix functions test",
+    "emuladores": "npm --prefix functions run build && firebase emulators:start --project demo-heberhub"
+  },
+  "devDependencies": {
+    "firebase-tools": "15.34.2"
+  }
+}

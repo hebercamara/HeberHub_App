@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "heberhub-dev",
+    "dev": "heberhub-dev",
+    "prod": "heberhub-prod"
+  }
+}
