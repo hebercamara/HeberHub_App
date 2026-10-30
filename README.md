@@ -26,12 +26,12 @@ npm run dev                          # terminal 2: app em http://localhost:5173
 
 | Alias | Projeto Firebase | Publicação |
 | --- | --- | --- |
-| `dev` | `heberhub-dev` | Automática a cada push na `main` |
+| `dev` | `heberhub-app` | Automática a cada push na `main` |
 | `prod` | `heberhub-prod` | Manual: Actions > Deploy > Run workflow > `prod` |
 
 ## Configuração inicial (uma vez por ambiente)
 
-1. No [console do Firebase](https://console.firebase.google.com), crie os projetos `heberhub-dev` e `heberhub-prod`. Se o ID vier com sufixo, ajuste `.firebaserc`.
+1. No [console do Firebase](https://console.firebase.google.com), crie os projetos (hoje: `heberhub-app` como `dev`; `heberhub-prod` ainda não existe). Se o ID vier com sufixo, ajuste `.firebaserc`.
 2. Em cada projeto: ative o plano **Blaze**, o **Authentication** (provedor e-mail/senha) e o **Firestore** na região `southamerica-east1`.
 3. Crie um app **Web** em cada projeto e anote a configuração do SDK.
 4. No Google Cloud, crie um alerta de orçamento para cada projeto.
