@@ -66,7 +66,22 @@ continua com uma conta só para o cadastro, os contratos e o check-in.
   inclusive os contratos.
 - **Jurídico (perfil novo):** **vê tudo** no sistema, **sem alterar** nada fora dos contratos;
   na parte de contratos (modelos, tipos, variáveis, emissão), **pode alterar tudo**.
-- Coordenação, ADM Financeiro, ADM e prestador continuam como hoje.
+- Coordenação, ADM Financeiro, ADM e prestador continuam como hoje. A **conta do dono** passa
+  de Coordenação para **Gestão**; o perfil Coordenação continua existindo para outras pessoas.
+- **Só a Gestão** dá (ou tira) os perfis Gestão e Jurídico. A Coordenação continua dando os
+  demais perfis, como hoje.
+
+### Cadastro oficial (um só, para os dois caminhos)
+- Quem entra pelo link e quem já trabalha (importado e vinculado pelo CNPJ) preenchem o **mesmo
+  cadastro**. Para o importado, o formulário já vem preenchido com o que veio da planilha, e ele
+  só completa o que faltar e envia o Cartão CNPJ.
+- O cadastro guarda só os **dados da pessoa**, que valem para qualquer contrato: dados do MEI
+  (vêm do cartão e da Receita), do representante (nome, RG, CPF, endereço, nacionalidade,
+  estado civil, profissão) e bancários.
+- **Não entram no cadastro** os dados que mudam a cada documento: função, valor da diária,
+  datas e **testemunhas**. Esses são preenchidos (ou sugeridos) **na hora de emitir** o documento.
+  As testemunhas são pessoas da empresa, não do prestador; o sistema pode lembrar as últimas
+  usadas para agilizar.
 
 ### Guarda de dados
 - **Nada é apagado automaticamente** do cadastro oficial, dos contratos e do histórico de quem
@@ -149,13 +164,9 @@ Sugestões automáticas na emissão:
 
 ## Dúvidas abertas
 
-1. **Quem importados preenche:** quem já trabalha com a empresa e se vincula pelo CNPJ também
-   preenche o formulário completo e envia o Cartão CNPJ (para gerar o Cadastro Oficial)? Ou só
-   confirma os dados importados?
-2. **Quem vira Gestão:** a conta de coordenação atual do dono passa a ser Gestão? Quem pode dar
-   os perfis Gestão e Jurídico (só a Gestão)?
-3. **CNPJ repetido já existente:** se a importação trouxer dois cadastros com o mesmo CNPJ, o
-   sistema recusa a linha e mostra numa lista de pendências para corrigir. Confirmar.
+1. ~~Quem importado preenche~~: o mesmo cadastro oficial, já pré-preenchido (ver "Cadastro oficial").
+2. ~~Quem vira Gestão~~: a conta do dono; só a Gestão dá os perfis Gestão e Jurídico.
+3. ~~CNPJ repetido na importação~~: as linhas são recusadas e listadas como pendências.
 4. **Termo de Quitação de Dívida:** quem pode emitir por padrão? Sugestão: só Gestão,
    Coordenação e Jurídico.
 5. ~~Variáveis do contrato de entrada~~: respondido (ver "Variáveis").
