@@ -10,14 +10,14 @@ import { mensagemDeErro } from '../../lib/erros'
 import { db } from '../../lib/firebase'
 import { obterPosicao, type Posicao } from '../../lib/localizacao'
 import { useSessao } from '../../lib/sessao'
-import type { Presenca as RegistroPresenca } from '../../lib/tipos'
+import { ehEquipe, type Presenca as RegistroPresenca } from '../../lib/tipos'
 
 type Etapa = { tipo: 'inicio' } | { tipo: 'lendo' } | { tipo: 'enviando'; texto: string } | { tipo: 'resultado'; resposta: RespostaCheckin } | { tipo: 'erro'; mensagem: string }
 
 export function Presenca() {
   const { login, usuario, perfil } = useSessao()
-  // ADM e coordenação podem marcar presença só pela localização, sem ler o QR.
-  const podeSemQr = perfil === 'adm' || perfil === 'coordenacao'
+  // A equipe pode marcar presença só pela localização, sem ler o QR.
+  const podeSemQr = ehEquipe(perfil)
   const [etapa, setEtapa] = useState<Etapa>({ tipo: 'inicio' })
   const [posicao, setPosicao] = useState<Promise<Posicao> | null>(null)
   const historico = useHistorico(login!.uid)

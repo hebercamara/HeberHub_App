@@ -14,8 +14,9 @@ const MENSAGENS_LOGIN: Record<string, string> = {
 export function mensagemDeErro(erro: unknown): string {
   if (erro instanceof FirebaseError) {
     if (MENSAGENS_LOGIN[erro.code]) return MENSAGENS_LOGIN[erro.code]
-    // Erros das Cloud Functions já chegam com a mensagem em português.
-    if (erro.code.startsWith('functions/') && erro.message && erro.code !== 'functions/internal') return erro.message
+    // Erros das Cloud Functions já chegam com a mensagem em português; a biblioteca
+    // acrescenta o código HTTP no fim (ex.: " [409]"), que a pessoa não precisa ver.
+    if (erro.code.startsWith('functions/') && erro.message && erro.code !== 'functions/internal') return erro.message.replace(/\s*\[\d{3}\]$/, '')
     if (erro.code === 'permission-denied') return 'Você não tem permissão para ver isto.'
   }
   return 'Algo deu errado. Tente de novo em instantes.'

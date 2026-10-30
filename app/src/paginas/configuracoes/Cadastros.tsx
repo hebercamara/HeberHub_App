@@ -3,10 +3,10 @@ import { Aviso } from '../../componentes/Aviso'
 import { api } from '../../lib/api'
 import { SeletorFuncao } from '../../componentes/SeletorFuncao'
 import { useBases } from '../../lib/bases'
-import { useFuncoes, usePendentes } from '../../lib/cadastros'
+import { useFuncoes, usePendentes, useUsuarios } from '../../lib/cadastros'
 import { mascararCnpj } from '../../lib/cnpj'
 import { mensagemDeErro } from '../../lib/erros'
-import { NOMES_FUNCAO, type Usuario } from '../../lib/tipos'
+import { NOMES_FUNCAO, NOMES_STATUS, type Usuario } from '../../lib/tipos'
 
 /** Cadastros de prestadores aguardando aprovação. */
 export function Cadastros() {
@@ -19,7 +19,42 @@ export function Cadastros() {
       {pendentes.map((u) => (
         <CartaoPendente key={u.id} usuario={u} />
       ))}
+      <CnpjsRepetidos />
     </div>
+  )
+}
+
+/** Cadastros antigos ativos ou pendentes com o mesmo CNPJ (agora é um CNPJ por pessoa). */
+function CnpjsRepetidos() {
+  const usuarios = useUsuarios()
+  const grupos = new Map<string, Usuario[]>()
+  for (const u of usuarios) {
+    if (!u.cnpj || (u.status !== 'ativo' && u.status !== 'pendente')) continue
+    grupos.set(u.cnpj, [...(grupos.get(u.cnpj) ?? []), u])
+  }
+  const repetidos = [...grupos.entries()].filter(([, pessoas]) => pessoas.length > 1)
+  if (repetidos.length === 0) return null
+
+  return (
+    <section className="cartao">
+      <h2>CNPJs repetidos</h2>
+      <p className="suave">
+        Cada CNPJ agora pertence a uma só pessoa. Estes cadastros antigos dividem o mesmo CNPJ: confira qual é o certo e inative (em Usuários) o
+        que estiver errado.
+      </p>
+      {repetidos.map(([cnpj, pessoas]) => (
+        <div key={cnpj}>
+          <strong>CNPJ {mascararCnpj(cnpj)}</strong>
+          <ul className="lista">
+            {pessoas.map((u) => (
+              <li key={u.id}>
+                {u.nome} · {u.razaoSocial} · {u.email} · {NOMES_STATUS[u.status]}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
   )
 }
 

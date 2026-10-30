@@ -1,4 +1,5 @@
-export type Perfil = 'prestador' | 'adm' | 'coordenacao'
+/** Gestão: acesso a tudo. Jurídico: lê tudo e altera só a parte de contratos. */
+export type Perfil = 'prestador' | 'adm' | 'coordenacao' | 'gestao' | 'juridico'
 export type Status = 'pendente' | 'ativo' | 'inativo' | 'recusado'
 export type Funcao = 'motorista' | 'ajudante'
 

@@ -1,5 +1,6 @@
 // Espelho dos tipos do servidor (functions/src/tipos.ts).
-export type Perfil = 'prestador' | 'adm' | 'coordenacao'
+/** Gestão: acesso a tudo. Jurídico: lê tudo e altera só a parte de contratos. */
+export type Perfil = 'prestador' | 'adm' | 'coordenacao' | 'gestao' | 'juridico'
 export type Status = 'pendente' | 'ativo' | 'inativo' | 'recusado'
 export type Funcao = 'motorista' | 'ajudante'
 
@@ -84,6 +85,21 @@ export type Fechamento = { status: 'aberto' | 'fechado'; liquido?: number; justi
 
 export const NOMES_TIPO_LANCAMENTO: Record<TipoLancamento, string> = { diaria: 'Diária', adicional: 'Adicional', desconto: 'Desconto' }
 
-export const NOMES_PERFIL: Record<Perfil, string> = { prestador: 'Prestador', adm: 'ADM', coordenacao: 'Coordenação' }
+export const NOMES_PERFIL: Record<Perfil, string> = { prestador: 'Prestador', adm: 'ADM', coordenacao: 'Coordenação', gestao: 'Gestão', juridico: 'Jurídico' }
+
+/** Equipe: todos os perfis, menos o prestador. */
+export function ehEquipe(perfil: Perfil | null): boolean {
+  return perfil !== null && perfil !== 'prestador'
+}
+
+/** Vê as telas da coordenação. O Jurídico vê, mas só consulta. */
+export function ehCoordenacao(perfil: Perfil | null): boolean {
+  return perfil === 'coordenacao' || perfil === 'gestao' || perfil === 'juridico'
+}
+
+/** Pode alterar o que é da coordenação (o Jurídico não). */
+export function editaCoordenacao(perfil: Perfil | null): boolean {
+  return perfil === 'coordenacao' || perfil === 'gestao'
+}
 export const NOMES_FUNCAO: Record<Funcao, string> = { motorista: 'Motorista', ajudante: 'Ajudante' }
 export const NOMES_STATUS: Record<Status, string> = { pendente: 'Aguardando aprovação', ativo: 'Ativo', inativo: 'Inativo', recusado: 'Recusado' }

@@ -8,6 +8,18 @@ export const PROJETO = 'demo-heberhub'
 export const HOJE = '2026-11-03'
 export const CNPJ_VALIDO = '11.222.333/0001-81'
 
+/** CNPJ válido e diferente a cada chamada (um CNPJ por pessoa). */
+export function novoCnpj(): string {
+  const raiz = String(Math.floor(Math.random() * 1e8)).padStart(8, '0') + '0001'
+  const digito = (base: string) => {
+    const pesos = base.length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    const resto = pesos.reduce((t, p, i) => t + Number(base[i]) * p, 0) % 11
+    return String(resto < 2 ? 0 : 11 - resto)
+  }
+  const com12 = raiz + digito(raiz)
+  return com12 + digito(com12)
+}
+
 const apps: FirebaseApp[] = []
 
 /** Um "celular": app Firebase próprio, ligado aos emuladores, com login criado (ou reaproveitado). */
@@ -36,7 +48,7 @@ export async function fecharApps() {
   await Promise.all(apps.splice(0).map((app) => deleteApp(app)))
 }
 
-/** Coordenação inicial pronta para uso. */
+/** Conta do dono (perfil Gestão) pronta para uso. */
 export async function coordenacaoInicial(): Promise<Celular> {
   const c = await novoUsuario('coordenacao@teste.local')
   await c.chamar('reivindicarCoordenacao', { nome: 'Coordenação Teste' })
@@ -48,7 +60,7 @@ export async function coordenacaoInicial(): Promise<Celular> {
 /** Prestador cadastrado e aprovado na base (e na função, se houver). */
 export async function prestadorAprovado(coordenacao: Celular, email: string, nome: string, baseId: string, funcaoId?: string): Promise<Celular> {
   const p = await novoUsuario(email)
-  await p.chamar('concluirCadastro', { nome, telefone: '11999990000', funcao: 'motorista', razaoSocial: `${nome} ME`, cnpj: CNPJ_VALIDO, aceiteTermo: 1 })
+  await p.chamar('concluirCadastro', { nome, telefone: '11999990000', funcao: 'motorista', razaoSocial: `${nome} ME`, cnpj: novoCnpj(), aceiteTermo: 1 })
   await coordenacao.chamar('aprovarCadastro', { uid: p.uid, aprovar: true, baseId, funcaoId })
   await p.renovarLogin()
   return p

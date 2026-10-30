@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { Carregando } from './componentes/Carregando'
 import { Layout } from './componentes/Layout'
 import { useSessao } from './lib/sessao'
@@ -22,6 +22,7 @@ import { PrimeiroAcesso } from './paginas/PrimeiroAcesso'
 import { Presenca } from './paginas/prestador/Presenca'
 import { Privacidade } from './paginas/Privacidade'
 import { VERSAO_TERMO } from './lib/privacidade'
+import { ehCoordenacao, ehEquipe } from './lib/tipos'
 
 /** Para onde cada pessoa vai ao abrir o app, conforme o login e o cadastro. */
 function destinoInicial(sessao: ReturnType<typeof useSessao>): string {
@@ -34,13 +35,16 @@ function destinoInicial(sessao: ReturnType<typeof useSessao>): string {
 
 function App() {
   const sessao = useSessao()
-  if (sessao.carregando) return <Carregando />
+  const { pathname } = useLocation()
+  // No cadastro, o login é criado antes de enviar os dados: a tela fica montada para
+  // não perder o que foi digitado nem a mensagem de erro do servidor.
+  if (sessao.carregando && !(sessao.buscandoCadastro && pathname === '/cadastro')) return <Carregando />
 
   const inicio = destinoInicial(sessao)
   const termoAceito = (sessao.usuario?.termoVersao ?? 0) >= VERSAO_TERMO
   const ativo = sessao.usuario?.status === 'ativo' && sessao.perfil && termoAceito
-  const equipe = ativo && (sessao.perfil === 'adm' || sessao.perfil === 'coordenacao')
-  const coordenacao = ativo && sessao.perfil === 'coordenacao'
+  const equipe = ativo && ehEquipe(sessao.perfil)
+  const coordenacao = ativo && ehCoordenacao(sessao.perfil)
   const financeiro = equipe && sessao.financeiro
 
   return (

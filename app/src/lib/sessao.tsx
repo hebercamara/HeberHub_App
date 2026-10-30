@@ -6,6 +6,8 @@ import type { Perfil, Usuario } from './tipos'
 
 type Sessao = {
   carregando: boolean
+  /** Já há login, e o cadastro dele ainda está sendo buscado. */
+  buscandoCadastro: boolean
   login: User | null
   /** Perfil gravado no login (custom claims): é o que o servidor e as regras usam. */
   perfil: Perfil | null
@@ -71,6 +73,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
 
   const valor: Sessao = {
     carregando: !loginPronto || !usuarioPronto,
+    buscandoCadastro: loginPronto && !usuarioPronto,
     login,
     perfil,
     financeiro,

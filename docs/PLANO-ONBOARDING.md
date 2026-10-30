@@ -182,7 +182,7 @@ Sugestões automáticas na emissão:
 
 Entregue em quatro partes, cada uma publicada e testada antes da próxima:
 
-**A1. Perfis e CNPJ único**
+**A1. Perfis e CNPJ único** (pronta)
 - Perfis novos **Gestão** e **Jurídico**. A conta do dono vira Gestão. Só a Gestão dá ou tira
   Gestão e Jurídico.
 - Gestão: tudo, inclusive o financeiro. Jurídico: lê tudo; altera só a parte de contratos

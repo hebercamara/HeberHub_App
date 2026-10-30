@@ -15,4 +15,4 @@ export { estornarLancamento, lancarAjuste, lancarEvento, registrarPresencaManual
 export { registrarPresenca } from './presencas.js'
 export { aceitarTermo, limparCoordenadas } from './privacidade.js'
 export { gerarQrDoDia } from './sessoes.js'
-export { aprovarCadastro, atualizarUsuario, concluirCadastro, criarUsuarioInterno, reivindicarCoordenacao } from './usuarios.js'
+export { aprovarCadastro, assumirGestao, atualizarUsuario, concluirCadastro, criarUsuarioInterno, reivindicarCoordenacao } from './usuarios.js'

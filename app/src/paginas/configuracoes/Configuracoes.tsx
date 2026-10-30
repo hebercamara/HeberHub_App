@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router'
 import { Contador } from '../../componentes/Contador'
 import { usePendentes } from '../../lib/cadastros'
 import { useSessao } from '../../lib/sessao'
+import { ehCoordenacao } from '../../lib/tipos'
 
 /** Cadastros pendentes (ADM e coordenação) e, para a coordenação, operações, funções, bases e aparência. */
 export function Configuracoes() {
@@ -15,7 +16,7 @@ export function Configuracoes() {
           Cadastros
           <Contador valor={pendentes} rotulo="aguardando aprovação" />
         </NavLink>
-        {perfil === 'coordenacao' && (
+        {ehCoordenacao(perfil) && (
           <>
             <NavLink to="/configuracoes/operacoes">Operações</NavLink>
             <NavLink to="/configuracoes/funcoes">Funções e diárias</NavLink>

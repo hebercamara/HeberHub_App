@@ -37,18 +37,23 @@ export function exigirLogin(req: CallableRequest): string {
   return req.auth.uid
 }
 
-/** Exige um dos perfis informados (lidos do login). */
+/** Perfil gravado no login (custom claims). */
+export function perfilDe(req: CallableRequest): Perfil | undefined {
+  return (req.auth?.token as Claims | undefined)?.perfil
+}
+
+/** Exige um dos perfis informados (lidos do login). A Gestão passa sempre. */
 export function exigirPerfil(req: CallableRequest, perfis: Perfil[]): string {
   const uid = exigirLogin(req)
-  const perfil = (req.auth?.token as Claims).perfil
-  if (!perfil || !perfis.includes(perfil)) throw new HttpsError('permission-denied', 'Você não tem permissão para esta ação.')
+  const perfil = perfilDe(req)
+  if (!perfil || (perfil !== 'gestao' && !perfis.includes(perfil))) throw new HttpsError('permission-denied', 'Você não tem permissão para esta ação.')
   return uid
 }
 
-/** Exige coordenação ou ADM Financeiro. */
+/** Exige Gestão, coordenação ou ADM Financeiro. O Jurídico vê valores, mas não lança. */
 export function exigirFinanceiro(req: CallableRequest): string {
   const uid = exigirPerfil(req, ['adm', 'coordenacao'])
-  if ((req.auth?.token as Claims).financeiro !== true) throw new HttpsError('permission-denied', 'Apenas a coordenação e o ADM Financeiro podem fazer isso.')
+  if ((req.auth?.token as Claims).financeiro !== true) throw new HttpsError('permission-denied', 'Apenas a Gestão, a coordenação e o ADM Financeiro podem fazer isso.')
   return uid
 }
 

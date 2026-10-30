@@ -10,13 +10,14 @@ service cloud.firestore {
     function perfil() {
       return request.auth.token.get('perfil', '');
     }
+    // Gestão vê tudo; Jurídico lê tudo (só altera contratos, pelas funções).
     function equipe() {
-      return logado() && perfil() in ['adm', 'coordenacao'];
+      return logado() && perfil() in ['adm', 'coordenacao', 'gestao', 'juridico'];
     }
     function coordenacao() {
-      return logado() && perfil() == 'coordenacao';
+      return logado() && perfil() in ['coordenacao', 'gestao', 'juridico'];
     }
-    // Coordenação e ADM Financeiro: os únicos que veem valores.
+    // Gestão, coordenação, Jurídico e ADM Financeiro: os únicos que veem valores.
     function financeiro() {
       return equipe() && request.auth.token.get('financeiro', false) == true;
     }

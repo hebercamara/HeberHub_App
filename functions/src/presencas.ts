@@ -27,7 +27,7 @@ export const registrarPresenca = onCall(async (req): Promise<RespostaCheckin> =>
   }
   // ADM e coordenação podem marcar presença só pela localização, sem o QR.
   const perfil = (req.auth?.token as Claims).perfil
-  const semQr = req.data?.semQr === true && (perfil === 'adm' || perfil === 'coordenacao')
+  const semQr = req.data?.semQr === true && perfil !== undefined && perfil !== 'prestador'
   const qr = semQr ? null : lerConteudoQr(leitura.qr)
 
   const resposta = await db.runTransaction(async (tx): Promise<RespostaCheckin & { recusa?: Record<string, unknown> }> => {

@@ -9,7 +9,7 @@ import { mensagemDeErro } from '../../lib/erros'
 import { somar, totalizar } from '../../lib/financeiro'
 import { db } from '../../lib/firebase'
 import { useSessao } from '../../lib/sessao'
-import { NOMES_TIPO_LANCAMENTO, type Fechamento, type Lancamento } from '../../lib/tipos'
+import { editaCoordenacao, NOMES_TIPO_LANCAMENTO, type Fechamento, type Lancamento } from '../../lib/tipos'
 import { exportarExcel } from './exportar'
 import { FormularioAjuste, FormularioEvento, FormularioPresencaManual } from './Formularios'
 
@@ -36,7 +36,7 @@ export function Financeiro() {
   const funcoes = useFuncoes()
 
   const fechado = fechamento?.status === 'fechado'
-  const coordenacao = perfil === 'coordenacao'
+  const coordenacao = editaCoordenacao(perfil)
 
   const totais = useMemo(
     () =>

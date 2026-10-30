@@ -88,15 +88,25 @@ A empresa trabalha com **prestadores de serviço PJ** (motoristas e ajudantes) q
 | Configurações: operações, funções e diárias, bases, aparência | | | | ✓ |
 | Auditoria | | | | ✓ |
 
+Acima da coordenação há mais dois perfis (etapa A1 do onboarding):
+- **Gestão:** tudo o que a coordenação faz e mais. É a conta do dono. **Só a Gestão** dá, tira
+  ou altera os perfis Gestão e Jurídico (inclusive inativar quem os tem).
+- **Jurídico:** **lê tudo** (inclusive valores e auditoria), mas não altera a operação nem o
+  financeiro; o app mostra "Modo consulta". Vai alterar a parte de contratos (etapa C).
+
+**Um CNPJ por pessoa:** o autocadastro recusa um CNPJ que já pertence a outro cadastro
+(recusados não contam). Configurações › Cadastros lista CNPJs repetidos em cadastros antigos.
+
 Na prática, o prestador vê **apenas a tela "Minha presença"**, sem menu. A equipe vê o menu
 de abas; a aba **Configurações** aparece para ADM e coordenação, mas o ADM só tem nela a
 seção **Cadastros**.
 
 ## 6. Fluxos principais
 
-### 6.1 Primeiro acesso da coordenação
-1. A variável `COORDENADOR_INICIAL_EMAIL` (ambiente `Firebase-dev` no GitHub) define quem
-   pode virar a primeira coordenação.
+### 6.1 Primeiro acesso do dono (Gestão)
+1. A variável `COORDENADOR_INICIAL_EMAIL` (ambiente `Firebase-dev` no GitHub) define o e-mail
+   do dono, que vira **Gestão** no primeiro acesso. Se essa conta já usava o perfil
+   Coordenação, ela vê em Usuários o cartão "Assumir a Gestão" (função `assumirGestao`).
 2. Em `/primeiro-acesso`, essa pessoa cria a senha e confirma o e-mail pelo link recebido;
    o perfil é ativado.
 3. Ela aceita o termo de privacidade e passa a criar os demais acessos.
@@ -110,8 +120,9 @@ seção **Cadastros**.
    e coordenação.
 4. Em Configurações › Cadastros, alguém da equipe aprova escolhendo a **base** (obrigatória)
    e a **função** (opcional, define o valor), ou recusa. A tela do prestador libera sozinha.
-5. ADMs e outras coordenações são criados pela coordenação (Usuários › Novo), com base e
-   função opcionais; recebem um e-mail para criar a senha.
+5. ADMs e outras coordenações são criados pela coordenação ou pela Gestão (Usuários › Novo
+   acesso da equipe), com base e função opcionais; recebem um e-mail para criar a senha.
+   Gestão e Jurídico só a Gestão cria.
 
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
@@ -299,7 +310,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 
 | Área | Funções |
 | --- | --- |
-| Usuários | `concluirCadastro`, `aprovarCadastro`, `criarUsuarioInterno`, `atualizarUsuario`, `reivindicarCoordenacao` |
+| Usuários | `concluirCadastro`, `aprovarCadastro`, `criarUsuarioInterno`, `atualizarUsuario`, `reivindicarCoordenacao` (cria a Gestão), `assumirGestao` |
 | Presença | `registrarPresenca` (QR ou localização), `registrarPresencaManual`, `marcarAusencia` (falta, não escalado ou limpar; retira presença e estorna a diária), `gerarQrDoDia` |
 | Cadastros | `salvarBase`, `salvarOperacao`, `salvarFuncao`, `duplicarFuncoes`, `salvarValorDiaria`, `salvarAparencia` |
 | Financeiro | `lancarAjuste`, `lancarEvento` (lançamento em grupo), `estornarLancamento`, `fecharMes`, `reabrirMes` |
@@ -347,8 +358,9 @@ presença.
 Acompanhar a Auditoria (recusas) para calibrar raio e precisão, coletar o que for estranho e
 então liberar para os cerca de 200 prestadores (teto previsto: 400).
 
-**Em planejamento:** onboarding com acareação de dados e geração de contratos. Rascunho e
-decisões em `docs/PLANO-ONBOARDING.md` (ainda não implementado).
+**Em andamento:** onboarding com acareação de dados e geração de contratos, em
+`docs/PLANO-ONBOARDING.md`. Pronta a parte **A1** (perfis Gestão e Jurídico, CNPJ único);
+próxima, a **A2** (cadastro oficial pelo link novo, consulta à Receita).
 
 **Pendências e ideias registradas:**
 - **Escala por carro** (planejada pelo dono, "com calma"): hoje existe só a marca NE por dia.
@@ -370,6 +382,7 @@ decisões em `docs/PLANO-ONBOARDING.md` (ainda não implementado).
 | Fase 1 | Login, autocadastro, aprovação, bases, QR do dia, check-in validado, presenças do dia |
 | Fase 2 | Operações, funções, valores com histórico, diária automática, adicionais, descontos, estorno, presença manual, fechamento, Excel e PDF, janela por base, check-in de todos os perfis |
 | Fase 3 | Termo LGPD, limpeza de coordenadas em 90 dias, auditoria, e-mails em português |
+| Onboarding A1 | Perfis Gestão e Jurídico; só a Gestão dá esses perfis; um CNPJ por pessoa |
 | Depois | Falta e não escalado no calendário (retirar presença com estorno); Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)

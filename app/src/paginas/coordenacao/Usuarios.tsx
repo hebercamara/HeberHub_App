@@ -12,11 +12,27 @@ import { mascararCnpj } from '../../lib/cnpj'
 import { mensagemDeErro } from '../../lib/erros'
 import { auth, db } from '../../lib/firebase'
 import { useSessao } from '../../lib/sessao'
-import { NOMES_PERFIL, NOMES_STATUS, type FuncaoOperacional, type Perfil, type Usuario, type ValorDiaria } from '../../lib/tipos'
+import { editaCoordenacao, NOMES_PERFIL, NOMES_STATUS, type FuncaoOperacional, type Perfil, type Usuario, type ValorDiaria } from '../../lib/tipos'
 
 type Filtro = 'todos' | Perfil | 'inativos'
 
+/** Perfis que só a Gestão dá ou tira. */
+const RESTRITOS: Perfil[] = ['gestao', 'juridico']
+
+/** Opções de perfil que quem está logado pode escolher. */
+function OpcoesPerfil({ souGestao, atual, comPrestador = true }: { souGestao: boolean; atual?: Perfil; comPrestador?: boolean }) {
+  const perfis: Perfil[] = [...(comPrestador ? (['prestador'] as Perfil[]) : []), 'adm', 'coordenacao', 'gestao', 'juridico']
+  return perfis
+    .filter((p) => souGestao || !RESTRITOS.includes(p) || p === atual)
+    .map((p) => (
+      <option key={p} value={p}>
+        {NOMES_PERFIL[p]}
+      </option>
+    ))
+}
+
 export function Usuarios() {
+  const { perfil } = useSessao()
   const usuarios = useUsuarios()
   const funcoes = useFuncoes()
   const [filtro, setFiltro] = useState<Filtro>('todos')
@@ -36,8 +52,10 @@ export function Usuarios() {
     <div className="pilha">
       <div className="cabecalho-secao">
         <h1>Usuários</h1>
-        {!criando && <button onClick={() => setCriando(true)}>Novo ADM ou coordenação</button>}
+        {!criando && editaCoordenacao(perfil) && <button onClick={() => setCriando(true)}>Novo acesso da equipe</button>}
       </div>
+
+      {perfil === 'coordenacao' && !usuarios.some((u) => u.perfil === 'gestao') && <AssumirGestao />}
 
       {criando && <NovoUsuarioInterno funcoes={funcoes} aoTerminar={() => setCriando(false)} />}
 
@@ -48,6 +66,8 @@ export function Usuarios() {
           <option value="prestador">Prestadores</option>
           <option value="adm">ADM</option>
           <option value="coordenacao">Coordenação</option>
+          <option value="gestao">Gestão</option>
+          <option value="juridico">Jurídico</option>
           <option value="inativos">Inativos e recusados</option>
         </select>
       </div>
@@ -77,11 +97,15 @@ export function Usuarios() {
 }
 
 function DetalheUsuario({ usuario, funcoes }: { usuario: Usuario; funcoes: FuncaoOperacional[] }) {
-  const { login } = useSessao()
+  const { login, perfil } = useSessao()
   const { bases } = useBases()
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
   const eu = login?.uid === usuario.id
+  const souGestao = perfil === 'gestao'
+  // Jurídico só consulta; Gestão e Jurídico só são alterados pela Gestão.
+  const protegido = RESTRITOS.includes(usuario.perfil) && !souGestao
+  const travado = enviando || !editaCoordenacao(perfil) || protegido
 
   async function alterar(mudancas: Omit<Parameters<typeof api.atualizarUsuario>[0], 'uid'>, confirmacao?: string) {
     if (confirmacao && !confirm(confirmacao)) return
@@ -123,15 +147,13 @@ function DetalheUsuario({ usuario, funcoes }: { usuario: Usuario; funcoes: Funca
           <div className="linha">
             <label>
               Perfil
-              <select value={usuario.perfil} disabled={eu || enviando} onChange={(e) => void alterar({ perfil: e.target.value as Perfil })}>
-                <option value="prestador">Prestador</option>
-                <option value="adm">ADM</option>
-                <option value="coordenacao">Coordenação</option>
+              <select value={usuario.perfil} disabled={eu || travado} onChange={(e) => void alterar({ perfil: e.target.value as Perfil })}>
+                <OpcoesPerfil souGestao={souGestao} atual={usuario.perfil} />
               </select>
             </label>
             <label>
               Base
-              <select value={usuario.baseId ?? ''} disabled={enviando} onChange={(e) => void alterar({ baseId: e.target.value || null })}>
+              <select value={usuario.baseId ?? ''} disabled={travado} onChange={(e) => void alterar({ baseId: e.target.value || null })}>
                 <option value="">Nenhuma</option>
                 {bases
                   .filter((b) => b.ativa || b.id === usuario.baseId)
@@ -144,28 +166,28 @@ function DetalheUsuario({ usuario, funcoes }: { usuario: Usuario; funcoes: Funca
             </label>
           </div>
 
-          <SeletorFuncao funcoes={funcoes} valor={usuario.funcaoId ?? ''} disabled={enviando} aoMudar={(id) => void alterar({ funcaoId: id || null })} />
+          <SeletorFuncao funcoes={funcoes} valor={usuario.funcaoId ?? ''} disabled={travado} aoMudar={(id) => void alterar({ funcaoId: id || null })} />
 
           {usuario.perfil === 'adm' && (
             <label className="opcao">
-              <input type="checkbox" checked={usuario.financeiro} disabled={enviando} onChange={(e) => void alterar({ financeiro: e.target.checked })} />
+              <input type="checkbox" checked={usuario.financeiro} disabled={travado} onChange={(e) => void alterar({ financeiro: e.target.checked })} />
               ADM Financeiro (vê valores, lança adicionais e descontos)
             </label>
           )}
 
           <div className="acoes">
             {usuario.deviceId && (
-              <button className="secundario" disabled={enviando} onClick={() => void alterar({ liberarAparelho: true }, `Liberar o aparelho de ${usuario.nome}? O próximo celular usado no check-in será vinculado.`)}>
+              <button className="secundario" disabled={travado} onClick={() => void alterar({ liberarAparelho: true }, `Liberar o aparelho de ${usuario.nome}? O próximo celular usado no check-in será vinculado.`)}>
                 Liberar aparelho
               </button>
             )}
             {!eu &&
               (usuario.status === 'ativo' ? (
-                <button className="perigo" disabled={enviando} onClick={() => void alterar({ status: 'inativo' }, `Inativar ${usuario.nome}? O acesso é bloqueado na hora.`)}>
+                <button className="perigo" disabled={travado} onClick={() => void alterar({ status: 'inativo' }, `Inativar ${usuario.nome}? O acesso é bloqueado na hora.`)}>
                   Inativar
                 </button>
               ) : (
-                <button disabled={enviando} onClick={() => void alterar({ status: 'ativo' })}>
+                <button disabled={travado} onClick={() => void alterar({ status: 'ativo' })}>
                   Reativar
                 </button>
               ))}
@@ -173,6 +195,7 @@ function DetalheUsuario({ usuario, funcoes }: { usuario: Usuario; funcoes: Funca
         </div>
       )}
       {usuario.status === 'pendente' && <p className="suave">Aprove ou recuse este cadastro na aba Cadastros.</p>}
+      {protegido && <p className="suave">Só a Gestão altera quem tem perfil Gestão ou Jurídico.</p>}
       <Aviso>{erro}</Aviso>
       {usuario.status !== 'pendente' && <ValorIndividual usuario={usuario} />}
     </div>
@@ -247,6 +270,7 @@ function ValorIndividual({ usuario }: { usuario: Usuario }) {
 }
 
 function NovoUsuarioInterno({ funcoes, aoTerminar }: { funcoes: FuncaoOperacional[]; aoTerminar: () => void }) {
+  const { perfil: meuPerfil } = useSessao()
   const { bases } = useBases()
   const ativas = bases.filter((b) => b.ativa)
   const [baseId, setBaseId] = useState('')
@@ -275,7 +299,7 @@ function NovoUsuarioInterno({ funcoes, aoTerminar }: { funcoes: FuncaoOperaciona
 
   return (
     <section className="cartao">
-      <h2>Novo ADM ou coordenação</h2>
+      <h2>Novo acesso da equipe</h2>
       <form onSubmit={criar} className="formulario">
         <label>
           Nome
@@ -288,8 +312,7 @@ function NovoUsuarioInterno({ funcoes, aoTerminar }: { funcoes: FuncaoOperaciona
         <label>
           Perfil
           <select value={perfil} onChange={(e) => setPerfil(e.target.value as Perfil)}>
-            <option value="adm">ADM</option>
-            <option value="coordenacao">Coordenação</option>
+            <OpcoesPerfil souGestao={meuPerfil === 'gestao'} comPrestador={false} />
           </select>
         </label>
         <label>
@@ -314,6 +337,38 @@ function NovoUsuarioInterno({ funcoes, aoTerminar }: { funcoes: FuncaoOperaciona
           </button>
         </div>
       </form>
+    </section>
+  )
+}
+
+/** O dono, que hoje usa o perfil Coordenação, passa para Gestão (o servidor confere o e-mail). */
+function AssumirGestao() {
+  const { renovarPerfil } = useSessao()
+  const [erro, setErro] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  async function assumir() {
+    setErro('')
+    setEnviando(true)
+    try {
+      await api.assumirGestao()
+      await renovarPerfil()
+    } catch (e) {
+      setErro(mensagemDeErro(e))
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <section className="cartao">
+      <h2>Perfil Gestão</h2>
+      <p className="suave">Ninguém tem o perfil Gestão ainda. Se esta é a conta do dono do HeberHub, assuma a Gestão: ela tem acesso a tudo e é a única que dá os perfis Gestão e Jurídico.</p>
+      <Aviso>{erro}</Aviso>
+      <div className="acoes">
+        <button onClick={() => void assumir()} disabled={enviando}>
+          Assumir a Gestão
+        </button>
+      </div>
     </section>
   )
 }

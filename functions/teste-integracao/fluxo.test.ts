@@ -21,7 +21,7 @@ describe('fluxo da Fase 1', () => {
 
   afterAll(fecharApps)
 
-  it('só o e-mail configurado vira coordenação inicial', async () => {
+  it('só o e-mail configurado vira a Gestão inicial', async () => {
     await expect(prestador.chamar('reivindicarCoordenacao', { nome: 'Intruso' })).rejects.toThrow(/não está autorizado/)
     await coordenacao.chamar('reivindicarCoordenacao', { nome: 'Coordenação Teste' })
     await coordenacao.renovarLogin()
@@ -39,6 +39,8 @@ describe('fluxo da Fase 1', () => {
     ).rejects.toThrow(/CNPJ inválido/)
     const cadastro = { nome: 'João Sócio', telefone: '11999990000', funcao: 'motorista', razaoSocial: 'João Transportes ME', cnpj: CNPJ_VALIDO }
     await expect(prestador.chamar('concluirCadastro', cadastro)).rejects.toThrow(/termo de privacidade/)
+    await prestador.chamar('concluirCadastro', { ...cadastro, aceiteTermo: 1 })
+    // Reenviar o próprio cadastro com o mesmo CNPJ continua permitido.
     await prestador.chamar('concluirCadastro', { ...cadastro, aceiteTermo: 1 })
     const meu = await getDoc(doc(prestador.db, 'usuarios', prestador.uid))
     expect(meu.get('status')).toBe('pendente')
@@ -124,6 +126,8 @@ describe('regras do Firestore', () => {
   const comoPrestador = () => ambiente.authenticatedContext('p1', { perfil: 'prestador' }).firestore()
   const comoAdm = () => ambiente.authenticatedContext('a1', { perfil: 'adm' }).firestore()
   const comoCoordenacao = () => ambiente.authenticatedContext('c1', { perfil: 'coordenacao', financeiro: true }).firestore()
+  const comoGestao = () => ambiente.authenticatedContext('g1', { perfil: 'gestao', financeiro: true }).firestore()
+  const comoJuridico = () => ambiente.authenticatedContext('j1', { perfil: 'juridico', financeiro: true }).firestore()
   const comoAdmFinanceiro = () => ambiente.authenticatedContext('f1', { perfil: 'adm', financeiro: true }).firestore()
 
   it('prestador lê o próprio cadastro e não o dos outros', async () => {
@@ -156,6 +160,17 @@ describe('regras do Firestore', () => {
     // Nome da função (sem valor) é visível para a equipe, não para o prestador.
     await assertSucceeds(comoAdm().doc('funcoes/f1').get())
     await assertFails(comoPrestador().doc('funcoes/f1').get())
+  })
+
+  it('Gestão e Jurídico leem tudo, inclusive valores e auditoria, mas não os tokens do QR', async () => {
+    for (const leitor of [comoGestao, comoJuridico]) {
+      await assertSucceeds(leitor().doc('usuarios/p2').get())
+      await assertSucceeds(leitor().doc('lancamentos/l1').get())
+      await assertSucceeds(leitor().doc('auditoria/a1').get())
+      await assertSucceeds(leitor().doc('eventosPresenca/e1').get())
+      await assertFails(leitor().doc('sessoes/b1_2026-11-03').get())
+    }
+    await assertFails(comoJuridico().doc('usuarios/j1').set({ perfil: 'gestao' }))
   })
 
   it('ninguém escreve direto pelo app', async () => {

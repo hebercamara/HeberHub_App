@@ -1,12 +1,13 @@
 import { NavLink, Outlet } from 'react-router'
 import { usePendentes } from '../lib/cadastros'
 import { useSessao } from '../lib/sessao'
+import { Aviso } from './Aviso'
 import { Contador } from './Contador'
-import { NOMES_PERFIL } from '../lib/tipos'
+import { ehCoordenacao, ehEquipe, NOMES_PERFIL } from '../lib/tipos'
 
 export function Layout() {
   const { usuario, perfil, financeiro, sair } = useSessao()
-  const equipe = perfil === 'adm' || perfil === 'coordenacao'
+  const equipe = ehEquipe(perfil)
   const pendentes = usePendentes(equipe).length
 
   return (
@@ -27,10 +28,10 @@ export function Layout() {
       {equipe && (
         <nav className="abas" aria-label="Seções">
           <NavLink to="/equipe/presencas">Presenças</NavLink>
-          <NavLink to="/equipe/qr">QR do dia</NavLink>
+          {perfil !== 'juridico' && <NavLink to="/equipe/qr">QR do dia</NavLink>}
           <NavLink to="/presenca">Minha presença</NavLink>
           {financeiro && <NavLink to="/financeiro">Financeiro</NavLink>}
-          {perfil === 'coordenacao' && (
+          {ehCoordenacao(perfil) && (
             <>
               <NavLink to="/eventos">Eventos</NavLink>
               <NavLink to="/coordenacao/usuarios">Usuários</NavLink>
@@ -45,6 +46,9 @@ export function Layout() {
       )}
 
       <main className="conteudo">
+        {perfil === 'juridico' && (
+          <Aviso tipo="info">Modo consulta: o Jurídico vê tudo, mas só altera a parte de contratos.</Aviso>
+        )}
         <Outlet />
       </main>
     </div>
