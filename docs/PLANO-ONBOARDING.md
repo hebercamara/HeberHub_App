@@ -169,13 +169,49 @@ Sugestões automáticas na emissão:
 3. ~~CNPJ repetido na importação~~: as linhas são recusadas e listadas como pendências.
 4. ~~Termo de Quitação de Dívida~~: por padrão, só Gestão, Coordenação e Jurídico emitem.
 5. ~~Variáveis do contrato de entrada~~: respondido (ver "Variáveis").
-6. **Concordância de gênero** ("portador/portadora", "brasileiro/brasileira"): perguntar o sexo
-   no cadastro e usar variáveis de concordância, ou o Jurídico reescreve os modelos em forma
-   neutra ("portador(a)")?
-7. **Função no contrato:** `{{FUNCAO_PRESTADA}}` vem da função operacional da pessoa
-   (ex.: "Motorista · Kibon SP"), com o texto editável na emissão? Ou é sempre digitada?
-8. **Distrato e inativação:** ao emitir o distrato, o sistema já deve **inativar** a pessoa a partir
-   de `DATA_FIM_SERVICO`?
-9. **Cartão recente:** exigir Cartão CNPJ emitido nos últimos 30 dias?
-10. **Conta bancária:** exigir que a conta (ou a chave PIX) seja **do CNPJ**, como diz a
-    cláusula 5.2? Ou aceitar conta do CPF do titular do MEI?
+6. ~~Concordância de gênero~~: o cadastro pergunta o sexo, e os modelos usam variáveis de
+   concordância ("brasileiro/brasileira", "portador/portadora").
+7. ~~Função no contrato~~: vem da função operacional da pessoa, editável na emissão.
+8. ~~Distrato e inativação~~: sim. A pessoa fica inativa a partir de `DATA_FIM_SERVICO` quando o
+   distrato é marcado como assinado.
+9. ~~Cartão recente~~: o sistema pede um cartão dos últimos 30 dias, mas **não trava**. Cartão
+   mais antigo só gera um aviso para o ADM.
+10. ~~Conta bancária~~: a conta e a chave PIX têm de ser **do CNPJ**. Conta no CPF não é aceita.
+
+## Desenho da etapa A (proposta para aprovação)
+
+Entregue em quatro partes, cada uma publicada e testada antes da próxima:
+
+**A1. Perfis e CNPJ único**
+- Perfis novos **Gestão** e **Jurídico**. A conta do dono vira Gestão. Só a Gestão dá ou tira
+  Gestão e Jurídico.
+- Gestão: tudo, inclusive o financeiro. Jurídico: lê tudo; altera só a parte de contratos
+  (que chega na etapa C).
+- Regra **um CNPJ por pessoa** no sistema todo. Antes de ligar a regra, o sistema lista os CNPJs
+  que já estejam repetidos no cadastro atual para correção.
+
+**A2. Cadastro oficial (link novo)**
+- Link novo, aberto, em que a pessoa cria login e senha e preenche o cadastro completo:
+  dados do MEI, do representante (inclui sexo, RG, CPF, endereço, nacionalidade, estado civil,
+  profissão), contato e dados bancários (banco, agência, conta, tipo, chave PIX).
+- Envio do **Cartão CNPJ** (PDF ou foto). Cartão com mais de 30 dias gera aviso, sem travar.
+- **Consulta à Receita** feita pelo servidor ao digitar o CNPJ. Situação diferente de ATIVA
+  impede a aprovação; CNAE fora do esperado só gera aviso. No MEI, o CPF no fim da razão social
+  é conferido com o CPF informado.
+- Conta bancária: a pessoa declara que a conta é do CNPJ. Chave PIX do tipo CPF é recusada;
+  chave do tipo CNPJ tem de ser o próprio CNPJ.
+- Termo de privacidade **versão 2**, cobrindo os dados novos. Todos aceitam de novo no próximo
+  acesso.
+
+**A3. Importação e vínculo**
+- Gestão e Coordenação sobem a planilha (Excel ou CSV). Cada linha vira um cadastro sem login.
+  Linhas com CNPJ repetido ou inválido são recusadas e listadas como pendências.
+- Quem se cadastra pelo link com um CNPJ importado recebe o formulário já preenchido e gera um
+  pedido de **vínculo**. O ADM aceita vendo se CPF, telefone e e-mail também batem.
+
+**A4. Conferência e aprovação**
+- Tela de conferência para o ADM: só as **divergências** entre formulário e Receita aparecem, lado
+  a lado; o ADM escolhe a certa com um clique ou corrige.
+- A aprovação grava o **Cadastro Oficial** em versões (o que foi escolhido, por quem e quando).
+- **Dados bancários** visíveis só para o próprio prestador, financeiro, Gestão e Jurídico; o ADM
+  vê apenas se estão preenchidos.
