@@ -1,54 +1,61 @@
-import { httpsCallable } from 'firebase/functions'
-import { useState } from 'react'
-import { functions, usingEmulators } from './lib/firebase'
+import { Navigate, Route, Routes } from 'react-router'
+import { Carregando } from './componentes/Carregando'
+import { Layout } from './componentes/Layout'
+import { useSessao } from './lib/sessao'
+import { Aguardando } from './paginas/Aguardando'
+import { Cadastro } from './paginas/Cadastro'
+import { Bases } from './paginas/coordenacao/Bases'
+import { Usuarios } from './paginas/coordenacao/Usuarios'
+import { Entrar } from './paginas/Entrar'
+import { Cadastros } from './paginas/equipe/Cadastros'
+import { PresencasHoje } from './paginas/equipe/PresencasHoje'
+import { QrDoDia } from './paginas/equipe/QrDoDia'
+import { PrimeiroAcesso } from './paginas/PrimeiroAcesso'
+import { Presenca } from './paginas/prestador/Presenca'
 
-type Saude = { status: string; servico: string; horario: string }
-
-const ambiente = import.meta.env.VITE_APP_ENV ?? 'dev'
+/** Para onde cada pessoa vai ao abrir o app, conforme o login e o cadastro. */
+function destinoInicial(sessao: ReturnType<typeof useSessao>): string {
+  if (!sessao.login) return '/entrar'
+  if (!sessao.usuario) return '/cadastro'
+  if (sessao.usuario.status !== 'ativo' || !sessao.perfil) return '/aguardando'
+  return sessao.perfil === 'prestador' ? '/presenca' : '/equipe/presencas'
+}
 
 function App() {
-  const [saude, setSaude] = useState<Saude | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
-  const [carregando, setCarregando] = useState(false)
+  const sessao = useSessao()
+  if (sessao.carregando) return <Carregando />
 
-  async function testarServidor() {
-    setCarregando(true)
-    setErro(null)
-    try {
-      const resposta = await httpsCallable<void, Saude>(functions, 'saude')()
-      setSaude(resposta.data)
-    } catch (e) {
-      setSaude(null)
-      setErro(e instanceof Error ? e.message : String(e))
-    } finally {
-      setCarregando(false)
-    }
-  }
+  const inicio = destinoInicial(sessao)
+  const ativo = sessao.usuario?.status === 'ativo' && sessao.perfil
+  const equipe = ativo && (sessao.perfil === 'adm' || sessao.perfil === 'coordenacao')
+  const coordenacao = ativo && sessao.perfil === 'coordenacao'
 
   return (
-    <main className="pagina">
-      <img src="/favicon.svg" alt="" className="logo" />
-      <h1>HeberHub</h1>
-      <p className="subtitulo">Check-in georreferenciado da frota</p>
+    <Routes>
+      <Route path="/entrar" element={sessao.login ? <Navigate to={inicio} replace /> : <Entrar />} />
+      <Route path="/cadastro" element={sessao.usuario && sessao.usuario.status !== 'recusado' ? <Navigate to={inicio} replace /> : <Cadastro />} />
+      <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
+      <Route path="/aguardando" element={sessao.login && sessao.usuario && !ativo ? <Aguardando /> : <Navigate to={inicio} replace />} />
 
-      <section className="cartao">
-        <p>
-          Ambiente: <strong>{ambiente}</strong>
-          {usingEmulators && ' (emuladores locais)'}
-        </p>
-        <button onClick={testarServidor} disabled={carregando}>
-          {carregando ? 'Testando…' : 'Testar conexão com o servidor'}
-        </button>
-        {saude && (
-          <p className="ok">
-            Servidor respondeu: {saude.status} às {saude.horario}
-          </p>
+      <Route element={ativo ? <Layout /> : <Navigate to={inicio} replace />}>
+        {sessao.perfil === 'prestador' && <Route path="/presenca" element={<Presenca />} />}
+        {equipe && (
+          <>
+            <Route path="/equipe/presencas" element={<PresencasHoje />} />
+            <Route path="/equipe/qr" element={<QrDoDia />} />
+            <Route path="/equipe/cadastros" element={<Cadastros />} />
+          </>
         )}
-        {erro && <p className="erro">Falha: {erro}</p>}
-      </section>
+        {coordenacao && (
+          <>
+            <Route path="/coordenacao/usuarios" element={<Usuarios />} />
+            <Route path="/coordenacao/bases" element={<Bases />} />
+          </>
+        )}
+      </Route>
 
-      <p className="rodape">Fase 0 · fundação</p>
-    </main>
+      <Route path="*" element={<Navigate to={inicio} replace />} />
+    </Routes>
   )
 }
 

@@ -1,9 +1,40 @@
 rules_version = '2';
 
-// Fase 0: tudo fechado. As regras de cada coleção entram na Fase 1,
-// junto com os perfis (prestador, adm, coordenacao) nos custom claims.
+// Toda escrita passa pelas Cloud Functions. O app só lê, e cada perfil lê
+// apenas o que lhe cabe. O perfil vem dos custom claims do login.
 service cloud.firestore {
   match /databases/{database}/documents {
+    function logado() {
+      return request.auth != null;
+    }
+    function perfil() {
+      return request.auth.token.get('perfil', '');
+    }
+    function equipe() {
+      return logado() && perfil() in ['adm', 'coordenacao'];
+    }
+    function coordenacao() {
+      return logado() && perfil() == 'coordenacao';
+    }
+
+    match /usuarios/{uid} {
+      allow read: if logado() && (request.auth.uid == uid || equipe());
+    }
+
+    match /bases/{baseId} {
+      allow read: if logado();
+    }
+
+    // Prestador lê só as próprias presenças; ADM e coordenação leem todas.
+    match /presencas/{presencaId} {
+      allow read: if logado() && (resource.data.uid == request.auth.uid || equipe());
+    }
+
+    match /auditoria/{registroId} {
+      allow read: if coordenacao();
+    }
+
+    // sessoes (tokens do QR) e qualquer outra coleção: sem acesso pelo app.
     match /{document=**} {
       allow read, write: if false;
     }

@@ -1,4 +1,4 @@
-export const FUSO_OPERACAO = 'America/Sao_Paulo'
+import { FUSO_OPERACAO } from './regras/tempo.js'
 
 export type Saude = { status: 'ok'; servico: string; horario: string }
 

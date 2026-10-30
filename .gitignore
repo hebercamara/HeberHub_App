@@ -11,3 +11,4 @@ ui-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+!functions/.env.demo-heberhub

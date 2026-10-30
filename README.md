@@ -19,6 +19,7 @@ Requer Node 24 (veja `.nvmrc`) e Java 21+ (para o emulador do Firestore).
 npm run install:all
 cp app/.env.example app/.env.local   # mantenha VITE_USE_EMULATORS=true
 npm run emuladores                   # terminal 1: Auth, Firestore, Functions
+# coordenação inicial nos emuladores: coordenacao@teste.local (em /primeiro-acesso)
 npm run dev                          # terminal 2: app em http://localhost:5173
 ```
 
@@ -38,10 +39,27 @@ npm run dev                          # terminal 2: app em http://localhost:5173
 5. Gere a chave da conta de serviço: Configurações do projeto > Contas de serviço > Gerar nova chave privada.
 6. No GitHub, em Settings > Environments, crie os ambientes `Firebase-dev` e `Firebase-prod`. Em cada um:
    - secret `FIREBASE_SERVICE_ACCOUNT`: o conteúdo do JSON da chave;
-   - variáveis `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID` e `VITE_FIREBASE_APP_ID`.
+   - variáveis `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID` e `VITE_FIREBASE_APP_ID`;
+   - variável `COORDENADOR_INICIAL_EMAIL`: o e-mail que vai virar a primeira coordenação.
 7. Em `Firebase-prod`, marque "Required reviewers" para exigir aprovação antes de publicar.
 
 Sem o secret, o workflow de deploy apenas avisa e não publica nada.
+
+## Primeiro acesso
+
+1. Abra `/primeiro-acesso` no app publicado e use o e-mail de `COORDENADOR_INICIAL_EMAIL`.
+2. Confirme o e-mail pelo link recebido e toque em "Ativar coordenação".
+3. Em **Bases**, cadastre a base (o botão "Usar minha posição atual" captura as coordenadas estando no local).
+4. Em **Usuários**, crie os acessos dos ADMs. Os prestadores se cadastram sozinhos em "Cadastre-se" e são aprovados em **Cadastros**.
+
+## Testes
+
+```bash
+npm test                  # regras de negócio (rápido)
+npm run test:integracao   # fluxo completo e regras do Firestore nos emuladores (requer Java)
+```
+
+Nos emuladores, `RELOGIO_FIXO=2026-11-03T10:00:00Z` congela o relógio do servidor (útil para testar a janela das 5h às 9h). Em produção essa variável é ignorada.
 
 ## Fases
 

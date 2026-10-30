@@ -9,13 +9,16 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integracao": "vitest run --config vitest.integracao.config.ts"
   },
   "dependencies": {
     "firebase-admin": "^14.5.0",
     "firebase-functions": "^7.4.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.1.0",
     "typescript": "^5.9.3",
     "vitest": "^5.0.5"
   }
