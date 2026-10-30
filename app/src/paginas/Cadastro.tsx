@@ -6,6 +6,7 @@ import { TelaSimples } from '../componentes/TelaSimples'
 import { api } from '../lib/api'
 import { cnpjValido, mascararCnpj } from '../lib/cnpj'
 import { mensagemDeErro } from '../lib/erros'
+import { VERSAO_TERMO } from '../lib/privacidade'
 import { auth } from '../lib/firebase'
 import { useSessao } from '../lib/sessao'
 import type { Funcao } from '../lib/tipos'
@@ -24,6 +25,7 @@ export function Cadastro() {
   const [nome, setNome] = useState(usuario?.nome ?? '')
   const [telefone, setTelefone] = useState(usuario?.telefone ?? '')
   const [funcao, setFuncao] = useState<Funcao | ''>(usuario?.funcao ?? '')
+  const [aceite, setAceite] = useState(false)
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
 
@@ -33,10 +35,11 @@ export function Cadastro() {
     if (!login && senha !== confirmacao) return setErro('As senhas não conferem.')
     if (!cnpjValido(cnpj)) return setErro('CNPJ inválido. Confira os números.')
     if (!funcao) return setErro('Escolha a função.')
+    if (!aceite) return setErro('Para se cadastrar, leia e aceite o termo de privacidade.')
     setEnviando(true)
     try {
       if (!login) await createUserWithEmailAndPassword(auth, email.trim(), senha)
-      await api.concluirCadastro({ nome, telefone, funcao, razaoSocial, cnpj })
+      await api.concluirCadastro({ nome, telefone, funcao, razaoSocial, cnpj, aceiteTermo: VERSAO_TERMO })
       // O app segue sozinho para a tela de "aguardando aprovação".
     } catch (err) {
       setErro(mensagemDeErro(err))
@@ -94,6 +97,15 @@ export function Cadastro() {
           </label>
         </fieldset>
 
+        <label className="opcao">
+          <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
+          <span>
+            Li e aceito o{' '}
+            <a href="/privacidade" target="_blank" rel="noreferrer">
+              termo de privacidade
+            </a>
+          </span>
+        </label>
         <Aviso>{erro}</Aviso>
         <button type="submit" disabled={enviando}>
           {enviando ? 'Enviando…' : 'Enviar cadastro'}

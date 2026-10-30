@@ -15,6 +15,8 @@ export type Usuario = {
   deviceId: string | null
   /** Função operacional (ex.: Motorista · Kibon SP). */
   funcaoId?: string | null
+  /** Versão do termo de privacidade aceita. */
+  termoVersao?: number
   funcao?: Funcao
   razaoSocial?: string
   cnpj?: string

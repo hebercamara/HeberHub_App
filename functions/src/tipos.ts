@@ -14,6 +14,8 @@ export type Usuario = {
   deviceId: string | null
   /** Função operacional (ex.: Motorista · Kibon SP), que define o valor da diária. */
   funcaoId?: string | null
+  /** Versão do termo de privacidade aceita (ausente = ainda não aceitou). */
+  termoVersao?: number
   // Só prestadores (dados da empresa)
   funcao?: Funcao
   razaoSocial?: string

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { validarCheckin, type Leitura } from './checkin.js'
 import { cnpjValido } from './cnpj.js'
+import { dataLimiteCoordenadas } from './privacidade.js'
 import { distanciaMetros } from './geo.js'
 import { lerConteudoQr, montarConteudoQr } from './qr.js'
 import { dataEmSaoPaulo, dentroDaJanela, horarioEmSaoPaulo, somarDias } from './tempo.js'
@@ -55,6 +56,12 @@ describe('qr', () => {
   })
 })
 
+describe('privacidade', () => {
+  it('guarda as coordenadas por 90 dias', () => {
+    expect(dataLimiteCoordenadas('2026-11-03')).toBe('2026-08-05')
+  })
+})
+
 describe('cnpj', () => {
   it('valida dígitos verificadores', () => {
     expect(cnpjValido('11.222.333/0001-81')).toBe(true)
@@ -75,6 +82,7 @@ describe('validarCheckin', () => {
     status: 'ativo',
     baseId: 'base1',
     deviceId: 'aparelho-1',
+    termoVersao: 1,
   }
   const leitura: Leitura = {
     qr: montarConteudoQr({ sessaoId: 'base1_2026-11-03', token: sessao.token }),
@@ -116,6 +124,7 @@ describe('validarCheckin', () => {
 
   it.each([
     ['usuario-inativo', { usuario: { status: 'pendente' as const } }],
+    ['termo-pendente', { usuario: { termoVersao: undefined } }],
     ['sem-base', { usuario: { baseId: null } }],
     ['aparelho-diferente', { leitura: { deviceId: 'outro-aparelho' } }],
     ['qr-invalido', { leitura: { qr: 'qualquer coisa' } }],

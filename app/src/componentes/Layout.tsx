@@ -34,6 +34,7 @@ export function Layout() {
               <NavLink to="/coordenacao/usuarios">Usuários</NavLink>
               <NavLink to="/coordenacao/operacoes">Operações</NavLink>
               <NavLink to="/coordenacao/bases">Bases</NavLink>
+              <NavLink to="/coordenacao/auditoria">Auditoria</NavLink>
             </>
           )}
         </nav>

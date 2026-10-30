@@ -35,9 +35,11 @@ describe('fluxo da Fase 1', () => {
 
   it('prestador faz o autocadastro e fica pendente', async () => {
     await expect(
-      prestador.chamar('concluirCadastro', { nome: 'João Sócio', telefone: '11999990000', funcao: 'motorista', razaoSocial: 'João Transportes ME', cnpj: '11.222.333/0001-80' }),
+      prestador.chamar('concluirCadastro', { nome: 'João Sócio', telefone: '11999990000', funcao: 'motorista', razaoSocial: 'João Transportes ME', cnpj: '11.222.333/0001-80', aceiteTermo: 1 }),
     ).rejects.toThrow(/CNPJ inválido/)
-    await prestador.chamar('concluirCadastro', { nome: 'João Sócio', telefone: '11999990000', funcao: 'motorista', razaoSocial: 'João Transportes ME', cnpj: CNPJ_VALIDO })
+    const cadastro = { nome: 'João Sócio', telefone: '11999990000', funcao: 'motorista', razaoSocial: 'João Transportes ME', cnpj: CNPJ_VALIDO }
+    await expect(prestador.chamar('concluirCadastro', cadastro)).rejects.toThrow(/termo de privacidade/)
+    await prestador.chamar('concluirCadastro', { ...cadastro, aceiteTermo: 1 })
     const meu = await getDoc(doc(prestador.db, 'usuarios', prestador.uid))
     expect(meu.get('status')).toBe('pendente')
   })

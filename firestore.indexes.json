@@ -4,17 +4,60 @@
       "collectionGroup": "presencas",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "uid", "order": "ASCENDING" },
-        { "fieldPath": "data", "order": "DESCENDING" }
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "presencas",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "baseId", "order": "ASCENDING" },
-        { "fieldPath": "data", "order": "ASCENDING" },
-        { "fieldPath": "horario", "order": "ASCENDING" }
+        {
+          "fieldPath": "baseId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "horario",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "presencas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "temCoordenadas",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "auditoria",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "acao",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "em",
+          "order": "DESCENDING"
+        }
       ]
     }
   ],

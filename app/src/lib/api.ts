@@ -11,7 +11,8 @@ export type RespostaCheckin =
   | { ok: false; motivo: string; mensagem: string }
 
 export const api = {
-  concluirCadastro: chamada<{ nome: string; telefone: string; funcao: Funcao; razaoSocial: string; cnpj: string }>('concluirCadastro'),
+  concluirCadastro: chamada<{ nome: string; telefone: string; funcao: Funcao; razaoSocial: string; cnpj: string; aceiteTermo: number }>('concluirCadastro'),
+  aceitarTermo: chamada<{ versao: number }>('aceitarTermo'),
   reivindicarCoordenacao: chamada<{ nome: string }>('reivindicarCoordenacao'),
   aprovarCadastro: chamada<{ uid: string; aprovar: boolean; baseId?: string; funcaoId?: string | null }>('aprovarCadastro'),
   criarUsuarioInterno: chamada<{ nome: string; email: string; perfil: Perfil; baseId?: string | null; funcaoId?: string | null }, { ok: true; uid: string }>(

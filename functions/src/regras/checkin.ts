@@ -1,6 +1,7 @@
 import { coordenadaValida, distanciaMetros } from './geo.js'
 import { lerConteudoQr } from './qr.js'
 import { dataEmSaoPaulo, dentroDaJanela, JANELA_PADRAO } from './tempo.js'
+import { VERSAO_TERMO } from './privacidade.js'
 import type { Base, Sessao, Usuario } from '../tipos.js'
 
 export type Leitura = {
@@ -13,6 +14,7 @@ export type Leitura = {
 
 export type MotivoRecusa =
   | 'usuario-inativo'
+  | 'termo-pendente'
   | 'sem-base'
   | 'aparelho-diferente'
   | 'qr-invalido'
@@ -25,6 +27,7 @@ export type MotivoRecusa =
 
 export const MENSAGENS: Record<MotivoRecusa, string> = {
   'usuario-inativo': 'Seu cadastro não está ativo. Fale com a coordenação.',
+  'termo-pendente': 'Leia e aceite o termo de privacidade antes do primeiro check-in.',
   'sem-base': 'Seu cadastro ainda não tem uma base. Fale com o ADM.',
   'aparelho-diferente': 'Este não é o celular cadastrado. Peça à coordenação para liberar o novo aparelho.',
   'qr-invalido': 'Este QR Code não é do HeberHub.',
@@ -55,6 +58,8 @@ export function validarCheckin(args: {
 
   // Todos os perfis podem fazer check-in; basta o cadastro estar ativo.
   if (usuario.status !== 'ativo') return { ok: false, motivo: 'usuario-inativo' }
+  // A localização só é coletada de quem aceitou o termo de privacidade.
+  if ((usuario.termoVersao ?? 0) < VERSAO_TERMO) return { ok: false, motivo: 'termo-pendente' }
   if (!usuario.baseId) return { ok: false, motivo: 'sem-base' }
 
   const deviceId = typeof leitura.deviceId === 'string' ? leitura.deviceId : ''

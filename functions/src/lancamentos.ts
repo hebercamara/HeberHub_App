@@ -110,7 +110,7 @@ export const estornarLancamento = onCall(async (req) => {
     // Uma diária pendente estornada deixa de bloquear o fechamento.
     tx.update(original.ref, { estornadoPor: estornoRef.id, pendente: false })
     if (l.tipo === 'diaria' && l.presencaId) tx.update(db.collection('presencas').doc(l.presencaId), { cancelada: true })
-    auditar(tx, { acao: 'lancamento-estornado', autor, alvo: id, detalhes: { estorno: estornoRef.id, valor: l.valor, justificativa: motivo } })
+    auditar(tx, { acao: 'lancamento-estornado', autor, alvo: id, detalhes: { uid: l.uid, estorno: estornoRef.id, valor: l.valor, justificativa: motivo } })
   })
   return { ok: true, id: estornoRef.id }
 })

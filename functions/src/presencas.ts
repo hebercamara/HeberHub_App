@@ -78,6 +78,8 @@ export const registrarPresenca = onCall(async (req): Promise<RespostaCheckin> =>
       distanciaMetros: resultado.distanciaMetros,
       sessaoId: resultado.sessaoId,
       origem: 'qrcode',
+      // Marca para a limpeza automática das coordenadas após 90 dias.
+      temCoordenadas: true,
     })
     lancarDiaria(tx, { uid, usuario, data: resultado.data, presencaId: presencaRef.id, valor, autor: uid })
     if (!usuario.deviceId) tx.update(usuarioRef, { deviceId: resultado.deviceId })

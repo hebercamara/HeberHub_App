@@ -4,6 +4,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { adminAuth, agoraServidor, auditar, db, emEmulador, exigirLogin, exigirPerfil, falha, texto } from './infra.js'
 import { preencherPendentes } from './cadastros.js'
 import { cnpjValido, limparCnpj } from './regras/cnpj.js'
+import { VERSAO_TERMO } from './regras/privacidade.js'
 import type { Claims, Funcao, Perfil, Status, Usuario } from './tipos.js'
 
 // E-mail de quem pode se tornar a primeira coordenação (variável COORDENADOR_INICIAL_EMAIL).
@@ -44,6 +45,7 @@ export const concluirCadastro = onCall(async (req) => {
   if (!email) throw falha('O login precisa ter um e-mail.')
 
   const dados = req.data ?? {}
+  if (dados.aceiteTermo !== VERSAO_TERMO) throw falha('Para se cadastrar, leia e aceite o termo de privacidade.')
   const funcao = dados.funcao as Funcao
   if (funcao !== 'motorista' && funcao !== 'ajudante') throw falha('Escolha a função: motorista ou ajudante.')
   const cnpj = limparCnpj(texto(dados.cnpj, 'o CNPJ', { min: 14, max: 18 }))
@@ -74,6 +76,8 @@ export const concluirCadastro = onCall(async (req) => {
       status: 'pendente',
       baseId: null,
       deviceId: null,
+      termoVersao: VERSAO_TERMO,
+      termoAceitoEm: agoraServidor(),
       criadoEm: atual.get('criadoEm') ?? agoraServidor(),
       atualizadoEm: agoraServidor(),
     })

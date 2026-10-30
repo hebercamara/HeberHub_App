@@ -578,6 +578,51 @@ textarea {
   border-radius: 8px;
 }
 
+/* Termo de privacidade */
+.termo {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  padding-right: 4px;
+}
+
+.tela-simples .termo {
+  text-align: left;
+}
+
+.termo ul {
+  padding-left: 20px;
+}
+
+.termo li {
+  margin-bottom: 4px;
+}
+
+/* Auditoria */
+.auditoria li {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  justify-content: start;
+}
+
+.auditoria li.recusa strong {
+  color: var(--cor-erro);
+}
+
+.auditoria-detalhe {
+  display: block;
+  color: var(--cor-texto-suave);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  .auditoria li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
 /* Folha do QR Code */
 .folha-qr {
   text-align: center;

@@ -61,6 +61,13 @@ Sem o secret, o workflow de deploy apenas avisa e não publica nada.
 - A coordenação fecha o mês (prazo: dia 5 do mês seguinte). Mês fechado não aceita lançamentos até ser reaberto, com justificativa.
 - Só a coordenação e o ADM Financeiro veem valores. Prestador e ADM comum não têm acesso.
 
+## Privacidade (LGPD)
+
+- Todos aceitam o termo de privacidade (`/privacidade`) antes de usar o app; sem aceite, o servidor recusa o check-in. O texto está em `app/src/componentes/TextoTermo.tsx` e deve ser revisado pelo jurídico.
+- Mudou o termo? Aumente `VERSAO_TERMO` em `app/src/lib/privacidade.ts` e em `functions/src/regras/privacidade.ts`: todos aceitam de novo no próximo acesso.
+- A localização é lida só no momento do check-in. Todo dia às 3h, a função `limparCoordenadas` apaga latitude, longitude e precisão das presenças com mais de 90 dias (a distância até a base fica).
+- A aba **Auditoria** (coordenação) mostra todas as ações, inclusive os check-ins recusados com o motivo, úteis para calibrar raio e precisão.
+
 ## Testes
 
 ```bash

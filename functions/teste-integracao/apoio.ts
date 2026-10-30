@@ -40,6 +40,7 @@ export async function fecharApps() {
 export async function coordenacaoInicial(): Promise<Celular> {
   const c = await novoUsuario('coordenacao@teste.local')
   await c.chamar('reivindicarCoordenacao', { nome: 'Coordenação Teste' })
+  await c.chamar('aceitarTermo', { versao: 1 })
   await c.renovarLogin()
   return c
 }
@@ -47,7 +48,7 @@ export async function coordenacaoInicial(): Promise<Celular> {
 /** Prestador cadastrado e aprovado na base (e na função, se houver). */
 export async function prestadorAprovado(coordenacao: Celular, email: string, nome: string, baseId: string, funcaoId?: string): Promise<Celular> {
   const p = await novoUsuario(email)
-  await p.chamar('concluirCadastro', { nome, telefone: '11999990000', funcao: 'motorista', razaoSocial: `${nome} ME`, cnpj: CNPJ_VALIDO })
+  await p.chamar('concluirCadastro', { nome, telefone: '11999990000', funcao: 'motorista', razaoSocial: `${nome} ME`, cnpj: CNPJ_VALIDO, aceiteTermo: 1 })
   await coordenacao.chamar('aprovarCadastro', { uid: p.uid, aprovar: true, baseId, funcaoId })
   await p.renovarLogin()
   return p

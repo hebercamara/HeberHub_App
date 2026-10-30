@@ -21,6 +21,8 @@ export const app = initializeApp({
 })
 
 export const auth = getAuth(app)
+// E-mails de confirmação e de nova senha em português.
+auth.languageCode = 'pt-BR'
 export const db = getFirestore(app)
 export const functions = getFunctions(app, FUNCTIONS_REGION)
 
