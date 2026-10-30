@@ -167,8 +167,7 @@ Sugestões automáticas na emissão:
 1. ~~Quem importado preenche~~: o mesmo cadastro oficial, já pré-preenchido (ver "Cadastro oficial").
 2. ~~Quem vira Gestão~~: a conta do dono; só a Gestão dá os perfis Gestão e Jurídico.
 3. ~~CNPJ repetido na importação~~: as linhas são recusadas e listadas como pendências.
-4. **Termo de Quitação de Dívida:** quem pode emitir por padrão? Sugestão: só Gestão,
-   Coordenação e Jurídico.
+4. ~~Termo de Quitação de Dívida~~: por padrão, só Gestão, Coordenação e Jurídico emitem.
 5. ~~Variáveis do contrato de entrada~~: respondido (ver "Variáveis").
 6. **Concordância de gênero** ("portador/portadora", "brasileiro/brasileira"): perguntar o sexo
    no cadastro e usar variáveis de concordância, ou o Jurídico reescreve os modelos em forma
