@@ -5,8 +5,8 @@ import { db } from './firebase'
 /** Cores básicas da paleta. Tudo o mais (bordas, textos, estados) deriva delas ou é fixo. */
 export type Paleta = { primaria: string; secundaria: string; fundo: string }
 
-/** Padrão inicial: vermelho, cinza e um fundo quase branco. */
-export const PALETA_PADRAO: Paleta = { primaria: '#c8102e', secundaria: '#3d3d3d', fundo: '#f4f4f4' }
+/** Padrão: o vermelho do logo, um cinza escuro (o "Heber" do logo é branco) e um fundo quase branco. */
+export const PALETA_PADRAO: Paleta = { primaria: '#e52421', secundaria: '#3d3d3d', fundo: '#f4f4f4' }
 
 /** Luminância relativa (WCAG) de uma cor #RRGGBB. */
 function luminancia(hex: string): number {
@@ -22,7 +22,8 @@ export function textoSobre(hex: string): string {
   const l = luminancia(hex)
   const contrasteBranco = 1.05 / (l + 0.05)
   const contrasteEscuro = (l + 0.05) / 0.05
-  return contrasteBranco >= contrasteEscuro ? '#ffffff' : '#1b1f24'
+  // Prefere branco (o normal em botões de cor) enquanto ele for legível em botões e títulos.
+  return contrasteBranco >= 3 || contrasteBranco >= contrasteEscuro ? '#ffffff' : '#1b1f24'
 }
 
 /** Aplica a paleta como variáveis CSS (o index.css usa --marca-*). */

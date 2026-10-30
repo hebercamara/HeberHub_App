@@ -1,6 +1,6 @@
 :root {
   /* --marca-* vêm da paleta escolhida em Configurações > Aparência (lib/aparencia.ts). */
-  --cor-primaria: var(--marca-primaria, #c8102e);
+  --cor-primaria: var(--marca-primaria, #e52421);
   --cor-primaria-texto: var(--marca-primaria-texto, #ffffff);
   --cor-secundaria: var(--marca-secundaria, #3d3d3d);
   --cor-secundaria-texto: var(--marca-secundaria-texto, #ffffff);
@@ -74,18 +74,35 @@ a {
 .tela-simples {
   max-width: 440px;
   margin: 0 auto;
-  padding: 40px 16px;
+  padding: 24px 16px 40px;
   text-align: center;
+}
+
+.faixa-logo {
+  display: flex;
+  justify-content: center;
+  padding: 20px 16px;
+  background: var(--cor-secundaria);
+}
+
+.faixa-logo img {
+  width: 220px;
+  max-width: 70%;
+  height: auto;
+}
+
+.logo-topo {
+  display: block;
+  height: 52px;
+  width: auto;
+  /* O PNG tem uma margem transparente com a sombra; as margens negativas
+     deixam o logo maior sem engrossar a barra. */
+  margin: -12px 0 -12px -12px;
 }
 
 .tela-simples .cartao {
   text-align: left;
   margin-top: 24px;
-}
-
-.logo {
-  width: 64px;
-  height: 64px;
 }
 
 .rodape-cartao {

@@ -10,8 +10,7 @@ export function Layout() {
     <div className="layout">
       <header className="topo">
         <div className="marca">
-          <img src="/favicon.svg" alt="" width="28" height="28" />
-          <span>HeberHub</span>
+          <img src="/logo.png" alt="HeberHub" className="logo-topo" />
         </div>
         <div className="quem">
           <span className="quem-nome">{usuario?.nome}</span>

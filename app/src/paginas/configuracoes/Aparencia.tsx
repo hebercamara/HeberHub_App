@@ -5,8 +5,12 @@ import { api } from '../../lib/api'
 import { mensagemDeErro } from '../../lib/erros'
 
 const CAMPOS: { chave: keyof Paleta; rotulo: string; uso: string }[] = [
-  { chave: 'primaria', rotulo: 'Cor principal', uso: 'Botões, links e a aba selecionada. Na nossa paleta, o vermelho.' },
-  { chave: 'secundaria', rotulo: 'Cor secundária', uso: 'Barra do topo e detalhes. Na nossa paleta, o cinza.' },
+  { chave: 'primaria', rotulo: 'Cor principal', uso: 'Botões, links e a aba selecionada. O vermelho do logo é #e52421.' },
+  {
+    chave: 'secundaria',
+    rotulo: 'Cor secundária',
+    uso: 'Barra do topo, atrás do logo. Use um cinza escuro: o "Heber" do logo é branco e some em cinza claro (o cinza dos conectores do logo é #aaaaa9).',
+  },
   { chave: 'fundo', rotulo: 'Cor de fundo', uso: 'Fundo das telas (no modo claro). Branco ou um cinza bem claro.' },
 ]
 
@@ -76,8 +80,7 @@ export function Aparencia() {
         <div className="previa" style={previa}>
           <div className="topo">
             <div className="marca">
-              <img src="/favicon.svg" alt="" width="24" height="24" />
-              <span>HeberHub</span>
+              <img src="/logo.png" alt="HeberHub" className="logo-topo" />
             </div>
             <span className="selo">Coordenação</span>
           </div>
