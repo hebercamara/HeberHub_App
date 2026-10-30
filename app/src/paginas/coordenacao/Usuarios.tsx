@@ -2,6 +2,7 @@ import { sendPasswordResetEmail } from 'firebase/auth'
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Aviso } from '../../componentes/Aviso'
+import { CadastroOficialUsuario } from './CadastroOficialUsuario'
 import { SeletorFuncao } from '../../componentes/SeletorFuncao'
 import { api } from '../../lib/api'
 import { useBases } from '../../lib/bases'
@@ -88,6 +89,7 @@ export function Usuarios() {
                 <span className={`selo selo-${u.status}`}>{NOMES_STATUS[u.status]}</span>
               </button>
               {aberto === u.id && <DetalheUsuario usuario={u} funcoes={funcoes} />}
+              {aberto === u.id && u.cadastroOficial && u.status !== 'pendente' && <CadastroOficialUsuario uid={u.id} usuarios={usuarios} />}
             </li>
           ))}
         </ul>

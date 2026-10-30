@@ -266,7 +266,9 @@ textarea {
   font-size: 1rem;
 }
 
-input[type='checkbox'] {
+input[type='checkbox'],
+input[type='radio'] {
+  flex: none;
   width: 20px;
   height: 20px;
 }
@@ -1148,4 +1150,23 @@ textarea {
     color: #000;
     font-size: 14pt;
   }
+}
+
+/* Acareação: divergências entre cadastro e Receita */
+.acareacao {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.acareacao .divergencia {
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-borda, #ddd);
+  border-radius: 8px;
+}
+
+.acareacao .divergencia legend {
+  padding: 0 4px;
+  font-weight: 600;
 }

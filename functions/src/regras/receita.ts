@@ -116,7 +116,7 @@ export function normalizar(valor: string): string {
     .trim()
 }
 
-export type Alerta = { codigo: 'receita-indisponivel' | 'cnae-fora' | 'cpf-diferente' | 'razao-diferente'; mensagem: string }
+export type Alerta = { codigo: 'receita-indisponivel' | 'cnae-fora' | 'cpf-diferente' | 'razao-diferente' | 'receita-mudou'; mensagem: string }
 
 /** Avisos para quem aprova. Nenhum deles trava sozinho; o bloqueio é a situação do CNPJ. */
 export function alertasDoCadastro(form: { razaoSocial: string; cpf: string }, receita: DadosReceita | null): Alerta[] {

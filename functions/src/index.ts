@@ -8,7 +8,7 @@ export const saude = onCall(() => montarSaude())
 export { salvarAparencia } from './aparencia.js'
 export { marcarAusencia } from './ausencias.js'
 export { salvarBase } from './bases.js'
-export { consultarCnpj, enviarCadastroOficial, enviarCartaoCnpj, limparCartoes, reconsultarReceita, verCartaoCnpj } from './cadastroOficial.js'
+export { consolidarCadastro, consultarCnpj, enviarCadastroOficial, enviarCartaoCnpj, limparCartoes, reconsultarReceita, verCartaoCnpj } from './cadastroOficial.js'
 export { duplicarFuncoes, salvarFuncao, salvarOperacao, salvarValorDiaria } from './cadastros.js'
 export { encerrarEvento, meuEventoHoje, mudarStatusEvento, reabrirEvento, salvarEvento } from './eventosPresenca.js'
 export { fecharMes, reabrirMes } from './fechamentos.js'

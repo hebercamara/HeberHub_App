@@ -3,6 +3,7 @@ import { defineString } from 'firebase-functions/params'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { adminAuth, agoraServidor, auditar, db, emEmulador, exigirLogin, exigirPerfil, falha, perfilDe, texto } from './infra.js'
 import { preencherPendentes } from './cadastros.js'
+import { lerEscolhas, registrarVersao } from './cadastroOficial.js'
 import { PERFIS, recusaDePerfil, veValores } from './regras/perfis.js'
 import { cnpjApto, type DadosReceita } from './regras/receita.js'
 import type { Claims, Perfil, Usuario } from './tipos.js'
@@ -51,20 +52,22 @@ export const aprovarCadastro = onCall(async (req) => {
     const atual = await tx.get(ref)
     if (!atual.exists) throw falha('Cadastro não encontrado.', 'not-found')
     if (atual.get('status') !== 'pendente') throw falha('Este cadastro não está pendente.', 'failed-precondition')
-    // Cadastro oficial: só aprova com a Receita consultada e o CNPJ ATIVO.
-    if (aprovar && atual.get('cadastroOficial') === true) {
-      const receita = (await tx.get(db.collection('cadastrosOficiais').doc(uid))).get('receita') as DadosReceita | null | undefined
+    // Leituras antes das escritas (regra das transações).
+    const oficial = aprovar && atual.get('cadastroOficial') === true ? await tx.get(db.collection('cadastrosOficiais').doc(uid)) : null
+    const refPre = db.collection('preCadastros').doc(String(atual.get('cnpj')))
+    const pre = aprovar && atual.get('vinculo') === true ? await tx.get(refPre) : null
+    // Cadastro oficial: só aprova com a Receita consultada, o CNPJ ATIVO e as divergências resolvidas.
+    let razaoSocialOficial: string | null = null
+    if (oficial) {
+      const receita = oficial.get('receita') as DadosReceita | null | undefined
       if (!receita) throw falha('A consulta à Receita não foi feita. Use "Consultar a Receita de novo" antes de aprovar.', 'failed-precondition')
       if (!cnpjApto(receita.situacao)) throw falha(`CNPJ com situação ${receita.situacao} na Receita: não pode ser aprovado.`, 'failed-precondition')
+      razaoSocialOficial = registrarVersao(tx, oficial, lerEscolhas(req.data?.escolhas), autor, 'aprovacao').razaoSocial
     }
     // Vínculo com a planilha: o pré-cadastro passa a apontar para esta pessoa.
-    if (aprovar && atual.get('vinculo') === true) {
-      const refPre = db.collection('preCadastros').doc(atual.get('cnpj') as string)
-      const pre = await tx.get(refPre)
-      if (pre.exists && pre.get('status') === 'aguardando') tx.update(refPre, { status: 'vinculado', uid, vinculadoPor: autor, vinculadoEm: agoraServidor() })
-    }
+    if (pre?.exists && pre.get('status') === 'aguardando') tx.update(refPre, { status: 'vinculado', uid, vinculadoPor: autor, vinculadoEm: agoraServidor() })
     const mudancas = aprovar
-      ? { status: 'ativo' as const, baseId, funcaoId, aprovadoPor: autor, aprovadoEm: agoraServidor() }
+      ? { status: 'ativo' as const, baseId, funcaoId, aprovadoPor: autor, aprovadoEm: agoraServidor(), ...(razaoSocialOficial ? { razaoSocial: razaoSocialOficial } : {}) }
       : { status: 'recusado' as const }
     tx.update(ref, { ...mudancas, atualizadoEm: agoraServidor() })
     auditar(tx, { acao: aprovar ? 'cadastro-aprovado' : 'cadastro-recusado', autor, alvo: uid, detalhes: { baseId, funcaoId } })

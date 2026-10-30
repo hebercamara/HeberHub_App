@@ -211,7 +211,8 @@ função, porque qualquer pessoa pode digitar um CNPJ e os demais dados são sen
 - Quem se cadastra pelo link com um CNPJ importado recebe o formulário já preenchido e gera um
   pedido de **vínculo**. O ADM aceita vendo se CPF, telefone e e-mail também batem.
 
-**A4. Conferência e aprovação**
+**A4. Conferência e aprovação** (pronta; numa consulta nova, só o que a própria Receita mudou
+desde a última decisão volta a ser perguntado)
 - Tela de conferência para o ADM: só as **divergências** entre formulário e Receita aparecem, lado
   a lado; o ADM escolhe a certa com um clique ou corrige.
 - A aprovação grava o **Cadastro Oficial** em versões (o que foi escolhido, por quem e quando).

@@ -1,6 +1,6 @@
 // Cadastro oficial do prestador (onboarding A2): dados da empresa, do representante e
 // bancários, Cartão CNPJ e consulta à Receita.
-import { FieldValue, Timestamp, type Transaction } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp, type DocumentSnapshot, type Transaction } from 'firebase-admin/firestore'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { agora, agoraServidor, auditar, balde, db, exigirLogin, exigirPerfil, falha, perfilDe, texto } from './infra.js'
@@ -8,6 +8,7 @@ import { consultarReceita, type ResultadoReceita } from './receita.js'
 import { cnpjValido, limparCnpj } from './regras/cnpj.js'
 import { cpfValido, soDigitos } from './regras/cpf.js'
 import { VERSAO_TERMO } from './regras/privacidade.js'
+import { CAMPOS_EMPRESA, consolidar, divergencias, empresaDaReceita, type CampoEmpresa, type Empresa, type Escolha } from './regras/acareacao.js'
 import { conferirVinculo, type LinhaImportada } from './regras/importacao.js'
 import { alertasDoCadastro, cnpjApto, type DadosReceita, type Endereco } from './regras/receita.js'
 import type { Funcao, Status } from './tipos.js'
@@ -251,11 +252,88 @@ export const reconsultarReceita = onCall(async (req) => {
   if ('indisponivel' in r) throw falha('A Receita não respondeu. Tente de novo em alguns minutos.', 'failed-precondition')
   const dados = r.encontrado ? r.dados : null
   const alertas = alertasDoCadastro({ razaoSocial: empresa.razaoSocial, cpf: representante.cpf }, dados)
+  // Já aprovado: se a Receita mudou em relação ao Cadastro Oficial, fica um alerta até alguém resolver.
+  const atual = cadastro.get('oficial.empresa') as Empresa | undefined
+  const referencia = cadastro.get('oficial.receitaReferencia') as Empresa | undefined
+  const mudou = Boolean(atual && dados && divergencias(atual, dados, referencia).length > 0)
+  if (mudou) alertas.push({ codigo: 'receita-mudou', mensagem: 'A Receita mudou em relação ao Cadastro Oficial. Confira e escolha os valores certos.' })
   const lote = db.batch()
-  lote.update(ref, { receita: dados, receitaConsultadaEm: agoraServidor(), alertas })
+  lote.update(ref, { receita: dados, receitaConsultadaEm: agoraServidor(), alertas, divergenciasPendentes: mudou })
   auditar(lote, { acao: 'receita-consultada', autor, alvo: uid, detalhes: { situacao: dados?.situacao ?? 'nao-encontrado' } })
   await lote.commit()
   return { ok: true, situacao: dados?.situacao ?? 'NÃO ENCONTRADO', apto: dados ? cnpjApto(dados.situacao) : false }
+})
+
+/** Lê as escolhas da acareação vindas do app: { campo: { fonte, valor? } }. */
+export function lerEscolhas(valor: unknown): Partial<Record<CampoEmpresa, Escolha>> {
+  const entrada = (valor && typeof valor === 'object' ? valor : {}) as Record<string, { fonte?: unknown; valor?: unknown }>
+  const escolhas: Partial<Record<CampoEmpresa, Escolha>> = {}
+  for (const { campo, rotulo } of CAMPOS_EMPRESA) {
+    const e = entrada[campo]
+    if (!e) continue
+    if (e.fonte === 'cadastro' || e.fonte === 'receita') escolhas[campo] = { fonte: e.fonte }
+    else if (e.fonte === 'manual') escolhas[campo] = { fonte: 'manual', valor: texto(e.valor, `a correção de ${rotulo}`, { max: 160 }) }
+    else throw falha(`Escolha inválida para ${rotulo}.`)
+  }
+  return escolhas
+}
+
+/**
+ * Grava uma nova versão do Cadastro Oficial (só escritas: quem chama já leu o cadastro na
+ * mesma transação). Compara o oficial atual (ou, na aprovação, o formulário) com a Receita.
+ */
+export function registrarVersao(
+  tx: Transaction,
+  cadastro: DocumentSnapshot,
+  escolhas: Partial<Record<CampoEmpresa, Escolha>>,
+  autor: string,
+  motivo: 'aprovacao' | 'atualizacao',
+): Empresa {
+  const dados = cadastro.data() ?? {}
+  const receita = dados.receita as DadosReceita | null
+  if (!receita) throw falha('A consulta à Receita não foi feita.', 'failed-precondition')
+  const anterior = dados.oficial as { empresa: Empresa; receitaReferencia?: Empresa } | undefined
+  const base = (anterior?.empresa ?? dados.empresa) as Empresa
+  const r = consolidar(base, receita, escolhas, anterior?.receitaReferencia)
+  if (!r.ok) throw falha(`Escolha o valor certo para: ${r.faltando.join(', ')}.`, 'failed-precondition')
+  const versao = ((dados.versaoAtual as number | undefined) ?? 0) + 1
+  // receitaReferencia: o que a Receita dizia nesta decisão (base para notar mudanças depois).
+  const oficial = { empresa: r.oficial, representante: dados.representante, contato: dados.contato, receitaReferencia: empresaDaReceita(receita) }
+  tx.update(cadastro.ref, {
+    oficial,
+    versaoAtual: versao,
+    divergenciasPendentes: false,
+    alertas: ((dados.alertas ?? []) as { codigo: string }[]).filter((a) => a.codigo !== 'receita-mudou'),
+    consolidadoPor: autor,
+    consolidadoEm: agoraServidor(),
+  })
+  // Histórico: nada é apagado; o que foi descartado fica guardado na versão.
+  tx.set(cadastro.ref.collection('versoes').doc(String(versao)), {
+    versao,
+    motivo,
+    oficial,
+    fontes: r.fontes,
+    descartados: r.descartados,
+    receita: { situacao: receita.situacao, fonte: receita.fonte },
+    autor,
+    em: agoraServidor(),
+  })
+  auditar(tx, { acao: 'cadastro-oficial-versao', autor, alvo: cadastro.id, detalhes: { versao, motivo, escolhas: Object.keys(r.descartados) } })
+  return r.oficial
+}
+
+/** Depois de aprovado: resolve as divergências de uma consulta nova à Receita (nova versão). */
+export const consolidarCadastro = onCall(async (req) => {
+  const autor = exigirPerfil(req, ['adm', 'coordenacao'])
+  const uid = texto(req.data?.uid, 'o usuário')
+  const escolhas = lerEscolhas(req.data?.escolhas)
+  await db.runTransaction(async (tx) => {
+    const cadastro = await tx.get(cadastros.doc(uid))
+    if (!cadastro.get('oficial')) throw falha('Este cadastro ainda não foi aprovado.', 'failed-precondition')
+    const oficial = registrarVersao(tx, cadastro, escolhas, autor, 'atualizacao')
+    tx.update(usuarios.doc(uid), { razaoSocial: oficial.razaoSocial, atualizadoEm: agoraServidor() })
+  })
+  return { ok: true }
 })
 
 /** Apaga os arquivos de Cartão CNPJ com mais de 60 dias (os dados lidos continuam). */

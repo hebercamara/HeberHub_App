@@ -1,6 +1,8 @@
 import { doc, onSnapshot } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
+import { Acareacao } from '../../componentes/Acareacao'
 import { Aviso } from '../../componentes/Aviso'
+import { divergencias, escolhasCompletas, type CampoEmpresa, type Escolha } from '../../lib/acareacao'
 import { api } from '../../lib/api'
 import { SeletorFuncao } from '../../componentes/SeletorFuncao'
 import { useBases } from '../../lib/bases'
@@ -89,15 +91,19 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
   const baseSugerida = ativas.some((b) => b.id === sugestao?.baseId) ? sugestao!.baseId! : ''
   const funcaoEscolhida = funcaoId || sugestao?.funcaoId || ''
   const baseEscolhida = baseId || baseSugerida || ativas[0]?.id || ''
-  // Cadastro oficial só é aprovado com a Receita consultada e o CNPJ ATIVO.
-  const bloqueado = usuario.cadastroOficial === true && (!oficial?.receita || oficial.receita.situacao !== 'ATIVA')
+  // Divergências entre o formulário e a Receita: quem aprova escolhe o valor oficial.
+  const [escolhas, setEscolhas] = useState<Partial<Record<CampoEmpresa, Escolha>>>({})
+  const divs = oficial?.receita ? divergencias(oficial.empresa, oficial.receita) : []
+  // Cadastro oficial só é aprovado com a Receita consultada, o CNPJ ATIVO e as divergências resolvidas.
+  const bloqueado =
+    usuario.cadastroOficial === true && (!oficial?.receita || oficial.receita.situacao !== 'ATIVA' || !escolhasCompletas(divs, escolhas))
 
   async function decidir(aprovar: boolean) {
     if (!aprovar && !confirm(`Recusar o cadastro de ${usuario.nome}?`)) return
     setErro('')
     setEnviando(true)
     try {
-      await api.aprovarCadastro({ uid: usuario.id, aprovar, baseId: aprovar ? baseEscolhida : undefined, funcaoId: aprovar ? funcaoEscolhida || null : undefined })
+      await api.aprovarCadastro({ uid: usuario.id, aprovar, baseId: aprovar ? baseEscolhida : undefined, funcaoId: aprovar ? funcaoEscolhida || null : undefined, escolhas: aprovar ? escolhas : undefined })
     } catch (e) {
       setErro(mensagemDeErro(e))
       setEnviando(false)
@@ -120,6 +126,7 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
         <dd>{usuario.email}</dd>
       </dl>
       {oficial && <DetalheOficial uid={usuario.id} cadastro={oficial} />}
+      {divs.length > 0 && <Acareacao divergencias={divs} escolhas={escolhas} aoMudar={setEscolhas} rotuloCadastro="Formulário" />}
       {ativas.length > 1 && (
         <label>
           Base
@@ -189,7 +196,8 @@ function DetalheOficial({ uid, cadastro }: { uid: string; cadastro: CadastroOfic
         <Aviso>A Receita ainda não foi consultada para este CNPJ. Consulte de novo antes de aprovar.</Aviso>
       )}
       {cadastro.alertas
-        .filter((a) => a.codigo !== 'receita-indisponivel')
+        // Receita fora do ar e razão social diferente já aparecem em outro lugar.
+        .filter((a) => a.codigo !== 'receita-indisponivel' && a.codigo !== 'razao-diferente' && a.codigo !== 'receita-mudou')
         .map((a) => (
           <Aviso key={a.codigo} tipo="info">
             {a.mensagem}

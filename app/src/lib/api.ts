@@ -2,7 +2,10 @@ import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
 import type { Faixa, Publico } from './eventos'
 import type { Alerta, DadosBancarios, DadosEmpresa, Funcao, Perfil, RelatorioImportacao, Representante } from './tipos'
+import type { CampoEmpresa, Escolha } from './acareacao'
 import type { Endereco } from './documentos'
+
+type Escolhas = Partial<Record<CampoEmpresa, Escolha>>
 
 function chamada<Entrada, Saida = { ok: true }>(nome: string) {
   return async (dados: Entrada) => (await httpsCallable<Entrada, Saida>(functions, nome)(dados)).data
@@ -39,7 +42,8 @@ export const api = {
   aceitarTermo: chamada<{ versao: number }>('aceitarTermo'),
   reivindicarCoordenacao: chamada<{ nome: string }>('reivindicarCoordenacao'),
   assumirGestao: chamada<void>('assumirGestao'),
-  aprovarCadastro: chamada<{ uid: string; aprovar: boolean; baseId?: string; funcaoId?: string | null }>('aprovarCadastro'),
+  aprovarCadastro: chamada<{ uid: string; aprovar: boolean; baseId?: string; funcaoId?: string | null; escolhas?: Escolhas }>('aprovarCadastro'),
+  consolidarCadastro: chamada<{ uid: string; escolhas: Escolhas }>('consolidarCadastro'),
   criarUsuarioInterno: chamada<{ nome: string; email: string; perfil: Perfil; baseId?: string | null; funcaoId?: string | null }, { ok: true; uid: string }>(
     'criarUsuarioInterno',
   ),

@@ -182,4 +182,19 @@ export type CadastroOficial = {
   receita: DadosReceita | null
   alertas: Alerta[]
   cartao?: { caminho: string | null; tipo: string }
+  /** Versão aprovada (a que vale nos contratos). */
+  oficial?: { empresa: DadosEmpresa; representante: Representante; contato: { telefone: string; email: string }; receitaReferencia?: DadosEmpresa }
+  versaoAtual?: number
+  /** A Receita mudou depois da aprovação e falta escolher os valores. */
+  divergenciasPendentes?: boolean
+}
+
+/** Documento em cadastrosOficiais/{uid}/versoes/{n}. */
+export type VersaoCadastro = {
+  versao: number
+  motivo: 'aprovacao' | 'atualizacao'
+  fontes: Record<string, 'confere' | 'cadastro' | 'receita' | 'manual'>
+  descartados: Record<string, string>
+  autor: string
+  em?: { toDate: () => Date }
 }

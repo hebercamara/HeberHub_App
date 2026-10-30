@@ -140,6 +140,15 @@ seção **Cadastros**.
    (obrigatória) e a **função** (opcional, define o valor), ou recusa. **Só aprova com a Receita
    consultada e o CNPJ ATIVO** (botão "Consultar a Receita de novo"). A conta bancária aparece só
    para quem vê valores. A tela do prestador libera sozinha.
+   **Acareação (A4):** o que o formulário e a Receita dizem diferente (razão social e cada parte
+   do endereço, comparados sem acento, pontuação ou abreviação como "R." e "Rua"; campo vazio
+   na Receita não conta) aparece lado a lado. Para cada um, quem aprova escolhe Formulário,
+   Receita ou Corrigir; sem escolher tudo, não aprova. A aprovação grava o **Cadastro Oficial
+   versão 1** (`oficial` em `cadastrosOficiais/{uid}` e o histórico em `versoes/{n}`: fonte de
+   cada campo, o que foi descartado, quem e quando). O que a pessoa digitou continua guardado.
+   **Depois de aprovado:** "Consultar a Receita de novo" compara com o que a Receita dizia na
+   última decisão; só o que a Receita mudou desde então vira alerta ("A Receita mudou…"), e
+   resolver gera uma nova versão (Usuários › pessoa › Cadastro oficial, com o histórico).
    No pedido de vínculo, uma tabela compara planilha e cadastro (nome, CPF, telefone, e-mail:
    "confere" ou "diferente"), e base e função vêm sugeridas da planilha. Ao aprovar, a linha
    da planilha fica "Vinculado".
@@ -343,7 +352,8 @@ docs/CONTEXTO.md          este documento
 | `fechamentos/{AAAA-MM}` | status, totais por pessoa, líquido, reabertura | coordenação e ADM Financeiro |
 | `eventosPresenca/{id}` | eventos de presença: dias, público, regras (faixas), status, resultado congelado | **só coordenação** |
 | `ausencias/{uid_data}` | falta ou não escalado: tipo, justificativa, baseId, quem marcou | ADM e coordenação |
-| `cadastrosOficiais/{uid}` | empresa, representante, contato, consulta à Receita, avisos, Cartão CNPJ (caminho no Storage até 60 dias) | a própria pessoa; a equipe |
+| `cadastrosOficiais/{uid}` | enviado (empresa, representante, contato), consulta à Receita, avisos, Cartão CNPJ (caminho no Storage até 60 dias), `oficial` (versão aprovada, com o que a Receita dizia nela), versaoAtual, divergenciasPendentes | a própria pessoa; a equipe |
+| `cadastrosOficiais/{uid}/versoes/{n}` | histórico do Cadastro Oficial: fontes, descartados, motivo, autor, data | a equipe |
 | `dadosBancarios/{uid}` | banco, agência, conta, tipo, chave PIX, declaração de titularidade | a própria pessoa; quem vê valores (não o ADM comum) |
 | `preCadastros/{cnpj}` | linha da planilha: nome, CPF, telefone, e-mail, tipo, baseId, funcaoId, status (aguardando, vinculado), uid | coordenação, Gestão e Jurídico |
 | `importacoes/{id}` | relatório de cada importação (novas, atualizadas, recusadas, avisos) | coordenação, Gestão e Jurídico |
@@ -358,7 +368,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 
 | Área | Funções |
 | --- | --- |
-| Cadastro oficial | `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
+| Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
 | Usuários | `aprovarCadastro`, `criarUsuarioInterno`, `atualizarUsuario`, `reivindicarCoordenacao` (cria a Gestão), `assumirGestao` |
 | Presença | `registrarPresenca` (QR ou localização), `registrarPresencaManual`, `marcarAusencia` (falta, não escalado ou limpar; retira presença e estorna a diária), `gerarQrDoDia` |
@@ -409,9 +419,10 @@ Acompanhar a Auditoria (recusas) para calibrar raio e precisão, coletar o que f
 então liberar para os cerca de 200 prestadores (teto previsto: 400).
 
 **Em andamento:** onboarding com acareação de dados e geração de contratos, em
-`docs/PLANO-ONBOARDING.md`. Prontas a **A1** (perfis Gestão e Jurídico, CNPJ único), a **A2** (cadastro
-oficial com Receita, Cartão CNPJ e conta) e a **A3** (planilha e vínculo); próxima, a **A4**
-(conferência das divergências e Cadastro Oficial em versões).
+`docs/PLANO-ONBOARDING.md`. **Etapa A completa:** A1 (perfis Gestão e Jurídico, CNPJ único), A2 (cadastro
+oficial com Receita, Cartão CNPJ e conta), A3 (planilha e vínculo) e A4 (acareação e Cadastro
+Oficial em versões). Próximas: etapa B (leitura automática do Cartão CNPJ) e C (modelos e
+emissão de contratos).
 
 **Pendências e ideias registradas:**
 - **Escala por carro** (planejada pelo dono, "com calma"): hoje existe só a marca NE por dia.
@@ -436,6 +447,7 @@ oficial com Receita, Cartão CNPJ e conta) e a **A3** (planilha e vínculo); pr�
 | Onboarding A1 | Perfis Gestão e Jurídico; só a Gestão dá esses perfis; um CNPJ por pessoa |
 | Onboarding A2 | Cadastro oficial completo, consulta à Receita, Cartão CNPJ (60 dias), conta do CNPJ, termo v2 |
 | Onboarding A3 | Planilha dos prestadores atuais (modelo, importação, recusas com motivo) e pedido de vínculo conferido |
+| Onboarding A4 | Acareação formulário × Receita na aprovação, Cadastro Oficial em versões com histórico, alerta quando a Receita muda |
 | Depois | Falta e não escalado no calendário (retirar presença com estorno); Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
