@@ -2,6 +2,8 @@
 
 Check-in georreferenciado da frota: o prestador lê o QR Code do dia na base, o servidor confere a localização e a presença vira diária no fechamento do mês.
 
+**Contexto completo do projeto** (o que o app faz e não faz, regras de negócio, arquitetura, como retomar): [docs/CONTEXTO.md](docs/CONTEXTO.md).
+
 ## Estrutura
 
 | Pasta | Conteúdo |
