@@ -77,4 +77,11 @@ jobs:
 
       - name: Publicar no Firebase
         if: steps.credencial.outputs.ok == 'true'
-        run: npx firebase deploy --project "$AMBIENTE" --non-interactive --force
+        run: |
+          set -o pipefail
+          if ! npx firebase deploy --project "$AMBIENTE" --non-interactive --force 2>&1 | tee deploy.log; then
+            # Resume o erro como anotação, visível no resumo da execução.
+            resumo=$(grep -v '^\s*$' deploy.log | tail -25 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Falha no deploy::$resumo"
+            exit 1
+          fi
