@@ -118,6 +118,15 @@ describe('validarCheckin', () => {
     expect(r.ok).toBe(true)
   })
 
+  it('sem QR, confere só base, horário e GPS', () => {
+    const semQr = (mudancas: Partial<Leitura>) =>
+      validarCheckin({ agora: SETE_DA_MANHA, usuario, leitura: { ...leitura, qr: null, ...mudancas }, sessao: null, base, exigirQr: false })
+    expect(semQr({}).ok).toBe(true)
+    const longe = semQr({ lat: -23.502 })
+    expect(longe.ok).toBe(false)
+    if (!longe.ok) expect(longe.motivo).toBe('fora-do-raio')
+  })
+
   it('aceita o primeiro aparelho quando nenhum está vinculado', () => {
     expect(validar({ usuario: { deviceId: null }, leitura: { deviceId: 'aparelho-novo' } }).ok).toBe(true)
   })

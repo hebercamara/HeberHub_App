@@ -1,6 +1,7 @@
 import { onCall } from 'firebase-functions/v2/https'
 import { lancarDiaria, valorVigente } from './financeiro.js'
 import { agora as horaAtual, agoraServidor, auditar, db, exigirLogin } from './infra.js'
+import type { Claims } from './tipos.js'
 import { MENSAGENS, validarCheckin, type Leitura, type MotivoRecusa } from './regras/checkin.js'
 import { lerConteudoQr } from './regras/qr.js'
 import { horarioEmSaoPaulo } from './regras/tempo.js'
@@ -24,7 +25,10 @@ export const registrarPresenca = onCall(async (req): Promise<RespostaCheckin> =>
     precisao: req.data?.precisao,
     deviceId: req.data?.deviceId,
   }
-  const qr = lerConteudoQr(leitura.qr)
+  // ADM e coordenação podem marcar presença só pela localização, sem o QR.
+  const perfil = (req.auth?.token as Claims).perfil
+  const semQr = req.data?.semQr === true && (perfil === 'adm' || perfil === 'coordenacao')
+  const qr = semQr ? null : lerConteudoQr(leitura.qr)
 
   const resposta = await db.runTransaction(async (tx): Promise<RespostaCheckin & { recusa?: Record<string, unknown> }> => {
     const usuarioRef = db.collection('usuarios').doc(uid)
@@ -42,6 +46,7 @@ export const registrarPresenca = onCall(async (req): Promise<RespostaCheckin> =>
       leitura,
       sessao: sessaoSnap?.exists ? (sessaoSnap.data() as Sessao) : null,
       base,
+      exigirQr: !semQr,
     })
     if (!resultado.ok) {
       return { ok: false, motivo: resultado.motivo, mensagem: MENSAGENS[resultado.motivo], recusa: resultado.detalhe ?? {} }
@@ -77,13 +82,13 @@ export const registrarPresenca = onCall(async (req): Promise<RespostaCheckin> =>
       precisao: resultado.precisao,
       distanciaMetros: resultado.distanciaMetros,
       sessaoId: resultado.sessaoId,
-      origem: 'qrcode',
+      origem: semQr ? 'localizacao' : 'qrcode',
       // Marca para a limpeza automática das coordenadas após 90 dias.
       temCoordenadas: true,
     })
     lancarDiaria(tx, { uid, usuario, data: resultado.data, presencaId: presencaRef.id, valor, autor: uid })
     if (!usuario.deviceId) tx.update(usuarioRef, { deviceId: resultado.deviceId })
-    auditar(tx, { acao: 'checkin', autor: uid, alvo: presencaRef.id, detalhes: { distanciaMetros: resultado.distanciaMetros } })
+    auditar(tx, { acao: 'checkin', autor: uid, alvo: presencaRef.id, detalhes: { distanciaMetros: resultado.distanciaMetros, semQr } })
     return { ok: true, jaRegistrada: false, horario, data: resultado.data, baseNome: base!.nome, distanciaMetros: resultado.distanciaMetros }
   })
 

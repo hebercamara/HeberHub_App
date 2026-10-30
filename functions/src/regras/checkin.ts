@@ -40,7 +40,7 @@ export const MENSAGENS: Record<MotivoRecusa, string> = {
 }
 
 export type Resultado =
-  | { ok: true; data: string; sessaoId: string; distanciaMetros: number; lat: number; lng: number; precisao: number; deviceId: string }
+  | { ok: true; data: string; sessaoId: string | null; distanciaMetros: number; lat: number; lng: number; precisao: number; deviceId: string }
   | { ok: false; motivo: MotivoRecusa; detalhe?: Record<string, number> }
 
 /**
@@ -53,8 +53,10 @@ export function validarCheckin(args: {
   leitura: Leitura
   sessao: Sessao | null
   base: Base | null
+  /** false = check-in só pela localização (permitido a ADM e coordenação). */
+  exigirQr?: boolean
 }): Resultado {
-  const { agora, usuario, leitura, sessao, base } = args
+  const { agora, usuario, leitura, sessao, base, exigirQr = true } = args
 
   // Todos os perfis podem fazer check-in; basta o cadastro estar ativo.
   if (usuario.status !== 'ativo') return { ok: false, motivo: 'usuario-inativo' }
@@ -66,12 +68,14 @@ export function validarCheckin(args: {
   if (!/^[\w-]{8,64}$/.test(deviceId)) return { ok: false, motivo: 'aparelho-diferente' }
   if (usuario.deviceId && usuario.deviceId !== deviceId) return { ok: false, motivo: 'aparelho-diferente' }
 
-  const qr = lerConteudoQr(leitura.qr)
-  if (!qr || !sessao || sessao.token !== qr.token) return { ok: false, motivo: 'qr-invalido' }
-
   const hoje = dataEmSaoPaulo(agora)
-  if (sessao.data !== hoje) return { ok: false, motivo: 'qr-de-outro-dia' }
-  if (sessao.baseId !== usuario.baseId || !base) return { ok: false, motivo: 'qr-de-outra-base' }
+  const qr = lerConteudoQr(leitura.qr)
+  if (exigirQr) {
+    if (!qr || !sessao || sessao.token !== qr.token) return { ok: false, motivo: 'qr-invalido' }
+    if (sessao.data !== hoje) return { ok: false, motivo: 'qr-de-outro-dia' }
+    if (sessao.baseId !== usuario.baseId) return { ok: false, motivo: 'qr-de-outra-base' }
+  }
+  if (!base) return { ok: false, motivo: 'sem-base' }
 
   const janela = { inicio: base.janelaInicio ?? JANELA_PADRAO.inicio, fim: base.janelaFim ?? JANELA_PADRAO.fim }
   if (!dentroDaJanela(agora, janela)) return { ok: false, motivo: 'fora-do-horario' }
@@ -93,7 +97,7 @@ export function validarCheckin(args: {
   return {
     ok: true,
     data: hoje,
-    sessaoId: qr.sessaoId,
+    sessaoId: exigirQr && qr ? qr.sessaoId : null,
     distanciaMetros: distancia,
     lat: posicao.lat,
     lng: posicao.lng,

@@ -14,7 +14,9 @@ import type { Presenca as RegistroPresenca } from '../../lib/tipos'
 type Etapa = { tipo: 'inicio' } | { tipo: 'lendo' } | { tipo: 'enviando'; texto: string } | { tipo: 'resultado'; resposta: RespostaCheckin } | { tipo: 'erro'; mensagem: string }
 
 export function Presenca() {
-  const { login, usuario } = useSessao()
+  const { login, usuario, perfil } = useSessao()
+  // ADM e coordenação podem marcar presença só pela localização, sem ler o QR.
+  const podeSemQr = perfil === 'adm' || perfil === 'coordenacao'
   const [etapa, setEtapa] = useState<Etapa>({ tipo: 'inicio' })
   const [posicao, setPosicao] = useState<Promise<Posicao> | null>(null)
   const historico = useHistorico(login!.uid)
@@ -27,6 +29,18 @@ export function Presenca() {
     busca.catch(() => undefined)
     setPosicao(busca)
     setEtapa({ tipo: 'lendo' })
+  }
+
+  async function pelaLocalizacao() {
+    setEtapa({ tipo: 'enviando', texto: 'Conferindo sua localização…' })
+    try {
+      const { lat, lng, precisao } = await obterPosicao()
+      setEtapa({ tipo: 'enviando', texto: 'Registrando presença…' })
+      const resposta = await api.registrarPresenca({ semQr: true, lat, lng, precisao, deviceId: idDoAparelho() })
+      setEtapa({ tipo: 'resultado', resposta })
+    } catch (err) {
+      setEtapa({ tipo: 'erro', mensagem: err instanceof Error && !('code' in err) ? err.message : mensagemDeErro(err) })
+    }
   }
 
   async function aoLer(qr: string) {
@@ -58,7 +72,14 @@ export function Presenca() {
               <button className="grande" onClick={comecar}>
                 Registrar presença
               </button>
-              <p className="suave">Na base, no horário de check-in, lendo o QR Code do dia.</p>
+              {podeSemQr && (
+                <button className="grande secundario" style={{ marginTop: 12 }} onClick={() => void pelaLocalizacao()}>
+                  Marcar só pela localização
+                </button>
+              )}
+              <p className="suave">
+                {podeSemQr ? 'Na base, no horário de check-in: leia o QR Code ou use só a localização.' : 'Na base, no horário de check-in, lendo o QR Code do dia.'}
+              </p>
             </>
           ))}
 
@@ -85,7 +106,12 @@ export function Presenca() {
               <strong>Check-in não registrado</strong>
             </p>
             <p>{etapa.resposta.mensagem}</p>
-            <button onClick={comecar}>Tentar de novo</button>
+            <button onClick={comecar}>Tentar de novo com QR</button>
+            {podeSemQr && (
+              <button className="secundario" style={{ marginLeft: 8 }} onClick={() => void pelaLocalizacao()}>
+                Tentar só pela localização
+              </button>
+            )}
           </div>
         )}
 
@@ -107,7 +133,7 @@ export function Presenca() {
             {historico.map((p) => (
               <li key={p.id}>
                 <span>{formatarData(p.data)}</span>
-                <span className="suave">{p.origem === 'manual' ? 'lançada pela coordenação' : p.horario}</span>
+                <span className="suave">{p.origem === 'manual' ? 'lançada pela coordenação' : p.origem === 'localizacao' ? `${p.horario} · localização` : p.horario}</span>
               </li>
             ))}
           </ul>

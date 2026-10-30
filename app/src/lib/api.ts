@@ -37,6 +37,11 @@ export const api = {
   ),
   gerarQrDoDia: chamada<{ baseId: string; dia: 'hoje' | 'amanha' }, { conteudo: string; data: string; baseNome: string }>('gerarQrDoDia'),
   salvarOperacao: chamada<{ id?: string; nome: string; ativa: boolean }, { ok: true; id: string }>('salvarOperacao'),
+  duplicarFuncoes: chamada<
+    { funcaoIds: string[]; destinoOperacaoId: string; copiarValores: boolean; inicio: string },
+    { ok: true; criadas: string[]; ignoradas: string[] }
+  >('duplicarFuncoes'),
+  salvarAparencia: chamada<{ primaria: string; secundaria: string; fundo: string }>('salvarAparencia'),
   salvarFuncao: chamada<{ id?: string; nome: string; operacaoId: string; ativa: boolean }, { ok: true; id: string }>('salvarFuncao'),
   salvarValorDiaria: chamada<{ alvo: 'funcao' | 'prestador'; alvoId: string; valor: number; inicio: string }, { ok: true; preenchidas: number }>('salvarValorDiaria'),
   lancarAjuste: chamada<{ uid: string; tipo: 'adicional' | 'desconto'; valor: number; data: string; justificativa: string }>('lancarAjuste'),
@@ -48,5 +53,6 @@ export const api = {
   registrarPresencaManual: chamada<{ uid: string; data: string; justificativa: string }>('registrarPresencaManual'),
   fecharMes: chamada<{ competencia: string }, { ok: true; liquido: number; pessoas: number }>('fecharMes'),
   reabrirMes: chamada<{ competencia: string; justificativa: string }>('reabrirMes'),
-  registrarPresenca: chamada<{ qr: string; lat: number; lng: number; precisao: number; deviceId: string }, RespostaCheckin>('registrarPresenca'),
+  /** semQr: só ADM e coordenação; o servidor ignora para prestadores. */
+  registrarPresenca: chamada<{ qr?: string; semQr?: boolean; lat: number; lng: number; precisao: number; deviceId: string }, RespostaCheckin>('registrarPresenca'),
 }

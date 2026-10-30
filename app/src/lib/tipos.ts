@@ -45,7 +45,7 @@ export type Presenca = {
   horario: string
   distanciaMetros: number | null
   precisao: number | null
-  origem: 'qrcode' | 'manual'
+  origem: 'qrcode' | 'localizacao' | 'manual'
   justificativa?: string
   cancelada?: boolean
 }

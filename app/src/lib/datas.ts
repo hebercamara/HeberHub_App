@@ -30,3 +30,33 @@ export function competenciaAnterior(competencia: string): string {
   const [ano, mes] = competencia.split('-').map(Number)
   return mes === 1 ? `${ano - 1}-12` : `${ano}-${String(mes - 1).padStart(2, '0')}`
 }
+
+/** Soma dias a uma data AAAA-MM-DD. */
+export function somarDias(data: string, dias: number): string {
+  const d = new Date(`${data}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + dias)
+  return d.toISOString().slice(0, 10)
+}
+
+/** 0 = domingo … 6 = sábado. */
+export function diaDaSemana(data: string): number {
+  return new Date(`${data}T12:00:00Z`).getUTCDay()
+}
+
+/** Segunda-feira da semana da data. */
+export function inicioDaSemana(data: string): string {
+  return somarDias(data, -((diaDaSemana(data) + 6) % 7))
+}
+
+/** Todas as datas de um intervalo, inclusive as pontas. */
+export function datasEntre(inicio: string, fim: string): string[] {
+  const datas: string[] = []
+  for (let d = inicio; d <= fim; d = somarDias(d, 1)) datas.push(d)
+  return datas
+}
+
+/** Último dia do mês AAAA-MM. */
+export function fimDoMes(competencia: string): string {
+  const [ano, mes] = competencia.split('-').map(Number)
+  return new Date(Date.UTC(ano, mes, 0)).toISOString().slice(0, 10)
+}

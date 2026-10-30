@@ -1,7 +1,8 @@
 import { onCall } from 'firebase-functions/v2/https'
 import { exigirMesAberto, lancamentos, valorVigente } from './financeiro.js'
 import { agoraServidor, auditar, centavos, dataValida, db, exigirPerfil, falha, texto } from './infra.js'
-import type { Lancamento } from './tipos.js'
+import { escolherValorVigente } from './regras/financeiro.js'
+import type { Lancamento, ValorDiaria } from './tipos.js'
 
 const operacoes = db.collection('operacoes')
 const funcoes = db.collection('funcoes')
@@ -98,3 +99,52 @@ export async function preencherPendentes(autor: string, uid?: string): Promise<n
   }
   return preenchidas
 }
+
+/**
+ * Copia funções para outra operação (ex.: as funções de "Kibon SP" para a
+ * recém-criada "Kibon RJ"). Funções com o mesmo nome na operação de destino
+ * são ignoradas. Com copiarValores, cada cópia nasce com o valor que a
+ * original tem na data de início.
+ */
+export const duplicarFuncoes = onCall(async (req) => {
+  const autor = exigirPerfil(req, ['coordenacao'])
+  const ids = req.data?.funcaoIds
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100 || ids.some((i) => typeof i !== 'string')) throw falha('Escolha de 1 a 100 funções.')
+  const destinoId = texto(req.data?.destinoOperacaoId, 'a operação de destino')
+  const copiarValores = req.data?.copiarValores === true
+  const inicio = copiarValores ? dataValida(req.data?.inicio, 'a data de início') : null
+
+  return db.runTransaction(async (tx) => {
+    const destino = await tx.get(operacoes.doc(destinoId))
+    if (!destino.exists) throw falha('Operação de destino não encontrada.', 'not-found')
+    const originais = await tx.getAll(...(ids as string[]).map((id) => funcoes.doc(id)))
+    if (originais.some((f) => !f.exists)) throw falha('Função não encontrada.', 'not-found')
+    const jaNoDestino = await tx.get(funcoes.where('operacaoId', '==', destinoId))
+    const nomesNoDestino = new Set(jaNoDestino.docs.map((f) => String(f.get('nome')).toLowerCase()))
+    if (inicio) await exigirMesAberto(tx, inicio)
+    const valores = copiarValores
+      ? await tx.get(db.collection('valoresDiaria').where('alvoChave', 'in', originais.map((f) => `funcao:${f.id}`)))
+      : null
+
+    const criadas: string[] = []
+    const ignoradas: string[] = []
+    for (const original of originais) {
+      const nome = String(original.get('nome'))
+      if (nomesNoDestino.has(nome.toLowerCase())) {
+        ignoradas.push(nome)
+        continue
+      }
+      nomesNoDestino.add(nome.toLowerCase())
+      const nova = funcoes.doc()
+      tx.set(nova, { nome, operacaoId: destinoId, operacaoNome: destino.get('nome'), ativa: true, copiadaDe: original.id, criadoEm: agoraServidor(), atualizadoEm: agoraServidor() })
+      const valor = inicio && valores ? escolherValorVigente(valores.docs.map((d) => d.data() as ValorDiaria), { uid: '', funcaoId: original.id, data: inicio }) : null
+      if (inicio && valor) {
+        const alvoChave = `funcao:${nova.id}`
+        tx.set(db.collection('valoresDiaria').doc(`${alvoChave}_${inicio}`.replace(/[/:]/g, '_')), { alvoChave, valor: valor.valor, inicio, criadoPor: autor, criadoEm: agoraServidor() })
+      }
+      criadas.push(nome)
+    }
+    auditar(tx, { acao: 'funcoes-duplicadas', autor, alvo: destinoId, detalhes: { criadas, ignoradas, copiarValores, inicio } })
+    return { ok: true, criadas, ignoradas }
+  })
+})

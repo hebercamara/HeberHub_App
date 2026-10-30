@@ -6,9 +6,12 @@ import { AceiteTermo } from './paginas/AceiteTermo'
 import { Aguardando } from './paginas/Aguardando'
 import { Cadastro } from './paginas/Cadastro'
 import { Auditoria } from './paginas/coordenacao/Auditoria'
-import { Bases } from './paginas/coordenacao/Bases'
-import { Operacoes } from './paginas/coordenacao/Operacoes'
 import { Usuarios } from './paginas/coordenacao/Usuarios'
+import { Aparencia } from './paginas/configuracoes/Aparencia'
+import { Bases } from './paginas/configuracoes/Bases'
+import { Configuracoes } from './paginas/configuracoes/Configuracoes'
+import { Funcoes } from './paginas/configuracoes/Funcoes'
+import { Operacoes } from './paginas/configuracoes/Operacoes'
 import { Entrar } from './paginas/Entrar'
 import { Cadastros } from './paginas/equipe/Cadastros'
 import { Financeiro } from './paginas/financeiro/Financeiro'
@@ -62,9 +65,14 @@ function App() {
         {coordenacao && (
           <>
             <Route path="/coordenacao/usuarios" element={<Usuarios />} />
-            <Route path="/coordenacao/operacoes" element={<Operacoes />} />
-            <Route path="/coordenacao/bases" element={<Bases />} />
             <Route path="/coordenacao/auditoria" element={<Auditoria />} />
+            <Route path="/configuracoes" element={<Configuracoes />}>
+              <Route index element={<Navigate to="/configuracoes/operacoes" replace />} />
+              <Route path="operacoes" element={<Operacoes />} />
+              <Route path="funcoes" element={<Funcoes />} />
+              <Route path="bases" element={<Bases />} />
+              <Route path="aparencia" element={<Aparencia />} />
+            </Route>
           </>
         )}
       </Route>

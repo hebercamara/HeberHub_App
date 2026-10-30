@@ -56,6 +56,11 @@ service cloud.firestore {
       allow read: if financeiro();
     }
 
+    // Cores do sistema: públicas (aparecem até na tela de login).
+    match /configuracoes/aparencia {
+      allow read: if true;
+    }
+
     match /auditoria/{registroId} {
       allow read: if coordenacao();
     }

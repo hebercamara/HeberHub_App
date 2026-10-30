@@ -119,7 +119,7 @@ export function Financeiro() {
 
       {geral.pendentes > 0 && (
         <Aviso tipo="erro">
-          {geral.pendentes} diária(s) sem valor definido. Defina o valor da função (em Operações) ou o valor individual (em Usuários). O mês só pode ser fechado
+          {geral.pendentes} diária(s) sem valor definido. Defina o valor da função (em Configurações › Funções e diárias) ou o valor individual (em Usuários). O mês só pode ser fechado
           depois disso.
         </Aviso>
       )}

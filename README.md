@@ -49,8 +49,8 @@ Sem o secret, o workflow de deploy apenas avisa e não publica nada.
 
 1. Abra `/primeiro-acesso` no app publicado e use o e-mail de `COORDENADOR_INICIAL_EMAIL`.
 2. Confirme o e-mail pelo link recebido e toque em "Ativar coordenação".
-3. Em **Bases**, cadastre a base (o botão "Usar minha posição atual" captura as coordenadas estando no local).
-4. Em **Operações**, cadastre cada operação (ex.: "Kibon SP"), as funções dela e o valor da diária de cada função.
+3. Em **Configurações › Bases**, cadastre a base (o botão "Usar minha posição atual" captura as coordenadas estando no local).
+4. Em **Configurações › Operações**, cadastre cada operação (ex.: "Kibon SP"). Em **Funções e diárias**, crie as funções e o valor de cada uma; para outra operação, use "Copiar as funções de" ao criá-la ou "Duplicar". Em **Aparência**, escolha as cores da paleta.
 5. Em **Usuários**, crie os acessos dos ADMs. Os prestadores se cadastram sozinhos em "Cadastre-se" e são aprovados em **Cadastros**, já com a função.
 
 ## Financeiro

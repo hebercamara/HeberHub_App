@@ -33,6 +33,12 @@ describe('privacidade (LGPD)', () => {
     expect((await carla.chamar<Checkin>('registrarPresenca', leitura)).ok).toBe(true)
   })
 
+  it('cores do sistema: só a coordenação altera, e qualquer um lê', async () => {
+    await expect(coordenacao.chamar('salvarAparencia', { primaria: 'vermelho', secundaria: '#555555', fundo: '#ffffff' })).rejects.toThrow(/Cor inválida/)
+    await coordenacao.chamar('salvarAparencia', { primaria: '#C8102E', secundaria: '#4A4A4A', fundo: '#F5F5F5' })
+    expect((await db.collection('configuracoes').doc('aparencia').get()).data()).toMatchObject({ primaria: '#c8102e' })
+  })
+
   it('apaga a localização exata após 90 dias e mantém a distância', async () => {
     const antiga = db.collection('presencas').doc('teste_antiga')
     const recente = db.collection('presencas').doc('teste_recente')

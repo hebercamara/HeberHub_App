@@ -113,10 +113,37 @@ describe('financeiro da Fase 2', () => {
     await coordenacao.chamar('lancarAjuste', { uid: pedro.uid, tipo: 'adicional', valor: 100, data: '2026-10-30', justificativa: 'Correção' })
   })
 
-  it('coordenação também faz check-in, com base e aparelho', async () => {
+  it('prestador não consegue pular o QR', async () => {
+    const bia = await prestadorAprovado(coordenacao, 'bia@teste.local', 'Bia', baseId, funcaoId)
+    expect(await bia.chamar<Checkin>('registrarPresenca', { semQr: true, ...NA_BASE, deviceId: 'aparelho-bia' })).toMatchObject({ ok: false, motivo: 'qr-invalido' })
+  })
+
+  it('coordenação marca presença só pela localização, sem QR', async () => {
     await coordenacao.chamar('atualizarUsuario', { uid: coordenacao.uid, baseId })
-    const r = await coordenacao.chamar<Checkin>('registrarPresenca', { qr, ...NA_BASE, deviceId: 'aparelho-coordenacao' })
+    const longe = await coordenacao.chamar<Checkin>('registrarPresenca', { semQr: true, lat: BASE.lat + 0.01, lng: BASE.lng, precisao: 10, deviceId: 'aparelho-coordenacao' })
+    expect(longe).toMatchObject({ ok: false, motivo: 'fora-do-raio' })
+    const r = await coordenacao.chamar<Checkin>('registrarPresenca', { semQr: true, ...NA_BASE, deviceId: 'aparelho-coordenacao' })
     expect(r.ok).toBe(true)
+    const presenca = await getDoc(doc(coordenacao.db, 'presencas', `${coordenacao.uid}_${HOJE}`))
+    expect(presenca.get('origem')).toBe('localizacao')
+  })
+
+  it('duplica funções para outra operação, com os valores', async () => {
+    const destino = (await coordenacao.chamar<{ id: string }>('salvarOperacao', { nome: 'Kibon SP' })).id
+    const r = await coordenacao.chamar<{ criadas: string[]; ignoradas: string[] }>('duplicarFuncoes', {
+      funcaoIds: [funcaoId],
+      destinoOperacaoId: destino,
+      copiarValores: true,
+      inicio: HOJE,
+    })
+    expect(r).toMatchObject({ criadas: ['Motorista'], ignoradas: [] })
+    const copias = await getDocs(query(collection(coordenacao.db, 'funcoes'), where('operacaoId', '==', destino)))
+    expect(copias.size).toBe(1)
+    const valor = await getDocs(query(collection(coordenacao.db, 'valoresDiaria'), where('alvoChave', '==', `funcao:${copias.docs[0].id}`)))
+    expect(valor.docs[0].data()).toMatchObject({ valor: 15000, inicio: HOJE })
+    // De novo: já existe uma "Motorista" no destino.
+    const deNovo = await coordenacao.chamar<{ criadas: string[]; ignoradas: string[] }>('duplicarFuncoes', { funcaoIds: [funcaoId], destinoOperacaoId: destino })
+    expect(deNovo).toMatchObject({ criadas: [], ignoradas: ['Motorista'] })
   })
 
   it('prestador e ADM sem acesso financeiro não lançam valores', async () => {

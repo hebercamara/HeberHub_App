@@ -14,7 +14,7 @@ export default defineConfig({
         short_name: 'HeberHub',
         description: 'Check-in georreferenciado da frota',
         lang: 'pt-BR',
-        theme_color: '#0f3d5e',
+        theme_color: '#3d3d3d',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',

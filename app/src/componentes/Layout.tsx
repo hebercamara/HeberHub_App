@@ -24,7 +24,7 @@ export function Layout() {
 
       {equipe && (
         <nav className="abas" aria-label="Seções">
-          <NavLink to="/equipe/presencas">Presenças de hoje</NavLink>
+          <NavLink to="/equipe/presencas">Presenças</NavLink>
           <NavLink to="/equipe/qr">QR do dia</NavLink>
           <NavLink to="/presenca">Minha presença</NavLink>
           <NavLink to="/equipe/cadastros">Cadastros</NavLink>
@@ -32,9 +32,8 @@ export function Layout() {
           {perfil === 'coordenacao' && (
             <>
               <NavLink to="/coordenacao/usuarios">Usuários</NavLink>
-              <NavLink to="/coordenacao/operacoes">Operações</NavLink>
-              <NavLink to="/coordenacao/bases">Bases</NavLink>
               <NavLink to="/coordenacao/auditoria">Auditoria</NavLink>
+              <NavLink to="/configuracoes">Configurações</NavLink>
             </>
           )}
         </nav>

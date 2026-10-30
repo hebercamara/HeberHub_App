@@ -164,7 +164,9 @@ describe('regras do Firestore', () => {
     await assertFails(comoPrestador().doc('usuarios/p1').update({ status: 'ativo' }))
   })
 
-  it('sem login, nada é lido', async () => {
+  it('sem login, nada é lido, exceto as cores do sistema', async () => {
     await assertFails(ambiente.unauthenticatedContext().firestore().doc('bases/b1').get())
+    await assertSucceeds(ambiente.unauthenticatedContext().firestore().doc('configuracoes/aparencia').get())
+    await assertFails(ambiente.unauthenticatedContext().firestore().doc('configuracoes/outra').get())
   })
 })

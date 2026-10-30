@@ -1,9 +1,12 @@
 :root {
-  --cor-primaria: #0f3d5e;
-  --cor-primaria-texto: #ffffff;
+  /* --marca-* vêm da paleta escolhida em Configurações > Aparência (lib/aparencia.ts). */
+  --cor-primaria: var(--marca-primaria, #c8102e);
+  --cor-primaria-texto: var(--marca-primaria-texto, #ffffff);
+  --cor-secundaria: var(--marca-secundaria, #3d3d3d);
+  --cor-secundaria-texto: var(--marca-secundaria-texto, #ffffff);
   --cor-texto: #1b1f24;
   --cor-texto-suave: #5b6570;
-  --cor-fundo: #f5f7fa;
+  --cor-fundo: var(--marca-fundo, #f4f4f4);
   --cor-cartao: #ffffff;
   --cor-borda: #d9dee4;
   --cor-ok: #1e7a46;
@@ -20,8 +23,6 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --cor-primaria: #5aa5d6;
-    --cor-primaria-texto: #0b1a26;
     --cor-texto: #e6e9ed;
     --cor-texto-suave: #a0a9b3;
     --cor-fundo: #11161c;
@@ -99,8 +100,17 @@ a {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 16px;
-  background: var(--cor-cartao);
-  border-bottom: 1px solid var(--cor-borda);
+  background: var(--cor-secundaria);
+  color: var(--cor-secundaria-texto);
+}
+
+.topo button.link {
+  color: var(--cor-secundaria-texto);
+}
+
+.topo .selo {
+  background: rgb(255 255 255 / 0.15);
+  color: var(--cor-secundaria-texto);
 }
 
 .marca {
@@ -576,6 +586,166 @@ textarea {
   padding: 8px;
   border: 1px solid var(--cor-borda);
   border-radius: 8px;
+}
+
+/* Calendário de presenças */
+.navegacao-datas {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navegacao-datas button.secundario {
+  padding: 6px 14px;
+}
+
+.titulo-periodo {
+  min-width: 150px;
+  text-align: center;
+}
+
+.titulo-periodo::first-letter {
+  text-transform: uppercase;
+}
+
+.legenda {
+  margin-top: 0;
+  font-size: 0.9rem;
+}
+
+.calendario th,
+.calendario td {
+  padding: 6px 4px;
+}
+
+.calendario .col-nome {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 150px;
+  max-width: 200px;
+  padding-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--cor-cartao);
+}
+
+.calendario .col-dia {
+  min-width: 30px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendario .fim-de-semana {
+  background: var(--cor-fundo);
+}
+
+.calendario th.hoje {
+  color: var(--cor-primaria);
+  font-weight: 700;
+}
+
+.calendario td.hoje {
+  box-shadow: inset 2px 0 0 var(--cor-primaria), inset -2px 0 0 var(--cor-primaria);
+}
+
+.marca-presenca {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: var(--cor-ok-fundo);
+  color: var(--cor-ok);
+}
+
+.marca-presenca.origem-manual {
+  background: var(--cor-info-fundo);
+  color: var(--cor-texto);
+}
+
+.celula-vazia {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px dashed var(--cor-borda);
+  background: transparent;
+  color: transparent;
+  font-weight: 700;
+}
+
+.celula-vazia:hover,
+.celula-vazia:focus-visible {
+  border-color: var(--cor-primaria);
+  color: var(--cor-primaria);
+}
+
+/* Configurações */
+.subabas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subabas a {
+  padding: 8px 14px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 999px;
+  color: var(--cor-texto);
+  text-decoration: none;
+  background: var(--cor-cartao);
+}
+
+.subabas a.active {
+  border-color: var(--cor-primaria);
+  background: var(--cor-primaria);
+  color: var(--cor-primaria-texto);
+}
+
+.linha-funcao {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.linha-funcao input[type='checkbox'] {
+  flex: none;
+}
+
+.campo-cor {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.campo-cor input[type='color'] {
+  width: 64px;
+  height: 64px;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.campo-cor p {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+}
+
+.previa {
+  border: 1px solid var(--cor-borda);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.previa-corpo {
+  padding: 16px;
+}
+
+.previa .cartao {
+  color: var(--cor-texto);
 }
 
 /* Termo de privacidade */

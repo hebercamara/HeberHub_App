@@ -6,7 +6,7 @@ export function SemBase() {
   return (
     <section className="cartao">
       <p>Nenhuma base cadastrada ainda.</p>
-      {perfil === 'coordenacao' ? <Link to="/coordenacao/bases">Cadastrar a primeira base</Link> : <p className="suave">Peça à coordenação para cadastrar a base.</p>}
+      {perfil === 'coordenacao' ? <Link to="/configuracoes/bases">Cadastrar a primeira base</Link> : <p className="suave">Peça à coordenação para cadastrar a base.</p>}
     </section>
   )
 }
