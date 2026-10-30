@@ -1,6 +1,7 @@
 import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { Aviso } from '../../componentes/Aviso'
+import { Celebracao } from '../../componentes/Celebracao'
 import { LeitorQr } from '../../componentes/LeitorQr'
 import { idDoAparelho } from '../../lib/aparelho'
 import { api, type RespostaCheckin } from '../../lib/api'
@@ -22,6 +23,8 @@ export function Presenca() {
   const historico = useHistorico(login!.uid)
   const hoje = hojeEmSaoPaulo()
   const presencaDeHoje = historico.find((p) => p.data === hoje)
+  // Atualiza o evento do dia quando a presença de hoje aparece (depois do check-in).
+  const evento = useEventoDeHoje(presencaDeHoje?.id ?? null)
 
   function comecar() {
     // O GPS começa junto com a câmera, para estar pronto quando o QR for lido.
@@ -57,7 +60,19 @@ export function Presenca() {
 
   return (
     <div className="pilha">
-      <section className="cartao centro">
+      <section className={`cartao centro ${evento ? 'dia-de-evento' : ''}`}>
+        {evento && (
+          <div className="faixa-evento">
+            <span className="faixa-evento-rotulo">Dia de evento</span>
+            <strong>{evento.nome}</strong>
+          </div>
+        )}
+        {evento?.apto && (
+          <>
+            <Celebracao />
+            <p className="parabens">Parabéns! Você está participando do evento {evento.nome}.</p>
+          </>
+        )}
         <p className="suave">{formatarDataLonga(hoje)}</p>
         {!usuario?.baseId && <Aviso tipo="info">Seu cadastro ainda não tem base. Peça à coordenação para definir em Usuários.</Aviso>}
 
@@ -163,4 +178,22 @@ function useHistorico(uid: string): RegistroPresenca[] {
     [uid],
   )
   return lista
+}
+
+type EventoDeHoje = { nome: string; veioHoje: boolean; apto: boolean }
+
+/** Evento do dia para esta pessoa (sem valores nem regras), consultado no servidor. */
+function useEventoDeHoje(presencaDeHoje: string | null): EventoDeHoje | null {
+  const [evento, setEvento] = useState<EventoDeHoje | null>(null)
+  useEffect(() => {
+    let ativo = true
+    api
+      .meuEventoHoje()
+      .then((r) => ativo && setEvento(r.evento))
+      .catch(() => undefined)
+    return () => {
+      ativo = false
+    }
+  }, [presencaDeHoje])
+  return evento
 }

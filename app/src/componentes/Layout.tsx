@@ -32,6 +32,7 @@ export function Layout() {
           {financeiro && <NavLink to="/financeiro">Financeiro</NavLink>}
           {perfil === 'coordenacao' && (
             <>
+              <NavLink to="/eventos">Eventos</NavLink>
               <NavLink to="/coordenacao/usuarios">Usuários</NavLink>
               <NavLink to="/coordenacao/auditoria">Auditoria</NavLink>
             </>

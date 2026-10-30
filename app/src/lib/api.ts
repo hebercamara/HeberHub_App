@@ -1,5 +1,6 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
+import type { Faixa, Publico } from './eventos'
 import type { Funcao, Perfil } from './tipos'
 
 function chamada<Entrada, Saida = { ok: true }>(nome: string) {
@@ -50,6 +51,11 @@ export const api = {
     { ok: true; pessoas: number }
   >('lancarEvento'),
   estornarLancamento: chamada<{ id: string; justificativa: string }>('estornarLancamento'),
+  salvarEvento: chamada<{ id?: string; nome: string; dias: string[]; publico: Publico; faixas: Omit<Faixa, 'id'>[] }, { ok: true; id: string }>('salvarEvento'),
+  encerrarEvento: chamada<{ id: string }, { ok: true; total: number; pessoas: number }>('encerrarEvento'),
+  reabrirEvento: chamada<{ id: string; justificativa: string }>('reabrirEvento'),
+  mudarStatusEvento: chamada<{ id: string; status: 'pago' | 'cancelado' }>('mudarStatusEvento'),
+  meuEventoHoje: chamada<void, { evento: { nome: string; veioHoje: boolean; apto: boolean } | null }>('meuEventoHoje'),
   registrarPresencaManual: chamada<{ uid: string; data: string; justificativa: string }>('registrarPresencaManual'),
   fecharMes: chamada<{ competencia: string }, { ok: true; liquido: number; pessoas: number }>('fecharMes'),
   reabrirMes: chamada<{ competencia: string; justificativa: string }>('reabrirMes'),

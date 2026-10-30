@@ -57,9 +57,16 @@ Sem o secret, o workflow de deploy apenas avisa e não publica nada.
 
 - Cada check-in (ou presença manual) gera uma diária com o valor vigente congelado: o valor individual da pessoa, se houver, senão o da função.
 - Sem valor definido, a diária fica "sem valor" e é preenchida quando o valor for cadastrado. O mês não fecha com diárias sem valor.
-- Adicionais, descontos e eventos (o mesmo valor para várias pessoas) exigem justificativa. Correções são feitas por estorno; nada é apagado.
+- Adicionais, descontos e lançamentos em grupo (o mesmo valor para várias pessoas) exigem justificativa. Correções são feitas por estorno; nada é apagado.
 - A coordenação fecha o mês (prazo: dia 5 do mês seguinte). Mês fechado não aceita lançamentos até ser reaberto, com justificativa.
 - Só a coordenação e o ADM Financeiro veem valores. Prestador e ADM comum não têm acesso.
+
+## Eventos
+
+- Aba **Eventos** (só coordenação): adicionais por presença em dias específicos, inclusive futuros. Os valores ficam **fora do fechamento mensal**: cada evento é apurado e pago à parte (ativo → encerrado → pago).
+- **Evento comum:** veio nestes dias → valor fixo (para quem vier em todos) ou valor por dia em que veio.
+- **Evento esporádico** (campo recolhido): várias regras com dias próprios. No mesmo grupo vale a melhor regra atingida; grupos diferentes se somam. Presença manual conta.
+- No celular, quem participa vê "Dia de evento" e, depois do check-in, uma animação de parabéns, sem valores.
 
 ## Privacidade (LGPD)
 

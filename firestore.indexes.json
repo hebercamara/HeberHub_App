@@ -73,6 +73,20 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "eventosPresenca",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "dias",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

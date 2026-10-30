@@ -14,6 +14,7 @@ import { Configuracoes } from './paginas/configuracoes/Configuracoes'
 import { Funcoes } from './paginas/configuracoes/Funcoes'
 import { Operacoes } from './paginas/configuracoes/Operacoes'
 import { Entrar } from './paginas/Entrar'
+import { Eventos } from './paginas/eventos/Eventos'
 import { Financeiro } from './paginas/financeiro/Financeiro'
 import { PresencasHoje } from './paginas/equipe/PresencasHoje'
 import { QrDoDia } from './paginas/equipe/QrDoDia'
@@ -79,6 +80,7 @@ function App() {
           <>
             <Route path="/coordenacao/usuarios" element={<Usuarios />} />
             <Route path="/coordenacao/auditoria" element={<Auditoria />} />
+            <Route path="/eventos" element={<Eventos />} />
           </>
         )}
       </Route>

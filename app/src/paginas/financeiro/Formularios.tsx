@@ -147,7 +147,7 @@ export function FormularioAjuste({ usuarios, competencia, aoTerminar }: Props) {
   )
 }
 
-/** Evento: o mesmo adicional ou desconto, com nome próprio, para várias pessoas. */
+/** Lançamento em grupo: o mesmo adicional ou desconto, com nome próprio, para várias pessoas escolhidas. */
 export function FormularioEvento({ usuarios, competencia, aoTerminar }: Props) {
   const [nome, setNome] = useState('')
   const [tipo, setTipo] = useState<'adicional' | 'desconto'>('adicional')
@@ -189,12 +189,12 @@ export function FormularioEvento({ usuarios, competencia, aoTerminar }: Props) {
   }
 
   return (
-    <Moldura titulo="Evento">
-      <p className="suave">Use para domingos, feriados ou qualquer situação com valor próprio. Cada pessoa escolhida recebe o mesmo lançamento.</p>
+    <Moldura titulo="Lançamento em grupo">
+      <p className="suave">O mesmo adicional ou desconto para várias pessoas, entrando no fechamento do mês. Para premiar presença em dias específicos, use a aba Eventos.</p>
       <form onSubmit={salvar} className="formulario">
         <label>
-          Nome do evento
-          <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Feriado 15/11" minLength={3} required />
+          Nome do lançamento
+          <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ajuda de custo da viagem" minLength={3} required />
         </label>
         <CamposValor tipo={tipo} setTipo={setTipo} valor={valor} setValor={setValor} />
         <label>
@@ -225,7 +225,7 @@ export function FormularioEvento({ usuarios, competencia, aoTerminar }: Props) {
         </fieldset>
 
         <Aviso>{erro}</Aviso>
-        <Botoes enviando={enviando} rotulo="Lançar evento" aoCancelar={aoTerminar} />
+        <Botoes enviando={enviando} rotulo="Lançar para o grupo" aoCancelar={aoTerminar} />
       </form>
     </Moldura>
   )

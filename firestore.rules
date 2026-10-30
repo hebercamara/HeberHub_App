@@ -61,6 +61,11 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // Eventos de presença (regras e valores): só a coordenação.
+    match /eventosPresenca/{id} {
+      allow read: if coordenacao();
+    }
+
     match /auditoria/{registroId} {
       allow read: if coordenacao();
     }

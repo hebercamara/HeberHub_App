@@ -99,7 +99,7 @@ export function Financeiro() {
                   Adicional ou desconto
                 </button>
                 <button className="secundario" onClick={() => setAcao('evento')}>
-                  Evento
+                  Lançamento em grupo
                 </button>
                 <button className="secundario" onClick={() => setAcao('manual')}>
                   Presença manual
