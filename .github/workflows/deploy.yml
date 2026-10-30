@@ -20,10 +20,11 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Cada ambiente do GitHub (Settings > Environments) guarda:
+    # Cada ambiente do GitHub (Settings > Environments) se chama Firebase-<ambiente>
+    # (Firebase-dev, Firebase-prod) e guarda:
     #   secret   FIREBASE_SERVICE_ACCOUNT  -> JSON da conta de serviço
     #   variáveis VITE_FIREBASE_*          -> configuração do app Web
-    environment: ${{ inputs.ambiente || 'dev' }}
+    environment: Firebase-${{ inputs.ambiente || 'dev' }}
     env:
       AMBIENTE: ${{ inputs.ambiente || 'dev' }}
     steps:

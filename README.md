@@ -36,10 +36,10 @@ npm run dev                          # terminal 2: app em http://localhost:5173
 3. Crie um app **Web** em cada projeto e anote a configuração do SDK.
 4. No Google Cloud, crie um alerta de orçamento para cada projeto.
 5. Gere a chave da conta de serviço: Configurações do projeto > Contas de serviço > Gerar nova chave privada.
-6. No GitHub, em Settings > Environments, crie os ambientes `dev` e `prod`. Em cada um:
+6. No GitHub, em Settings > Environments, crie os ambientes `Firebase-dev` e `Firebase-prod`. Em cada um:
    - secret `FIREBASE_SERVICE_ACCOUNT`: o conteúdo do JSON da chave;
    - variáveis `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID` e `VITE_FIREBASE_APP_ID`.
-7. Em `prod`, marque "Required reviewers" para exigir aprovação antes de publicar.
+7. Em `Firebase-prod`, marque "Required reviewers" para exigir aprovação antes de publicar.
 
 Sem o secret, o workflow de deploy apenas avisa e não publica nada.
 
