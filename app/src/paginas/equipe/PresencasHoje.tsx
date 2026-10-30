@@ -1,5 +1,5 @@
 import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Aviso } from '../../componentes/Aviso'
 import { Carregando } from '../../componentes/Carregando'
 import { SemBase } from '../../componentes/SemBase'
@@ -11,7 +11,7 @@ import { datasEntre, diaDaSemana, fimDoMes, formatarCompetencia, formatarData, f
 import { mensagemDeErro } from '../../lib/erros'
 import { db } from '../../lib/firebase'
 import { useSessao } from '../../lib/sessao'
-import { NOMES_FUNCAO, type Presenca } from '../../lib/tipos'
+import { NOMES_FUNCAO, type Presenca, type Usuario } from '../../lib/tipos'
 
 type Visao = 'dia' | 'semana' | 'mes'
 
@@ -85,19 +85,37 @@ export function PresencasHoje() {
         </div>
       </div>
 
-      {visao === 'dia' ? <ListaDoDia presencas={presencas} baseId={base.id} /> : <Calendario presencas={presencas} baseId={base.id} datas={datasEntre(inicio, fim)} />}
+      {visao === 'dia' ? <ListaDoDia presencas={presencas} baseId={base.id} data={referencia} /> : <Calendario presencas={presencas} baseId={base.id} datas={datasEntre(inicio, fim)} />}
     </div>
   )
 }
 
-function ListaDoDia({ presencas, baseId }: { presencas: Presenca[]; baseId: string }) {
-  const totalAtivos = useUsuarios().filter((u) => u.baseId === baseId && u.status === 'ativo').length
+function ListaDoDia({ presencas, baseId, data }: { presencas: Presenca[]; baseId: string; data: string }) {
+  const usuarios = useUsuarios()
+  const [lancando, setLancando] = useState(false)
+  const totalAtivos = usuarios.filter((u) => u.baseId === baseId && u.status === 'ativo').length
   const ordenadas = [...presencas].sort((a, b) => a.horario.localeCompare(b.horario))
+  const presentes = new Set(presencas.map((p) => p.uid))
   return (
     <section className="cartao">
-      <p className="destaque">
-        {presencas.length} de {totalAtivos} pessoas presentes
-      </p>
+      <div className="cabecalho-secao">
+        <p className="destaque" style={{ margin: 0 }}>
+          {presencas.length} de {totalAtivos} pessoas presentes
+        </p>
+        {!lancando && data <= hojeEmSaoPaulo() && (
+          <button className="secundario" onClick={() => setLancando(true)}>
+            Lançar presença manual
+          </button>
+        )}
+      </div>
+      {lancando && (
+        <LancarPresencaManual
+          data={data}
+          // Quem já tem presença no dia não aparece na busca.
+          pessoas={usuarios.filter((u) => u.status === 'ativo' && !presentes.has(u.id))}
+          aoTerminar={() => setLancando(false)}
+        />
+      )}
       {presencas.length === 0 ? (
         <p className="suave">Nenhuma presença neste dia. A lista atualiza sozinha.</p>
       ) : (
@@ -130,9 +148,8 @@ function ListaDoDia({ presencas, baseId }: { presencas: Presenca[]; baseId: stri
   )
 }
 
-/** Grade pessoa × dia. Quem tem acesso financeiro lança presença manual tocando num dia vazio. */
+/** Grade pessoa × dia. ADM e coordenação lançam presença manual tocando num dia vazio. */
 function Calendario({ presencas, baseId, datas }: { presencas: Presenca[]; baseId: string; datas: string[] }) {
-  const { financeiro } = useSessao()
   const usuarios = useUsuarios()
   const hoje = hojeEmSaoPaulo()
   const [erro, setErro] = useState('')
@@ -165,7 +182,7 @@ function Calendario({ presencas, baseId, datas }: { presencas: Presenca[]; baseI
   return (
     <section className="cartao">
       <p className="suave legenda">
-        ✓ QR Code · L localização · M manual{financeiro && ' · toque num dia vazio para lançar presença manual'}
+        ✓ QR Code · L localização · M manual · toque num dia vazio para lançar presença manual
       </p>
       <Aviso>{erro}</Aviso>
       <div className="rolagem">
@@ -189,7 +206,7 @@ function Calendario({ presencas, baseId, datas }: { presencas: Presenca[]; baseI
                 <td className="col-nome">{nome}</td>
                 {datas.map((d) => {
                   const p = porChave.get(`${uid}_${d}`)
-                  const podeLancar = financeiro && !p && d <= hoje
+                  const podeLancar = !p && d <= hoje
                   return (
                     <td key={d} className={`col-dia ${diaDaSemana(d) % 6 === 0 ? 'fim-de-semana' : ''} ${d === hoje ? 'hoje' : ''}`}>
                       {p ? (
@@ -248,4 +265,79 @@ function usePresencas(baseId: string | null, inicio: string, fim: string): Prese
     )
   }, [baseId, inicio, fim])
   return estado.chave === chave ? estado.lista : []
+}
+
+/** Procura uma pessoa e lança a presença dela no dia, com justificativa. */
+function LancarPresencaManual({ data, pessoas, aoTerminar }: { data: string; pessoas: Usuario[]; aoTerminar: () => void }) {
+  const [busca, setBusca] = useState('')
+  const [escolhida, setEscolhida] = useState<Usuario | null>(null)
+  const [justificativa, setJustificativa] = useState('')
+  const [erro, setErro] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  const termo = busca.trim().toLowerCase()
+  const encontradas = termo
+    ? pessoas.filter((u) => `${u.nome} ${u.email} ${u.razaoSocial ?? ''}`.toLowerCase().includes(termo)).slice(0, 8)
+    : []
+
+  async function lancar(e: FormEvent) {
+    e.preventDefault()
+    if (!escolhida) return setErro('Escolha a pessoa.')
+    setErro('')
+    setEnviando(true)
+    try {
+      await api.registrarPresencaManual({ uid: escolhida.id, data, justificativa })
+      aoTerminar()
+    } catch (err) {
+      setErro(mensagemDeErro(err))
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <form onSubmit={lancar} className="formulario bloco">
+      <h3>Presença manual em {formatarData(data)}</h3>
+      {escolhida ? (
+        <p>
+          <strong>{escolhida.nome}</strong>{' '}
+          <button type="button" className="link" onClick={() => setEscolhida(null)}>
+            trocar
+          </button>
+        </p>
+      ) : (
+        <>
+          <label>
+            Procurar pessoa
+            <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome, e-mail ou empresa" autoFocus />
+          </label>
+          {termo && (
+            <ul className="lista resultados-busca">
+              {encontradas.length === 0 && <li className="suave">Ninguém encontrado (ou já tem presença neste dia).</li>}
+              {encontradas.map((u) => (
+                <li key={u.id}>
+                  <button type="button" className="linha-usuario" onClick={() => setEscolhida(u)}>
+                    <span>{u.nome}</span>
+                    <span className="suave">{u.email}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      <label>
+        Justificativa (obrigatória)
+        <textarea value={justificativa} onChange={(e) => setJustificativa(e.target.value)} minLength={5} maxLength={300} rows={2} required />
+      </label>
+      <Aviso>{erro}</Aviso>
+      <div className="acoes">
+        <button type="submit" disabled={enviando || !escolhida}>
+          {enviando ? 'Lançando…' : 'Lançar presença'}
+        </button>
+        <button type="button" className="secundario" onClick={aoTerminar}>
+          Cancelar
+        </button>
+      </div>
+    </form>
+  )
 }

@@ -1,6 +1,6 @@
 import { onCall } from 'firebase-functions/v2/https'
 import { exigirMesAberto, lancamentos, lancarDiaria, novoLancamento, valorVigente } from './financeiro.js'
-import { agora, agoraServidor, auditar, centavos, dataValida, db, exigirFinanceiro, falha, texto } from './infra.js'
+import { agora, agoraServidor, auditar, centavos, dataValida, db, exigirFinanceiro, exigirPerfil, falha, texto } from './infra.js'
 import { competenciaDe, dataEmSaoPaulo } from './regras/tempo.js'
 import type { Lancamento, Usuario } from './tipos.js'
 
@@ -116,11 +116,12 @@ export const estornarLancamento = onCall(async (req) => {
 })
 
 /**
- * Presença lançada pela coordenação ou pelo ADM Financeiro, quando o check-in
- * não foi possível (celular sem bateria, sem sinal…). Gera a diária normalmente.
+ * Presença lançada por ADM ou coordenação quando o check-in não foi possível
+ * (celular sem bateria, sem sinal…). Gera a diária normalmente; quem lança não
+ * precisa ver valores, e a justificativa fica na auditoria.
  */
 export const registrarPresencaManual = onCall(async (req) => {
-  const autor = exigirFinanceiro(req)
+  const autor = exigirPerfil(req, ['adm', 'coordenacao'])
   const uid = texto(req.data?.uid, 'a pessoa')
   const data = dataAteHoje(req.data?.data)
   const motivo = justificativa(req.data?.justificativa)

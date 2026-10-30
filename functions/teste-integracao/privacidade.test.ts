@@ -31,6 +31,11 @@ describe('privacidade (LGPD)', () => {
     await expect(carla.chamar('aceitarTermo', { versao: 99 })).rejects.toThrow(/atualizado/)
     await carla.chamar('aceitarTermo', { versao: 1 })
     expect((await carla.chamar<Checkin>('registrarPresenca', leitura)).ok).toBe(true)
+
+    // ADM comum lança presença manual (sem ver valores), mas não lança dinheiro.
+    await carla.chamar('registrarPresencaManual', { uid, data: '2026-11-02', justificativa: 'Esqueceu o celular' })
+    expect((await db.collection('presencas').doc(`${uid}_2026-11-02`).get()).get('origem')).toBe('manual')
+    await expect(carla.chamar('lancarAjuste', { uid, tipo: 'adicional', valor: 100, data: HOJE, justificativa: 'Tentativa' })).rejects.toThrow(/coordenação e o ADM Financeiro/)
   })
 
   it('cores do sistema: só a coordenação altera, e qualquer um lê', async () => {
