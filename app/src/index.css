@@ -700,6 +700,33 @@ textarea {
   color: var(--cor-primaria);
 }
 
+/* Contador de pendências */
+.com-contador {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.contador {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e52421;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Sobre fundo vermelho (seção selecionada), o contador inverte as cores. */
+.subabas a.active .contador {
+  background: #fff;
+  color: #e52421;
+}
+
 /* Configurações */
 .subabas {
   display: flex;

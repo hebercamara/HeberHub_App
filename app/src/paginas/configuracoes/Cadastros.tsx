@@ -1,29 +1,20 @@
-import { collection, onSnapshot, query, where } from 'firebase/firestore'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Aviso } from '../../componentes/Aviso'
 import { api } from '../../lib/api'
 import { SeletorFuncao } from '../../componentes/SeletorFuncao'
 import { useBases } from '../../lib/bases'
-import { useFuncoes } from '../../lib/cadastros'
+import { useFuncoes, usePendentes } from '../../lib/cadastros'
 import { mascararCnpj } from '../../lib/cnpj'
 import { mensagemDeErro } from '../../lib/erros'
-import { db } from '../../lib/firebase'
 import { NOMES_FUNCAO, type Usuario } from '../../lib/tipos'
 
 /** Cadastros de prestadores aguardando aprovação. */
 export function Cadastros() {
-  const [pendentes, setPendentes] = useState<Usuario[]>([])
-  useEffect(
-    () =>
-      onSnapshot(query(collection(db, 'usuarios'), where('status', '==', 'pendente')), (snap) =>
-        setPendentes(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Usuario)),
-      ),
-    [],
-  )
+  const pendentes = usePendentes()
 
   return (
     <div className="pilha">
-      <h1>Cadastros aguardando aprovação</h1>
+      <p className="suave">Prestadores que se cadastraram e aguardam aprovação.</p>
       {pendentes.length === 0 && <p className="suave">Nenhum cadastro pendente.</p>}
       {pendentes.map((u) => (
         <CartaoPendente key={u.id} usuario={u} />

@@ -8,12 +8,12 @@ import { Cadastro } from './paginas/Cadastro'
 import { Auditoria } from './paginas/coordenacao/Auditoria'
 import { Usuarios } from './paginas/coordenacao/Usuarios'
 import { Aparencia } from './paginas/configuracoes/Aparencia'
+import { Cadastros } from './paginas/configuracoes/Cadastros'
 import { Bases } from './paginas/configuracoes/Bases'
 import { Configuracoes } from './paginas/configuracoes/Configuracoes'
 import { Funcoes } from './paginas/configuracoes/Funcoes'
 import { Operacoes } from './paginas/configuracoes/Operacoes'
 import { Entrar } from './paginas/Entrar'
-import { Cadastros } from './paginas/equipe/Cadastros'
 import { Financeiro } from './paginas/financeiro/Financeiro'
 import { PresencasHoje } from './paginas/equipe/PresencasHoje'
 import { QrDoDia } from './paginas/equipe/QrDoDia'
@@ -58,7 +58,20 @@ function App() {
           <>
             <Route path="/equipe/presencas" element={<PresencasHoje />} />
             <Route path="/equipe/qr" element={<QrDoDia />} />
-            <Route path="/equipe/cadastros" element={<Cadastros />} />
+            <Route path="/configuracoes" element={<Configuracoes />}>
+              {/* O ADM só tem a seção Cadastros; a coordenação abre em Operações. */}
+              <Route index element={<Navigate to={coordenacao ? '/configuracoes/operacoes' : '/configuracoes/cadastros'} replace />} />
+              <Route path="cadastros" element={<Cadastros />} />
+              {coordenacao && (
+                <>
+                  <Route path="operacoes" element={<Operacoes />} />
+                  <Route path="funcoes" element={<Funcoes />} />
+                  <Route path="bases" element={<Bases />} />
+                  <Route path="aparencia" element={<Aparencia />} />
+                </>
+              )}
+            </Route>
+            <Route path="/equipe/cadastros" element={<Navigate to="/configuracoes/cadastros" replace />} />
           </>
         )}
         {financeiro && <Route path="/financeiro" element={<Financeiro />} />}
@@ -66,13 +79,6 @@ function App() {
           <>
             <Route path="/coordenacao/usuarios" element={<Usuarios />} />
             <Route path="/coordenacao/auditoria" element={<Auditoria />} />
-            <Route path="/configuracoes" element={<Configuracoes />}>
-              <Route index element={<Navigate to="/configuracoes/operacoes" replace />} />
-              <Route path="operacoes" element={<Operacoes />} />
-              <Route path="funcoes" element={<Funcoes />} />
-              <Route path="bases" element={<Bases />} />
-              <Route path="aparencia" element={<Aparencia />} />
-            </Route>
           </>
         )}
       </Route>
