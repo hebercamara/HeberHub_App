@@ -2,7 +2,7 @@
 
 > Rascunho em construção com o dono do projeto. **Ainda não implementado.**
 > Quando for implementado, as decisões passam para `docs/CONTEXTO.md`.
-> Última atualização: 30/10/2026.
+> Última atualização: 30/10/2026 (materiais de exemplo recebidos e analisados).
 
 ## Objetivo
 
@@ -45,8 +45,8 @@ continua com uma conta só para o cadastro, os contratos e o check-in.
 - **CNAE:** só **aviso**, com a descrição do que o código significa.
 
 ### Documentos e modelos
-- Tipos iniciais: **Contrato de prestação de serviços**, **Distrato**, **Aditivo** e **Termo de
-  Quitação de Dívida**. A lista é **aberta**: novos tipos podem ser criados no sistema.
+- Tipos iniciais: **Contrato de prestação de serviços**, **Distrato**, **Aditivo**, **Termo de
+  Quitação de Dívida** e **Comunicação prévia de rescisão**. A lista é **aberta**: novos tipos podem ser criados no sistema.
 - **Editor visual** de modelos (negrito, tabelas, espaçamento, logo) com **variáveis**
   (`{{RAZAO_SOCIAL}}`, `{{CNPJ}}`, `{{ENDERECO_OFICIAL}}`…) e variáveis de sistema
   (`{{DATA_ATUAL_CURTA}}`, `{{DATA_ATUAL_EXTENSA}}`, `{{HORA_GERACAO}}`, `{{USUARIO_EMISSOR}}`).
@@ -76,6 +76,59 @@ continua com uma conta só para o cadastro, os contratos e o check-in.
 - O termo de privacidade ganha uma **versão 2** (novos dados, consulta à Receita e guarda pelo
   prazo legal), e todos aceitam de novo.
 
+## O que os materiais de exemplo mostraram
+
+> Os arquivos de exemplo (cartões e modelos com dados reais) **não ficam no repositório**.
+
+**Cartão CNPJ**
+- Os dois **PDFs** baixados da Receita têm **texto legível**: dá para ler os campos pelos rótulos,
+  sem OCR. Um protótipo extraiu corretamente CNPJ, razão social, CNAE, natureza jurídica,
+  situação e data de emissão.
+- O cartão traz a **data de emissão** ("Emitido no dia…"). O sistema pode exigir um cartão
+  **recente** (ex.: emitido nos últimos 30 dias).
+- O exemplo em **imagem** (layout mais novo) vem com vários campos **mascarados** com `********`
+  (CNAE, endereço, nome fantasia), e a situação era **BAIXADA**, o que bloquearia a aprovação.
+  Ou seja: o cartão nem sempre traz endereço e CNAE, e **a consulta à Receita (API) é a fonte
+  mais completa**.
+- No **MEI**, a razão social termina com o **CPF do titular** (ex.: "NOME SOBRENOME 12345678901").
+  O sistema pode **conferir esse CPF com o CPF informado** no formulário: é uma checagem forte
+  contra erro e fraude.
+
+**Modelos atuais** (contrato de motorista MEI, distrato, comunicação prévia de rescisão)
+- São textos simples, **sem tabelas, logo ou cabeçalho**: dá para convertê-los em modelos do
+  sistema já com as variáveis no lugar.
+- Há **erros de digitação** que o sistema elimina: CPF do sócio escrito diferente dentro do
+  mesmo distrato; valor por extenso errado ("cento dez reais"); concordância de gênero
+  ("brasileiro", "portador" para uma sócia).
+- A **comunicação prévia de rescisão** é mais um tipo de documento (aviso com 72 horas,
+  cláusula 6.1).
+- Os dados da **contratante** (Heber Transportadora, endereço, CNPJ, sócio representante e a
+  qualificação dele) se repetem em todos os modelos.
+- O distrato precisa da **data do contrato original**, da **data até quando o serviço foi prestado**
+  e do **valor da diária**: dados que o sistema já conhece pelo histórico.
+- O contrato exige pagamento em **conta de titularidade da contratada** (cláusula 5.2).
+
+## Variáveis (placeholders)
+
+Propostas pelo dono, mais as que os modelos mostraram ser necessárias (marcadas com *).
+
+| Grupo | Variáveis | Origem |
+| --- | --- | --- |
+| Empresa contratada (MEI) | `{{RAZAO_SOCIAL_MEI}}`, `{{CNPJ_MEI}}`, `{{ENDERECO_EMPRESA_MEI}}` | Cadastro Oficial |
+| Representante (pessoa física) | `{{NOME_REPRESENTANTE}}`, `{{RG_REPRESENTANTE}}`, `{{CPF_REPRESENTANTE}}`, `{{ENDERECO_REPRESENTANTE}}`, `{{NACIONALIDADE_REPRESENTANTE}}`*, `{{ESTADO_CIVIL_REPRESENTANTE}}`*, `{{PROFISSAO_REPRESENTANTE}}`* | Cadastro Oficial |
+| Pagamento | `{{BANCO_PAGAMENTO}}`, `{{AGENCIA_PAGAMENTO}}`, `{{CONTA_PAGAMENTO}}`, `{{CHAVE_PIX}}` (tipo e chave), `{{TIPO_CONTA}}`* (corrente ou poupança) | Cadastro Oficial |
+| Contratante* | `{{CONTRATANTE_RAZAO_SOCIAL}}`, `{{CONTRATANTE_CNPJ}}`, `{{CONTRATANTE_ENDERECO}}`, `{{CONTRATANTE_REPRESENTANTE}}` (nome e qualificação) | Configurações (Gestão e Jurídico) |
+| Operacionais | `{{FUNCAO_PRESTADA}}`, `{{VALOR_DIARIA}}`, `{{VALOR_DIARIA_EXTENSO}}` (automático), `{{DATA_INICIO_CONTRATO}}`, `{{DATA_FIM_SERVICO}}` | Preenchidos na emissão, com sugestão automática |
+| Testemunhas | `{{NOME_TESTEMUNHA_1}}`, `{{CPF_TESTEMUNHA_1}}`, `{{NOME_TESTEMUNHA_2}}`, `{{CPF_TESTEMUNHA_2}}` | Escolhidas na emissão (lista de testemunhas frequentes, ou digitadas) |
+| Contrato anterior* | `{{DATA_CONTRATO_ORIGINAL}}`, `{{DATA_RESCISAO}}` | Histórico do sistema (manual para quem foi importado sem contrato no sistema) |
+| Sistema | `{{DATA_ATUAL_CURTA}}`, `{{DATA_ATUAL_EXTENSA}}`, `{{HORA_GERACAO}}`, `{{USUARIO_EMISSOR}}`, `{{CIDADE_EMISSAO}}`* | Automáticas |
+
+Sugestões automáticas na emissão:
+- `DATA_INICIO_CONTRATO`: a data de emissão (editável).
+- `DATA_FIM_SERVICO`: o **dia da última presença** da pessoa (editável).
+- `VALOR_DIARIA`: o valor vigente da função da pessoa (editável). Ao emitir o contrato, o valor
+  vira a diária individual a partir de `DATA_INICIO_CONTRATO`.
+
 ## Etapas propostas
 
 | Etapa | Entrega |
@@ -87,12 +140,12 @@ continua com uma conta só para o cadastro, os contratos e o check-in.
 
 ## O que ainda falta receber do dono
 
-1. **Lista de dados do formulário:** pessoais, da empresa e de pagamento (banco ou PIX?), e se
-   inclui CNH para motoristas.
-2. **2 ou 3 Cartões CNPJ reais**, para calibrar a leitura automática.
-3. **Modelos atuais** (Word ou PDF): contrato de prestação, distrato, aditivo e termo de
-   quitação de dívida.
-4. **Planilha dos prestadores atuais** (ou o formato dela), para a importação.
+1. ~~Lista de dados~~: recebida (ver "Variáveis").
+2. ~~Cartões CNPJ de exemplo~~: recebidos (2 PDFs e 1 imagem).
+3. Modelos: recebidos o contrato de motorista MEI, o distrato e a comunicação de rescisão.
+   **Faltam** o aditivo, o termo de quitação de dívida e, se houver, os contratos de ajudante
+   e de supervisor.
+4. **Planilha dos prestadores atuais:** o dono vai testar primeiro se consegue reunir os dados.
 
 ## Dúvidas abertas
 
@@ -105,5 +158,14 @@ continua com uma conta só para o cadastro, os contratos e o check-in.
    sistema recusa a linha e mostra numa lista de pendências para corrigir. Confirmar.
 4. **Termo de Quitação de Dívida:** quem pode emitir por padrão? Sugestão: só Gestão,
    Coordenação e Jurídico.
-5. **Variáveis do contrato de entrada:** quais dados variam por contrato e não vêm do cadastro?
-   Ex.: data de início, função e operação, valor da diária, base, prazo.
+5. ~~Variáveis do contrato de entrada~~: respondido (ver "Variáveis").
+6. **Concordância de gênero** ("portador/portadora", "brasileiro/brasileira"): perguntar o sexo
+   no cadastro e usar variáveis de concordância, ou o Jurídico reescreve os modelos em forma
+   neutra ("portador(a)")?
+7. **Função no contrato:** `{{FUNCAO_PRESTADA}}` vem da função operacional da pessoa
+   (ex.: "Motorista · Kibon SP"), com o texto editável na emissão? Ou é sempre digitada?
+8. **Distrato e inativação:** ao emitir o distrato, o sistema já deve **inativar** a pessoa a partir
+   de `DATA_FIM_SERVICO`?
+9. **Cartão recente:** exigir Cartão CNPJ emitido nos últimos 30 dias?
+10. **Conta bancária:** exigir que a conta (ou a chave PIX) seja **do CNPJ**, como diz a
+    cláusula 5.2? Ou aceitar conta do CPF do titular do MEI?
