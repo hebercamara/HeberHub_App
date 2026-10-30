@@ -12,6 +12,7 @@ export { consultarCnpj, enviarCadastroOficial, enviarCartaoCnpj, limparCartoes, 
 export { duplicarFuncoes, salvarFuncao, salvarOperacao, salvarValorDiaria } from './cadastros.js'
 export { encerrarEvento, meuEventoHoje, mudarStatusEvento, reabrirEvento, salvarEvento } from './eventosPresenca.js'
 export { fecharMes, reabrirMes } from './fechamentos.js'
+export { excluirPreCadastro, importarPrestadores } from './importacao.js'
 export { estornarLancamento, lancarAjuste, lancarEvento, registrarPresencaManual } from './lancamentos.js'
 export { registrarPresenca } from './presencas.js'
 export { aceitarTermo, limparCoordenadas } from './privacidade.js'

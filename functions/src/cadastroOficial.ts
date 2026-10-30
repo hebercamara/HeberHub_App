@@ -8,6 +8,7 @@ import { consultarReceita, type ResultadoReceita } from './receita.js'
 import { cnpjValido, limparCnpj } from './regras/cnpj.js'
 import { cpfValido, soDigitos } from './regras/cpf.js'
 import { VERSAO_TERMO } from './regras/privacidade.js'
+import { conferirVinculo, type LinhaImportada } from './regras/importacao.js'
 import { alertasDoCadastro, cnpjApto, type DadosReceita, type Endereco } from './regras/receita.js'
 import type { Funcao, Status } from './tipos.js'
 
@@ -70,7 +71,11 @@ export const consultarCnpj = onCall(async (req) => {
   const uid = exigirLogin(req)
   const cnpj = lerCnpj(req.data?.cnpj)
   if (await cnpjEmUso(null, cnpj, uid)) throw falha('Este CNPJ já está cadastrado no HeberHub. Fale com a equipe da sua base.', 'already-exists')
-  return resumo(await consultarReceita(cnpj))
+  // Quem já trabalha com a empresa: avisa e preenche só nome e função (nada sensível,
+  // porque qualquer um pode digitar um CNPJ).
+  const importado = await db.collection('preCadastros').doc(cnpj).get()
+  const daLista = importado.exists && importado.get('status') === 'aguardando' ? { nome: importado.get('nome') as string, funcao: importado.get('funcao') as Funcao | null } : null
+  return { ...resumo(await consultarReceita(cnpj)), daLista }
 })
 
 /** Envio do arquivo do Cartão CNPJ (PDF ou foto), em base64. Fica guardado por 60 dias. */
@@ -177,12 +182,23 @@ export const enviarCadastroOficial = onCall(async (req) => {
   await db.runTransaction(async (tx) => {
     const refUsuario = usuarios.doc(uid)
     const refCadastro = cadastros.doc(uid)
-    const [atual, cadastro] = [await tx.get(refUsuario), await tx.get(refCadastro)]
+    const refPre = db.collection('preCadastros').doc(cnpj)
+    const [atual, cadastro, pre] = [await tx.get(refUsuario), await tx.get(refCadastro), await tx.get(refPre)]
     const status = atual.get('status') as Status | undefined
     if (atual.exists && status !== 'pendente' && status !== 'recusado') throw falha('Seu cadastro já foi aprovado.', 'already-exists')
     if (!cadastro.get('cartao.caminho')) throw falha('Envie o Cartão CNPJ (PDF ou foto).')
     if (await cnpjEmUso(tx, cnpj, uid)) throw falha('Este CNPJ já está cadastrado no HeberHub. Fale com a equipe da sua base.', 'already-exists')
 
+    // CNPJ da planilha: vira pedido de vínculo, com a conferência dos dados.
+    const importado = pre.exists && pre.get('status') === 'aguardando' ? (pre.data() as LinhaImportada & { baseId: string | null; funcaoId: string | null }) : null
+    const vinculo = importado
+      ? {
+          cnpj,
+          baseId: importado.baseId,
+          funcaoId: importado.funcaoId,
+          conferencias: conferirVinculo(importado, { nome: representante.nome, cpf, telefone, email }),
+        }
+      : null
     tx.set(refUsuario, {
       email,
       nome: representante.nome,
@@ -196,6 +212,7 @@ export const enviarCadastroOficial = onCall(async (req) => {
       baseId: null,
       deviceId: null,
       cadastroOficial: true,
+      vinculo: vinculo !== null,
       termoVersao: VERSAO_TERMO,
       termoAceitoEm: agoraServidor(),
       criadoEm: atual.get('criadoEm') ?? agoraServidor(),
@@ -204,6 +221,7 @@ export const enviarCadastroOficial = onCall(async (req) => {
     tx.set(
       refCadastro,
       {
+        vinculo,
         empresa: dadosEmpresa,
         representante,
         contato: { telefone, email },

@@ -142,6 +142,11 @@ function FormularioOficial() {
     try {
       const resumo = await api.consultarCnpj({ cnpj: digitos })
       setConsulta({ tipo: 'pronta', resumo })
+      if (resumo.daLista) {
+        const { nome, funcao: daFuncao } = resumo.daLista
+        setRepresentante((r) => ({ ...r, nome: r.nome || nome }))
+        if (daFuncao) setFuncao((f) => f || daFuncao)
+      }
       // Preenche com o que a Receita tem; a pessoa pode corrigir.
       if (resumo.situacao === 'encontrado') setEmpresa((e) => ({ ...e, razaoSocial: resumo.razaoSocial, endereco: { ...resumo.endereco } }))
     } catch (err) {
@@ -214,6 +219,9 @@ function FormularioOficial() {
             ) : (
               <Aviso>Este CNPJ está com situação {resumo.situacaoCadastral} na Receita. Só CNPJ ATIVO pode ser cadastrado.</Aviso>
             ))}
+          {resumo?.daLista && (
+            <Aviso tipo="info">Encontramos você na lista de prestadores da empresa. Complete os dados; a equipe confere e liga ao seu cadastro.</Aviso>
+          )}
           {resumo?.situacao === 'nao-encontrado' && <Aviso>CNPJ não encontrado na Receita. Confira os números.</Aviso>}
           {resumo?.situacao === 'indisponivel' && <Aviso tipo="info">A Receita não respondeu agora. Preencha os dados; a equipe confere depois.</Aviso>}
           <label>

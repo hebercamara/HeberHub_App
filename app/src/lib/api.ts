@@ -1,16 +1,19 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
 import type { Faixa, Publico } from './eventos'
-import type { Alerta, DadosBancarios, DadosEmpresa, Funcao, Perfil, Representante } from './tipos'
+import type { Alerta, DadosBancarios, DadosEmpresa, Funcao, Perfil, RelatorioImportacao, Representante } from './tipos'
 import type { Endereco } from './documentos'
 
 function chamada<Entrada, Saida = { ok: true }>(nome: string) {
   return async (dados: Entrada) => (await httpsCallable<Entrada, Saida>(functions, nome)(dados)).data
 }
 
+/** O CNPJ está na planilha da empresa: só nome e função, nada sensível. */
+type DaLista = { nome: string; funcao: Funcao | null } | null
+
 export type ResumoReceita =
-  | { situacao: 'indisponivel' | 'nao-encontrado' }
-  | { situacao: 'encontrado'; apto: boolean; situacaoCadastral: string; razaoSocial: string; endereco: Endereco; cnae: { codigo: string; descricao: string }; mei: boolean }
+  | { situacao: 'indisponivel' | 'nao-encontrado'; daLista: DaLista }
+  | { situacao: 'encontrado'; daLista: DaLista; apto: boolean; situacaoCadastral: string; razaoSocial: string; endereco: Endereco; cnae: { codigo: string; descricao: string }; mei: boolean }
 
 export type EnvioCadastroOficial = {
   funcao: Funcao
@@ -30,6 +33,8 @@ export const api = {
   enviarCartaoCnpj: chamada<{ tipo: string; base64: string }>('enviarCartaoCnpj'),
   enviarCadastroOficial: chamada<EnvioCadastroOficial, { ok: true; alertas: Alerta[] }>('enviarCadastroOficial'),
   verCartaoCnpj: chamada<{ uid?: string }, { tipo: string; base64: string }>('verCartaoCnpj'),
+  importarPrestadores: chamada<{ cabecalho: string[]; linhas: string[][] }, RelatorioImportacao>('importarPrestadores'),
+  excluirPreCadastro: chamada<{ cnpj: string }>('excluirPreCadastro'),
   reconsultarReceita: chamada<{ uid: string }, { ok: true; situacao: string; apto: boolean }>('reconsultarReceita'),
   aceitarTermo: chamada<{ versao: number }>('aceitarTermo'),
   reivindicarCoordenacao: chamada<{ nome: string }>('reivindicarCoordenacao'),

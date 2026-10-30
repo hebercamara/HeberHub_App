@@ -13,6 +13,7 @@ import { Bases } from './paginas/configuracoes/Bases'
 import { Configuracoes } from './paginas/configuracoes/Configuracoes'
 import { Funcoes } from './paginas/configuracoes/Funcoes'
 import { Operacoes } from './paginas/configuracoes/Operacoes'
+import { Planilha } from './paginas/configuracoes/Planilha'
 import { Entrar } from './paginas/Entrar'
 import { Eventos } from './paginas/eventos/Eventos'
 import { Financeiro } from './paginas/financeiro/Financeiro'
@@ -69,6 +70,7 @@ function App() {
               <Route path="cadastros" element={<Cadastros />} />
               {coordenacao && (
                 <>
+                  <Route path="planilha" element={<Planilha />} />
                   <Route path="operacoes" element={<Operacoes />} />
                   <Route path="funcoes" element={<Funcoes />} />
                   <Route path="bases" element={<Bases />} />

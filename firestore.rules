@@ -35,6 +35,14 @@ service cloud.firestore {
       allow read: if logado() && (request.auth.uid == uid || financeiro());
     }
 
+    // Planilha de prestadores atuais (pré-cadastros) e relatórios: coordenação.
+    match /preCadastros/{cnpj} {
+      allow read: if coordenacao();
+    }
+    match /importacoes/{id} {
+      allow read: if coordenacao();
+    }
+
     match /bases/{baseId} {
       allow read: if logado();
     }

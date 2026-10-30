@@ -299,6 +299,17 @@ button {
   cursor: pointer;
 }
 
+/* Rótulo com cara de botão (para escolher arquivo). */
+label.botao {
+  display: inline-block;
+  padding: 12px 18px;
+  border-radius: 8px;
+  background: var(--cor-primaria);
+  color: var(--cor-primaria-texto);
+  font-weight: 600;
+  cursor: pointer;
+}
+
 button:disabled {
   opacity: 0.6;
   cursor: default;

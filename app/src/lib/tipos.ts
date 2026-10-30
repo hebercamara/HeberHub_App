@@ -146,8 +146,36 @@ export type DadosReceita = {
   fonte: string
 }
 
+/** Linha da planilha de prestadores atuais, em preCadastros/{cnpj}. */
+export type PreCadastro = {
+  id: string
+  cnpj: string
+  nome: string
+  razaoSocial?: string
+  cpf?: string
+  telefone?: string
+  email?: string
+  funcao?: Funcao | null
+  baseId: string | null
+  funcaoId: string | null
+  status: 'aguardando' | 'vinculado'
+  uid?: string
+}
+
+export type Conferencia = { campo: 'nome' | 'cpf' | 'telefone' | 'email'; importado: string; informado: string; confere: boolean }
+
+export type RelatorioImportacao = {
+  novas: number
+  atualizadas: number
+  recusadas: { linha: number; cnpj: string; motivo: string }[]
+  avisos: { linha: number; cnpj: string; motivo: string }[]
+  colunasIgnoradas: string[]
+}
+
 /** Documento em cadastrosOficiais/{uid}. */
 export type CadastroOficial = {
+  /** Pedido de vínculo com uma linha da planilha (mesmo CNPJ). */
+  vinculo?: { cnpj: string; baseId: string | null; funcaoId: string | null; conferencias: Conferencia[] } | null
   empresa: DadosEmpresa
   representante: Representante
   contato: { telefone: string; email: string }

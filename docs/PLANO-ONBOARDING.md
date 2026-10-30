@@ -204,7 +204,8 @@ Entregue em quatro partes, cada uma publicada e testada antes da próxima:
 - Termo de privacidade **versão 2**, cobrindo os dados novos. Todos aceitam de novo no próximo
   acesso.
 
-**A3. Importação e vínculo**
+**A3. Importação e vínculo** (pronta; o formulário de quem está na planilha vem só com nome e
+função, porque qualquer pessoa pode digitar um CNPJ e os demais dados são sensíveis)
 - Gestão e Coordenação sobem a planilha (Excel ou CSV). Cada linha vira um cadastro sem login.
   Linhas com CNPJ repetido ou inválido são recusadas e listadas como pendências.
 - Quem se cadastra pelo link com um CNPJ importado recebe o formulário já preenchido e gera um

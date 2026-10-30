@@ -17,6 +17,7 @@ import {
   NOMES_TIPO_CONTA,
   NOMES_TIPO_PIX,
   type CadastroOficial,
+  type Conferencia,
   type DadosBancarios,
   type EstadoCivil,
   type TipoConta,
@@ -82,8 +83,12 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
   const [funcaoId, setFuncaoId] = useState('')
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
-  const baseEscolhida = baseId || ativas[0]?.id || ''
   const oficial = useCadastroOficial(usuario.cadastroOficial ? usuario.id : null)
+  // Vínculo com a planilha: base e função vêm sugeridas de lá.
+  const sugestao = oficial?.vinculo
+  const baseSugerida = ativas.some((b) => b.id === sugestao?.baseId) ? sugestao!.baseId! : ''
+  const funcaoEscolhida = funcaoId || sugestao?.funcaoId || ''
+  const baseEscolhida = baseId || baseSugerida || ativas[0]?.id || ''
   // Cadastro oficial só é aprovado com a Receita consultada e o CNPJ ATIVO.
   const bloqueado = usuario.cadastroOficial === true && (!oficial?.receita || oficial.receita.situacao !== 'ATIVA')
 
@@ -92,7 +97,7 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
     setErro('')
     setEnviando(true)
     try {
-      await api.aprovarCadastro({ uid: usuario.id, aprovar, baseId: aprovar ? baseEscolhida : undefined, funcaoId: aprovar ? funcaoId || null : undefined })
+      await api.aprovarCadastro({ uid: usuario.id, aprovar, baseId: aprovar ? baseEscolhida : undefined, funcaoId: aprovar ? funcaoEscolhida || null : undefined })
     } catch (e) {
       setErro(mensagemDeErro(e))
       setEnviando(false)
@@ -127,7 +132,7 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
           </select>
         </label>
       )}
-      {funcoes.length > 0 && <SeletorFuncao funcoes={funcoes} valor={funcaoId} aoMudar={setFuncaoId} rotulo="Função (define o valor da diária)" />}
+      {funcoes.length > 0 && <SeletorFuncao funcoes={funcoes} valor={funcaoEscolhida} aoMudar={setFuncaoId} rotulo="Função (define o valor da diária)" />}
       {ativas.length === 0 && <Aviso tipo="info">Cadastre uma base antes de aprovar prestadores.</Aviso>}
       <Aviso>{erro}</Aviso>
       <div className="acoes">
@@ -171,6 +176,7 @@ function DetalheOficial({ uid, cadastro }: { uid: string; cadastro: CadastroOfic
 
   return (
     <div className="pilha">
+      {cadastro.vinculo && <ConferenciaVinculo conferencias={cadastro.vinculo.conferencias} />}
       {receita ? (
         receita.situacao === 'ATIVA' ? (
           <Aviso tipo="ok">
@@ -240,5 +246,42 @@ function ContaBancaria({ uid }: { uid: string }) {
       {conta.banco} · agência {conta.agencia} · conta {NOMES_TIPO_CONTA[conta.tipoConta as TipoConta].toLowerCase()} {conta.conta} · PIX (
       {NOMES_TIPO_PIX[conta.pixTipo as TipoPix]}) {conta.pixChave}
     </>
+  )
+}
+
+const NOMES_CAMPO = { nome: 'Nome', cpf: 'CPF', telefone: 'Telefone', email: 'E-mail' }
+
+/** Pedido de vínculo: o que veio da planilha comparado com o que a pessoa informou. */
+function ConferenciaVinculo({ conferencias }: { conferencias: Conferencia[] }) {
+  const diferentes = conferencias.filter((c) => !c.confere).length
+  return (
+    <div className="pilha">
+      <Aviso tipo={diferentes ? 'info' : 'ok'}>
+        Pedido de vínculo: este CNPJ está na planilha da empresa.{' '}
+        {diferentes ? `${diferentes} dado(s) diferente(s) da planilha; confira antes de aprovar.` : 'Os dados conferem com a planilha.'}
+      </Aviso>
+      {conferencias.length > 0 && (
+        <table className="tabela">
+          <thead>
+            <tr>
+              <th>Dado</th>
+              <th>Planilha</th>
+              <th>Cadastro</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {conferencias.map((c) => (
+              <tr key={c.campo}>
+                <td>{NOMES_CAMPO[c.campo]}</td>
+                <td>{c.campo === 'cpf' ? mascararCpf(c.importado) : c.importado}</td>
+                <td>{c.campo === 'cpf' ? mascararCpf(c.informado) : c.informado}</td>
+                <td>{c.confere ? '✓ confere' : '✗ diferente'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   )
 }

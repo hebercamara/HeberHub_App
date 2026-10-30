@@ -132,14 +132,36 @@ seção **Cadastros**.
 2. O cadastro fica **pendente**, e a tela dele diz "aguardando aprovação".
 3. Uma **bolinha vermelha** com o número de pendentes aparece no botão Configurações para ADM
    e coordenação.
+   **Quem já trabalha com a empresa** (está na planilha importada, ver 6.2.1): ao digitar o
+   CNPJ, o app avisa "Encontramos você na lista" e preenche só nome e função (nada sensível,
+   porque qualquer um pode digitar um CNPJ). O envio vira um **pedido de vínculo**.
 4. Em Configurações › Cadastros, alguém da equipe vê os dados, a situação na Receita, os
    avisos e o Cartão CNPJ (botão "Ver Cartão CNPJ"), e aprova escolhendo a **base**
    (obrigatória) e a **função** (opcional, define o valor), ou recusa. **Só aprova com a Receita
    consultada e o CNPJ ATIVO** (botão "Consultar a Receita de novo"). A conta bancária aparece só
    para quem vê valores. A tela do prestador libera sozinha.
+   No pedido de vínculo, uma tabela compara planilha e cadastro (nome, CPF, telefone, e-mail:
+   "confere" ou "diferente"), e base e função vêm sugeridas da planilha. Ao aprovar, a linha
+   da planilha fica "Vinculado".
 5. ADMs e outras coordenações são criados pela coordenação ou pela Gestão (Usuários › Novo
    acesso da equipe), com base e função opcionais; recebem um e-mail para criar a senha.
    Gestão e Jurídico só a Gestão cria.
+
+### 6.2.1 Planilha dos prestadores atuais (onboarding A3)
+- Configurações › **Planilha** (Gestão e coordenação importam; Jurídico consulta): botão
+  "Baixar modelo" (Excel) e "Importar planilha" (.xlsx ou .csv).
+- Colunas: **CNPJ\*** e **Nome do representante\*** obrigatórias; Razão social, CPF, Telefone,
+  E-mail, Motorista ou ajudante, Base e Função (diária) opcionais. Aceita nomes parecidos
+  ("Nome", "Celular", "Email"…) e ignora colunas desconhecidas. Zeros que o Excel tira do CNPJ
+  e do CPF são completados.
+- Cada linha vira um **pré-cadastro sem login** em `preCadastros/{cnpj}`. São **recusadas**,
+  com o motivo e o número da linha: CNPJ ou CPF inválido, e-mail inválido, CNPJ repetido na
+  planilha (todas as linhas dele), CNPJ que já tem cadastro no app ou já vinculado. Base ou
+  função com nome desconhecido só geram aviso.
+- **Importar de novo atualiza** as linhas que ainda aguardam, preenchendo só o que a planilha
+  nova traz (célula vazia mantém o que já havia).
+- A lista mostra quem já se cadastrou ("Vinculado") e quem ainda não ("Aguardando cadastro");
+  o que aguarda pode ser removido. O último relatório fica em `importacoes`.
 
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
@@ -323,6 +345,8 @@ docs/CONTEXTO.md          este documento
 | `ausencias/{uid_data}` | falta ou não escalado: tipo, justificativa, baseId, quem marcou | ADM e coordenação |
 | `cadastrosOficiais/{uid}` | empresa, representante, contato, consulta à Receita, avisos, Cartão CNPJ (caminho no Storage até 60 dias) | a própria pessoa; a equipe |
 | `dadosBancarios/{uid}` | banco, agência, conta, tipo, chave PIX, declaração de titularidade | a própria pessoa; quem vê valores (não o ADM comum) |
+| `preCadastros/{cnpj}` | linha da planilha: nome, CPF, telefone, e-mail, tipo, baseId, funcaoId, status (aguardando, vinculado), uid | coordenação, Gestão e Jurídico |
+| `importacoes/{id}` | relatório de cada importação (novas, atualizadas, recusadas, avisos) | coordenação, Gestão e Jurídico |
 | `consultasCnpj/{cnpj}` | última resposta da Receita (vale 24 h) | **ninguém** (só o servidor) |
 | `configuracoes/aparencia` | cores primária, secundária e fundo | **pública** (aparece no login) |
 | `auditoria/{id}` | ação, autor, alvo, detalhes, data e hora | só coordenação |
@@ -335,6 +359,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | Área | Funções |
 | --- | --- |
 | Cadastro oficial | `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
+| Planilha | `importarPrestadores`, `excluirPreCadastro` |
 | Usuários | `aprovarCadastro`, `criarUsuarioInterno`, `atualizarUsuario`, `reivindicarCoordenacao` (cria a Gestão), `assumirGestao` |
 | Presença | `registrarPresenca` (QR ou localização), `registrarPresencaManual`, `marcarAusencia` (falta, não escalado ou limpar; retira presença e estorna a diária), `gerarQrDoDia` |
 | Cadastros | `salvarBase`, `salvarOperacao`, `salvarFuncao`, `duplicarFuncoes`, `salvarValorDiaria`, `salvarAparencia` |
@@ -384,8 +409,9 @@ Acompanhar a Auditoria (recusas) para calibrar raio e precisão, coletar o que f
 então liberar para os cerca de 200 prestadores (teto previsto: 400).
 
 **Em andamento:** onboarding com acareação de dados e geração de contratos, em
-`docs/PLANO-ONBOARDING.md`. Prontas a **A1** (perfis Gestão e Jurídico, CNPJ único) e a **A2** (cadastro
-oficial com Receita, Cartão CNPJ e conta); próxima, a **A3** (importação da planilha e vínculo).
+`docs/PLANO-ONBOARDING.md`. Prontas a **A1** (perfis Gestão e Jurídico, CNPJ único), a **A2** (cadastro
+oficial com Receita, Cartão CNPJ e conta) e a **A3** (planilha e vínculo); próxima, a **A4**
+(conferência das divergências e Cadastro Oficial em versões).
 
 **Pendências e ideias registradas:**
 - **Escala por carro** (planejada pelo dono, "com calma"): hoje existe só a marca NE por dia.
@@ -409,6 +435,7 @@ oficial com Receita, Cartão CNPJ e conta); próxima, a **A3** (importação da 
 | Fase 3 | Termo LGPD, limpeza de coordenadas em 90 dias, auditoria, e-mails em português |
 | Onboarding A1 | Perfis Gestão e Jurídico; só a Gestão dá esses perfis; um CNPJ por pessoa |
 | Onboarding A2 | Cadastro oficial completo, consulta à Receita, Cartão CNPJ (60 dias), conta do CNPJ, termo v2 |
+| Onboarding A3 | Planilha dos prestadores atuais (modelo, importação, recusas com motivo) e pedido de vínculo conferido |
 | Depois | Falta e não escalado no calendário (retirar presença com estorno); Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)

@@ -57,6 +57,12 @@ export const aprovarCadastro = onCall(async (req) => {
       if (!receita) throw falha('A consulta à Receita não foi feita. Use "Consultar a Receita de novo" antes de aprovar.', 'failed-precondition')
       if (!cnpjApto(receita.situacao)) throw falha(`CNPJ com situação ${receita.situacao} na Receita: não pode ser aprovado.`, 'failed-precondition')
     }
+    // Vínculo com a planilha: o pré-cadastro passa a apontar para esta pessoa.
+    if (aprovar && atual.get('vinculo') === true) {
+      const refPre = db.collection('preCadastros').doc(atual.get('cnpj') as string)
+      const pre = await tx.get(refPre)
+      if (pre.exists && pre.get('status') === 'aguardando') tx.update(refPre, { status: 'vinculado', uid, vinculadoPor: autor, vinculadoEm: agoraServidor() })
+    }
     const mudancas = aprovar
       ? { status: 'ativo' as const, baseId, funcaoId, aprovadoPor: autor, aprovadoEm: agoraServidor() }
       : { status: 'recusado' as const }

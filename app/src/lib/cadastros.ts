@@ -1,7 +1,7 @@
 import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { db } from './firebase'
-import type { FuncaoOperacional, Operacao, Usuario } from './tipos'
+import type { FuncaoOperacional, Operacao, PreCadastro, Usuario } from './tipos'
 
 function useColecao<T>(nome: string, campoOrdem: string): T[] {
   const [itens, setItens] = useState<T[]>([])
@@ -15,6 +15,7 @@ function useColecao<T>(nome: string, campoOrdem: string): T[] {
 export const useOperacoes = () => useColecao<Operacao>('operacoes', 'nome')
 export const useFuncoes = () => useColecao<FuncaoOperacional>('funcoes', 'nome')
 export const useUsuarios = () => useColecao<Usuario>('usuarios', 'nome')
+export const usePreCadastros = () => useColecao<PreCadastro>('preCadastros', 'nome')
 
 /** "Motorista · Kibon SP" */
 export function nomeDaFuncao(funcao: FuncaoOperacional | undefined): string {

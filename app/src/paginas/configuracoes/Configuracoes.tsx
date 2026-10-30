@@ -18,6 +18,7 @@ export function Configuracoes() {
         </NavLink>
         {ehCoordenacao(perfil) && (
           <>
+            <NavLink to="/configuracoes/planilha">Planilha</NavLink>
             <NavLink to="/configuracoes/operacoes">Operações</NavLink>
             <NavLink to="/configuracoes/funcoes">Funções e diárias</NavLink>
             <NavLink to="/configuracoes/bases">Bases</NavLink>
