@@ -1,4 +1,5 @@
 // Espelho dos tipos do servidor (functions/src/tipos.ts).
+import type { Endereco } from './documentos'
 /** Gestão: acesso a tudo. Jurídico: lê tudo e altera só a parte de contratos. */
 export type Perfil = 'prestador' | 'adm' | 'coordenacao' | 'gestao' | 'juridico'
 export type Status = 'pendente' | 'ativo' | 'inativo' | 'recusado'
@@ -21,6 +22,8 @@ export type Usuario = {
   funcao?: Funcao
   razaoSocial?: string
   cnpj?: string
+  /** Enviou o cadastro oficial completo (onboarding). */
+  cadastroOficial?: boolean
 }
 
 export type Base = {
@@ -103,3 +106,52 @@ export function editaCoordenacao(perfil: Perfil | null): boolean {
 }
 export const NOMES_FUNCAO: Record<Funcao, string> = { motorista: 'Motorista', ajudante: 'Ajudante' }
 export const NOMES_STATUS: Record<Status, string> = { pendente: 'Aguardando aprovação', ativo: 'Ativo', inativo: 'Inativo', recusado: 'Recusado' }
+
+// Cadastro oficial (onboarding)
+export type EstadoCivil = 'solteiro' | 'casado' | 'divorciado' | 'viuvo' | 'separado' | 'uniao-estavel'
+export const NOMES_ESTADO_CIVIL: Record<EstadoCivil, string> = {
+  solteiro: 'Solteiro(a)',
+  casado: 'Casado(a)',
+  divorciado: 'Divorciado(a)',
+  viuvo: 'Viúvo(a)',
+  separado: 'Separado(a) judicialmente',
+  'uniao-estavel': 'União estável',
+}
+export type TipoConta = 'corrente' | 'poupanca' | 'pagamento'
+export const NOMES_TIPO_CONTA: Record<TipoConta, string> = { corrente: 'Corrente', poupanca: 'Poupança', pagamento: 'Conta de pagamento' }
+export type TipoPix = 'cnpj' | 'email' | 'telefone' | 'aleatoria'
+export const NOMES_TIPO_PIX: Record<TipoPix, string> = { cnpj: 'CNPJ', email: 'E-mail', telefone: 'Telefone', aleatoria: 'Chave aleatória' }
+
+export type DadosEmpresa = { cnpj: string; razaoSocial: string; endereco: Endereco }
+export type Representante = {
+  nome: string
+  sexo: 'F' | 'M' | ''
+  cpf: string
+  rg: string
+  nacionalidade: string
+  estadoCivil: EstadoCivil | ''
+  profissao: string
+  endereco: Endereco
+}
+export type DadosBancarios = { banco: string; agencia: string; conta: string; tipoConta: TipoConta | ''; pixTipo: TipoPix | ''; pixChave: string; declaracaoTitular: true }
+export type Alerta = { codigo: string; mensagem: string }
+export type DadosReceita = {
+  cnpj: string
+  razaoSocial: string
+  situacao: string
+  naturezaJuridica: string
+  mei: boolean
+  cnae: { codigo: string; descricao: string }
+  endereco: Endereco
+  fonte: string
+}
+
+/** Documento em cadastrosOficiais/{uid}. */
+export type CadastroOficial = {
+  empresa: DadosEmpresa
+  representante: Representante
+  contato: { telefone: string; email: string }
+  receita: DadosReceita | null
+  alertas: Alerta[]
+  cartao?: { caminho: string | null; tipo: string }
+}

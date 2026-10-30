@@ -29,7 +29,7 @@ describe('privacidade (LGPD)', () => {
     const leitura = { qr, lat: BASE.lat, lng: BASE.lng, precisao: 10, deviceId: 'aparelho-carla' }
     expect(await carla.chamar<Checkin>('registrarPresenca', leitura)).toMatchObject({ ok: false, motivo: 'termo-pendente' })
     await expect(carla.chamar('aceitarTermo', { versao: 99 })).rejects.toThrow(/atualizado/)
-    await carla.chamar('aceitarTermo', { versao: 1 })
+    await carla.chamar('aceitarTermo', { versao: 2 })
     expect((await carla.chamar<Checkin>('registrarPresenca', leitura)).ok).toBe(true)
 
     // ADM comum lança presença manual (sem ver valores), mas não lança dinheiro.

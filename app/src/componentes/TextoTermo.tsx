@@ -13,7 +13,16 @@ export function TextoTermo() {
       <h3>Quais dados coletamos</h3>
       <ul>
         <li>
-          <strong>Cadastro:</strong> nome, e-mail, telefone e, para prestadores, razão social, CNPJ e função.
+          <strong>Cadastro:</strong> nome, e-mail, telefone e, para prestadores, razão social, CNPJ, endereço da empresa e função.
+        </li>
+        <li>
+          <strong>Representante da empresa:</strong> CPF, RG, sexo, nacionalidade, estado civil, profissão e endereço, usados para preencher os contratos.
+        </li>
+        <li>
+          <strong>Conta para pagamento:</strong> banco, agência, conta e chave PIX da empresa.
+        </li>
+        <li>
+          <strong>Cartão CNPJ:</strong> o arquivo (PDF ou foto) que você envia no cadastro.
         </li>
         <li>
           <strong>Localização:</strong> a posição do GPS do celular <strong>somente no momento em que você lê o QR Code</strong> do check-in. O app não acompanha
@@ -31,6 +40,8 @@ export function TextoTermo() {
       <ul>
         <li>Confirmar que você estava na base no dia do check-in.</li>
         <li>Calcular as diárias e o fechamento mensal.</li>
+        <li>Conferir a empresa na Receita Federal (situação do CNPJ, atividade e endereço) e preparar os contratos de prestação de serviço.</li>
+        <li>Fazer os pagamentos na conta da empresa.</li>
         <li>Evitar fraudes e registrar quem fez cada alteração (auditoria).</li>
       </ul>
 
@@ -38,7 +49,8 @@ export function TextoTermo() {
       <ul>
         <li>Você vê as suas próprias presenças.</li>
         <li>A equipe administrativa vê a lista de presenças do dia.</li>
-        <li>Valores financeiros são vistos apenas pela coordenação e por quem ela autorizar.</li>
+        <li>A equipe administrativa que aprova cadastros vê os dados da empresa e do representante.</li>
+        <li>Valores financeiros e dados bancários são vistos apenas pela gestão, pela coordenação, pelo jurídico e por quem a coordenação autorizar.</li>
         <li>Os dados não são vendidos nem compartilhados com terceiros para outros fins.</li>
       </ul>
 
@@ -47,7 +59,10 @@ export function TextoTermo() {
         <li>
           A localização exata de cada check-in é <strong>apagada automaticamente após 90 dias</strong>. Fica guardada apenas a distância até a base.
         </li>
-        <li>Presenças, diárias e fechamentos ficam guardados pelo tempo necessário para cumprir obrigações legais e contratuais.</li>
+        <li>
+          O arquivo do Cartão CNPJ é <strong>apagado automaticamente após 60 dias</strong>. Ficam guardados apenas os dados conferidos.
+        </li>
+        <li>Cadastro, contratos, presenças, diárias e fechamentos ficam guardados, mesmo após o fim da prestação de serviço, pelo tempo necessário para cumprir obrigações legais e contratuais.</li>
       </ul>
 
       <h3>Seus direitos</h3>

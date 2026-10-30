@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// O app não lê nem grava arquivos direto: tudo passa pelas Cloud Functions
+// (por exemplo, o Cartão CNPJ, que é apagado após 60 dias).
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{caminho=**} {
+      allow read, write: if false;
+    }
+  }
+}

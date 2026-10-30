@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
+import { getStorage } from 'firebase-admin/storage'
 import { FieldValue, getFirestore, type Transaction, type WriteBatch } from 'firebase-admin/firestore'
 import { setGlobalOptions } from 'firebase-functions/v2'
 import { HttpsError, type CallableRequest } from 'firebase-functions/v2/https'
@@ -17,6 +18,14 @@ export const adminAuth = getAuth()
 export const agoraServidor = FieldValue.serverTimestamp
 
 export const emEmulador = process.env.FUNCTIONS_EMULATOR === 'true'
+
+/**
+ * Bucket do Storage. Nas funções, o Firebase informa o bucket padrão (FIREBASE_CONFIG);
+ * nos scripts de teste, usa o padrão dos emuladores.
+ */
+export function balde() {
+  return process.env.FIREBASE_CONFIG ? getStorage().bucket() : getStorage().bucket(`${process.env.GCLOUD_PROJECT}.appspot.com`)
+}
 
 /**
  * Hora atual. Só nos emuladores, RELOGIO_FIXO (ex.: 2026-11-03T10:00:00Z)

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { CNPJ_VALIDO, fecharApps, HOJE, novoUsuario, PROJETO } from './apoio.js'
+import { CNPJ_VALIDO, dadosCadastro, enviarCadastro, fecharApps, HOJE, novoUsuario, PROJETO } from './apoio.js'
 
 const BASE = { lat: -23.55, lng: -46.63 }
 
@@ -33,15 +33,15 @@ describe('fluxo da Fase 1', () => {
     expect(baseId).toBeTruthy()
   })
 
-  it('prestador faz o autocadastro e fica pendente', async () => {
-    await expect(
-      prestador.chamar('concluirCadastro', { nome: 'João Sócio', telefone: '11999990000', funcao: 'motorista', razaoSocial: 'João Transportes ME', cnpj: '11.222.333/0001-80', aceiteTermo: 1 }),
-    ).rejects.toThrow(/CNPJ inválido/)
-    const cadastro = { nome: 'João Sócio', telefone: '11999990000', funcao: 'motorista', razaoSocial: 'João Transportes ME', cnpj: CNPJ_VALIDO }
-    await expect(prestador.chamar('concluirCadastro', cadastro)).rejects.toThrow(/termo de privacidade/)
-    await prestador.chamar('concluirCadastro', { ...cadastro, aceiteTermo: 1 })
+  it('prestador faz o cadastro oficial e fica pendente', async () => {
+    const cadastro = dadosCadastro('João da Silva', CNPJ_VALIDO, { razaoSocial: 'João da Silva 52998224725' })
+    await expect(prestador.chamar('consultarCnpj', { cnpj: '11.222.333/0001-80' })).rejects.toThrow(/CNPJ inválido/)
+    await expect(prestador.chamar('enviarCadastroOficial', cadastro)).rejects.toThrow(/Cartão CNPJ/)
+    await expect(prestador.chamar('enviarCadastroOficial', { ...cadastro, aceiteTermo: 1 })).rejects.toThrow(/termo de privacidade/)
+    const r = await enviarCadastro(prestador, cadastro)
+    expect(r.alertas).toEqual([])
     // Reenviar o próprio cadastro com o mesmo CNPJ continua permitido.
-    await prestador.chamar('concluirCadastro', { ...cadastro, aceiteTermo: 1 })
+    await enviarCadastro(prestador, cadastro)
     const meu = await getDoc(doc(prestador.db, 'usuarios', prestador.uid))
     expect(meu.get('status')).toBe('pendente')
   })
@@ -91,7 +91,7 @@ describe('fluxo da Fase 1', () => {
 
   it('coordenação vê as presenças do dia na base', async () => {
     const lista = await getDocs(query(collection(coordenacao.db, 'presencas'), where('baseId', '==', baseId), where('data', '==', HOJE)))
-    expect(lista.docs.map((d) => d.get('nome'))).toEqual(['João Sócio'])
+    expect(lista.docs.map((d) => d.get('nome'))).toEqual(['João da Silva'])
   })
 
   it('inativar o prestador bloqueia novos check-ins', async () => {

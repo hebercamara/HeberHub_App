@@ -111,15 +111,32 @@ seção **Cadastros**.
    o perfil é ativado.
 3. Ela aceita o termo de privacidade e passa a criar os demais acessos.
 
-### 6.2 Cadastro e aprovação de prestador
-1. O prestador abre o app e toca em "Cadastre-se": informa e-mail, senha, razão social,
-   CNPJ (validado pelos dígitos), nome do sócio, telefone e tipo (motorista ou ajudante), e
-   **aceita o termo de privacidade** (obrigatório).
+### 6.2 Cadastro e aprovação de prestador (cadastro oficial, onboarding A2)
+1. O prestador toca em "Cadastre-se". **Passo 1:** cria o login (e-mail e senha).
+   **Passo 2:** preenche o cadastro oficial:
+   - **Empresa:** ao digitar o CNPJ, o servidor consulta a **Receita** (BrasilAPI; ReceitaWS de
+     reserva; guarda a consulta por 24 h em `consultasCnpj`) e preenche razão social e endereço.
+     CNPJ já usado por outra pessoa é recusado na hora. CNPJ fora de **ATIVA** não entra.
+   - **Cartão CNPJ** (PDF ou foto; foto é reduzida no celular), enviado ao servidor, que guarda
+     no Storage por **60 dias** (função agendada `limparCartoes`, 03:30).
+   - **Representante:** nome, CPF (validado), RG, sexo, nacionalidade, estado civil, profissão
+     e endereço (CEP preenche a rua; opção "mesmo endereço da empresa").
+   - **Contato e função** (motorista ou ajudante).
+   - **Conta para pagamento:** banco, agência, conta, tipo e chave PIX. Conta e chave têm de ser
+     do CNPJ: chave do tipo CPF é recusada; chave do tipo CNPJ tem de ser o próprio CNPJ; a
+     pessoa marca a declaração de titularidade.
+   - **Aceite do termo de privacidade** (versão 2).
+   O servidor gera **avisos** para quem aprova (não travam): atividade (CNAE) fora de
+   transporte, CPF diferente do que aparece no nome do MEI, razão social diferente da Receita,
+   Receita fora do ar.
 2. O cadastro fica **pendente**, e a tela dele diz "aguardando aprovação".
 3. Uma **bolinha vermelha** com o número de pendentes aparece no botão Configurações para ADM
    e coordenação.
-4. Em Configurações › Cadastros, alguém da equipe aprova escolhendo a **base** (obrigatória)
-   e a **função** (opcional, define o valor), ou recusa. A tela do prestador libera sozinha.
+4. Em Configurações › Cadastros, alguém da equipe vê os dados, a situação na Receita, os
+   avisos e o Cartão CNPJ (botão "Ver Cartão CNPJ"), e aprova escolhendo a **base**
+   (obrigatória) e a **função** (opcional, define o valor), ou recusa. **Só aprova com a Receita
+   consultada e o CNPJ ATIVO** (botão "Consultar a Receita de novo"). A conta bancária aparece só
+   para quem vê valores. A tela do prestador libera sozinha.
 5. ADMs e outras coordenações são criados pela coordenação ou pela Gestão (Usuários › Novo
    acesso da equipe), com base e função opcionais; recebem um e-mail para criar a senha.
    Gestão e Jurídico só a Gestão cria.
@@ -215,12 +232,16 @@ Tocar em **qualquer dia** do calendário (ou em "Alterar" na lista do dia) abre 
   menu do dia (6.4.1).
 
 ### 6.8 Privacidade (LGPD)
-- O termo é versionado (`VERSAO_TERMO`, hoje 1, no app e no servidor). Mudou o texto?
+- O termo é versionado (`VERSAO_TERMO`, hoje **2**, no app e no servidor; a versão 2 incluiu os
+  dados do cadastro oficial e da conta). Mudou o texto?
   Aumente a versão nos dois lados e todos aceitam de novo.
 - O texto está em `app/src/componentes/TextoTermo.tsx`. **É uma base redigida no projeto e
   ainda precisa de revisão jurídica.** Página pública: `/privacidade`.
 - A função agendada `limparCoordenadas` roda todo dia às 03:00 (Brasília) e apaga latitude,
   longitude e precisão das presenças com mais de 90 dias.
+- `limparCartoes` roda às 03:30 e apaga o arquivo do Cartão CNPJ com mais de 60 dias (os dados
+  conferidos ficam). Arquivos ficam no Storage, fechado para o app (`storage.rules` nega tudo):
+  tudo passa pelas funções.
 - A **Auditoria** registra todas as ações (quem, quando, para quem e os detalhes), inclusive
   as recusas de check-in.
 
@@ -300,6 +321,9 @@ docs/CONTEXTO.md          este documento
 | `fechamentos/{AAAA-MM}` | status, totais por pessoa, líquido, reabertura | coordenação e ADM Financeiro |
 | `eventosPresenca/{id}` | eventos de presença: dias, público, regras (faixas), status, resultado congelado | **só coordenação** |
 | `ausencias/{uid_data}` | falta ou não escalado: tipo, justificativa, baseId, quem marcou | ADM e coordenação |
+| `cadastrosOficiais/{uid}` | empresa, representante, contato, consulta à Receita, avisos, Cartão CNPJ (caminho no Storage até 60 dias) | a própria pessoa; a equipe |
+| `dadosBancarios/{uid}` | banco, agência, conta, tipo, chave PIX, declaração de titularidade | a própria pessoa; quem vê valores (não o ADM comum) |
+| `consultasCnpj/{cnpj}` | última resposta da Receita (vale 24 h) | **ninguém** (só o servidor) |
 | `configuracoes/aparencia` | cores primária, secundária e fundo | **pública** (aparece no login) |
 | `auditoria/{id}` | ação, autor, alvo, detalhes, data e hora | só coordenação |
 
@@ -310,7 +334,8 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 
 | Área | Funções |
 | --- | --- |
-| Usuários | `concluirCadastro`, `aprovarCadastro`, `criarUsuarioInterno`, `atualizarUsuario`, `reivindicarCoordenacao` (cria a Gestão), `assumirGestao` |
+| Cadastro oficial | `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
+| Usuários | `aprovarCadastro`, `criarUsuarioInterno`, `atualizarUsuario`, `reivindicarCoordenacao` (cria a Gestão), `assumirGestao` |
 | Presença | `registrarPresenca` (QR ou localização), `registrarPresencaManual`, `marcarAusencia` (falta, não escalado ou limpar; retira presença e estorna a diária), `gerarQrDoDia` |
 | Cadastros | `salvarBase`, `salvarOperacao`, `salvarFuncao`, `duplicarFuncoes`, `salvarValorDiaria`, `salvarAparencia` |
 | Financeiro | `lancarAjuste`, `lancarEvento` (lançamento em grupo), `estornarLancamento`, `fecharMes`, `reabrirMes` |
@@ -359,8 +384,8 @@ Acompanhar a Auditoria (recusas) para calibrar raio e precisão, coletar o que f
 então liberar para os cerca de 200 prestadores (teto previsto: 400).
 
 **Em andamento:** onboarding com acareação de dados e geração de contratos, em
-`docs/PLANO-ONBOARDING.md`. Pronta a parte **A1** (perfis Gestão e Jurídico, CNPJ único);
-próxima, a **A2** (cadastro oficial pelo link novo, consulta à Receita).
+`docs/PLANO-ONBOARDING.md`. Prontas a **A1** (perfis Gestão e Jurídico, CNPJ único) e a **A2** (cadastro
+oficial com Receita, Cartão CNPJ e conta); próxima, a **A3** (importação da planilha e vínculo).
 
 **Pendências e ideias registradas:**
 - **Escala por carro** (planejada pelo dono, "com calma"): hoje existe só a marca NE por dia.
@@ -383,6 +408,7 @@ próxima, a **A2** (cadastro oficial pelo link novo, consulta à Receita).
 | Fase 2 | Operações, funções, valores com histórico, diária automática, adicionais, descontos, estorno, presença manual, fechamento, Excel e PDF, janela por base, check-in de todos os perfis |
 | Fase 3 | Termo LGPD, limpeza de coordenadas em 90 dias, auditoria, e-mails em português |
 | Onboarding A1 | Perfis Gestão e Jurídico; só a Gestão dá esses perfis; um CNPJ por pessoa |
+| Onboarding A2 | Cadastro oficial completo, consulta à Receita, Cartão CNPJ (60 dias), conta do CNPJ, termo v2 |
 | Depois | Falta e não escalado no calendário (retirar presença com estorno); Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)

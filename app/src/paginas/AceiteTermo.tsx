@@ -9,7 +9,7 @@ import { useSessao } from '../lib/sessao'
 
 /** Exigido de quem ainda não aceitou a versão atual do termo. */
 export function AceiteTermo() {
-  const { sair } = useSessao()
+  const { usuario, sair } = useSessao()
   const [marcado, setMarcado] = useState(false)
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -28,7 +28,9 @@ export function AceiteTermo() {
 
   return (
     <TelaSimples titulo="Termo de privacidade">
-      <p className="suave">Antes de continuar, leia como o HeberHub usa os seus dados.</p>
+      <p className="suave">
+        {usuario?.termoVersao ? 'O termo foi atualizado (novos dados do cadastro e dos contratos). Leia e aceite de novo para continuar.' : 'Antes de continuar, leia como o HeberHub usa os seus dados.'}
+      </p>
       <TextoTermo />
       <label className="opcao">
         <input type="checkbox" checked={marcado} onChange={(e) => setMarcado(e.target.checked)} />

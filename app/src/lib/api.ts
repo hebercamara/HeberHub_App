@@ -1,10 +1,24 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
 import type { Faixa, Publico } from './eventos'
-import type { Funcao, Perfil } from './tipos'
+import type { Alerta, DadosBancarios, DadosEmpresa, Funcao, Perfil, Representante } from './tipos'
+import type { Endereco } from './documentos'
 
 function chamada<Entrada, Saida = { ok: true }>(nome: string) {
   return async (dados: Entrada) => (await httpsCallable<Entrada, Saida>(functions, nome)(dados)).data
+}
+
+export type ResumoReceita =
+  | { situacao: 'indisponivel' | 'nao-encontrado' }
+  | { situacao: 'encontrado'; apto: boolean; situacaoCadastral: string; razaoSocial: string; endereco: Endereco; cnae: { codigo: string; descricao: string }; mei: boolean }
+
+export type EnvioCadastroOficial = {
+  funcao: Funcao
+  telefone: string
+  aceiteTermo: number
+  empresa: DadosEmpresa
+  representante: Representante
+  banco: Omit<DadosBancarios, 'declaracaoTitular'> & { declaracaoTitular: boolean }
 }
 
 export type RespostaCheckin =
@@ -12,7 +26,11 @@ export type RespostaCheckin =
   | { ok: false; motivo: string; mensagem: string }
 
 export const api = {
-  concluirCadastro: chamada<{ nome: string; telefone: string; funcao: Funcao; razaoSocial: string; cnpj: string; aceiteTermo: number }>('concluirCadastro'),
+  consultarCnpj: chamada<{ cnpj: string }, ResumoReceita>('consultarCnpj'),
+  enviarCartaoCnpj: chamada<{ tipo: string; base64: string }>('enviarCartaoCnpj'),
+  enviarCadastroOficial: chamada<EnvioCadastroOficial, { ok: true; alertas: Alerta[] }>('enviarCadastroOficial'),
+  verCartaoCnpj: chamada<{ uid?: string }, { tipo: string; base64: string }>('verCartaoCnpj'),
+  reconsultarReceita: chamada<{ uid: string }, { ok: true; situacao: string; apto: boolean }>('reconsultarReceita'),
   aceitarTermo: chamada<{ versao: number }>('aceitarTermo'),
   reivindicarCoordenacao: chamada<{ nome: string }>('reivindicarCoordenacao'),
   assumirGestao: chamada<void>('assumirGestao'),

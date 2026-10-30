@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { validarCheckin, type Leitura } from './checkin.js'
 import { cnpjValido } from './cnpj.js'
-import { dataLimiteCoordenadas } from './privacidade.js'
+import { dataLimiteCoordenadas, VERSAO_TERMO } from './privacidade.js'
 import { distanciaMetros } from './geo.js'
 import { lerConteudoQr, montarConteudoQr } from './qr.js'
 import { dataEmSaoPaulo, dentroDaJanela, horarioEmSaoPaulo, somarDias } from './tempo.js'
@@ -82,7 +82,7 @@ describe('validarCheckin', () => {
     status: 'ativo',
     baseId: 'base1',
     deviceId: 'aparelho-1',
-    termoVersao: 1,
+    termoVersao: VERSAO_TERMO,
   }
   const leitura: Leitura = {
     qr: montarConteudoQr({ sessaoId: 'base1_2026-11-03', token: sessao.token }),

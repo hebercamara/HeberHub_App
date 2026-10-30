@@ -190,11 +190,12 @@ Entregue em quatro partes, cada uma publicada e testada antes da próxima:
 - Regra **um CNPJ por pessoa** no sistema todo. Antes de ligar a regra, o sistema lista os CNPJs
   que já estejam repetidos no cadastro atual para correção.
 
-**A2. Cadastro oficial (link novo)**
+**A2. Cadastro oficial (link novo)** (pronta; entrou no lugar do cadastro antigo, no mesmo endereço `/cadastro`)
 - Link novo, aberto, em que a pessoa cria login e senha e preenche o cadastro completo:
   dados do MEI, do representante (inclui sexo, RG, CPF, endereço, nacionalidade, estado civil,
   profissão), contato e dados bancários (banco, agência, conta, tipo, chave PIX).
-- Envio do **Cartão CNPJ** (PDF ou foto). Cartão com mais de 30 dias gera aviso, sem travar.
+- Envio do **Cartão CNPJ** (PDF ou foto), apagado em 60 dias. O aviso de cartão com mais de 30 dias
+  depende de ler a data dentro do arquivo: entra na etapa B (leitura automática).
 - **Consulta à Receita** feita pelo servidor ao digitar o CNPJ. Situação diferente de ATIVA
   impede a aprovação; CNAE fora do esperado só gera aviso. No MEI, o CPF no fim da razão social
   é conferido com o CPF informado.

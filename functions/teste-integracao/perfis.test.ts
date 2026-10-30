@@ -1,6 +1,6 @@
 import { doc, getDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { coordenacaoInicial, fecharApps, novoCnpj, novoUsuario, prestadorAprovado, type Celular } from './apoio.js'
+import { coordenacaoInicial, dadosCadastro, enviarCadastro, fecharApps, novoCnpj, novoUsuario, prestadorAprovado, type Celular } from './apoio.js'
 
 describe('perfis Gestão e Jurídico', () => {
   let gestao: Celular
@@ -60,13 +60,13 @@ describe('perfis Gestão e Jurídico', () => {
 
   it('um CNPJ por pessoa', async () => {
     const cnpj = novoCnpj()
-    const dados = { nome: 'Primeira Pessoa', telefone: '11999990000', funcao: 'motorista', razaoSocial: 'Primeira ME', cnpj, aceiteTermo: 1 }
     const primeira = await novoUsuario('cnpj-1@teste.local')
-    await primeira.chamar('concluirCadastro', dados)
+    await enviarCadastro(primeira, dadosCadastro('Primeira Pessoa', cnpj))
     const segunda = await novoUsuario('cnpj-2@teste.local')
-    await expect(segunda.chamar('concluirCadastro', { ...dados, nome: 'Segunda Pessoa' })).rejects.toThrow(/já está cadastrado/)
+    await expect(segunda.chamar('consultarCnpj', { cnpj })).rejects.toThrow(/já está cadastrado/)
+    await expect(enviarCadastro(segunda, dadosCadastro('Segunda Pessoa', cnpj))).rejects.toThrow(/já está cadastrado/)
     // Recusado o primeiro cadastro, o CNPJ fica livre.
     await gestao.chamar('aprovarCadastro', { uid: primeira.uid, aprovar: false })
-    await segunda.chamar('concluirCadastro', { ...dados, nome: 'Segunda Pessoa' })
+    await enviarCadastro(segunda, dadosCadastro('Segunda Pessoa', cnpj))
   })
 })

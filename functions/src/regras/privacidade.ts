@@ -4,7 +4,7 @@ import { somarDias } from './tempo.js'
 export const DIAS_GUARDA_COORDENADAS = 90
 
 /** Versão atual do termo de privacidade. Mudou o texto? Aumente, e todos aceitam de novo. */
-export const VERSAO_TERMO = 1
+export const VERSAO_TERMO = 2
 
 /** Presenças com data anterior a esta perdem a localização exata. */
 export function dataLimiteCoordenadas(hoje: string): string {

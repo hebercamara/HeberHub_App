@@ -3,10 +3,9 @@ import { defineString } from 'firebase-functions/params'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { adminAuth, agoraServidor, auditar, db, emEmulador, exigirLogin, exigirPerfil, falha, perfilDe, texto } from './infra.js'
 import { preencherPendentes } from './cadastros.js'
-import { cnpjValido, limparCnpj } from './regras/cnpj.js'
 import { PERFIS, recusaDePerfil, veValores } from './regras/perfis.js'
-import { VERSAO_TERMO } from './regras/privacidade.js'
-import type { Claims, Funcao, Perfil, Status, Usuario } from './tipos.js'
+import { cnpjApto, type DadosReceita } from './regras/receita.js'
+import type { Claims, Perfil, Usuario } from './tipos.js'
 
 // E-mail do dono, que se torna a Gestão (variável COORDENADOR_INICIAL_EMAIL).
 const coordenadorInicialEmail = defineString('COORDENADOR_INICIAL_EMAIL', { default: '' })
@@ -39,59 +38,6 @@ async function funcaoAtiva(funcaoId: unknown): Promise<string | null> {
   return funcaoId
 }
 
-/** Prestador envia os dados da empresa logo após criar o login. */
-export const concluirCadastro = onCall(async (req) => {
-  const uid = exigirLogin(req)
-  const email = req.auth?.token.email
-  if (!email) throw falha('O login precisa ter um e-mail.')
-
-  const dados = req.data ?? {}
-  if (dados.aceiteTermo !== VERSAO_TERMO) throw falha('Para se cadastrar, leia e aceite o termo de privacidade.')
-  const funcao = dados.funcao as Funcao
-  if (funcao !== 'motorista' && funcao !== 'ajudante') throw falha('Escolha a função: motorista ou ajudante.')
-  const cnpj = limparCnpj(texto(dados.cnpj, 'o CNPJ', { min: 14, max: 18 }))
-  if (!cnpjValido(cnpj)) throw falha('CNPJ inválido.')
-  const telefone = texto(dados.telefone, 'o telefone', { min: 10, max: 20 })
-  if (telefone.replace(/\D/g, '').length < 10) throw falha('Telefone inválido.')
-
-  const cadastro = {
-    email,
-    nome: texto(dados.nome, 'o nome do sócio', { min: 3 }),
-    telefone,
-    funcao,
-    razaoSocial: texto(dados.razaoSocial, 'a razão social', { min: 3, max: 160 }),
-    cnpj,
-  }
-
-  await db.runTransaction(async (tx) => {
-    const ref = usuarios.doc(uid)
-    const atual = await tx.get(ref)
-    const status = atual.get('status') as Status | undefined
-    if (atual.exists && status !== 'pendente' && status !== 'recusado') {
-      throw falha('Seu cadastro já foi aprovado.', 'already-exists')
-    }
-    // Um CNPJ por pessoa. Cadastros recusados não contam.
-    const mesmoCnpj = await tx.get(usuarios.where('cnpj', '==', cnpj))
-    if (mesmoCnpj.docs.some((d) => d.id !== uid && d.get('status') !== 'recusado')) {
-      throw falha('Este CNPJ já está cadastrado no HeberHub. Fale com a equipe da sua base.', 'already-exists')
-    }
-    tx.set(ref, {
-      ...cadastro,
-      perfil: 'prestador',
-      financeiro: false,
-      status: 'pendente',
-      baseId: null,
-      deviceId: null,
-      termoVersao: VERSAO_TERMO,
-      termoAceitoEm: agoraServidor(),
-      criadoEm: atual.get('criadoEm') ?? agoraServidor(),
-      atualizadoEm: agoraServidor(),
-    })
-    auditar(tx, { acao: 'cadastro-enviado', autor: uid, alvo: uid })
-  })
-  return { ok: true }
-})
-
 /** ADM ou coordenação aprova ou recusa um cadastro pendente. */
 export const aprovarCadastro = onCall(async (req) => {
   const autor = exigirPerfil(req, ['adm', 'coordenacao'])
@@ -105,6 +51,12 @@ export const aprovarCadastro = onCall(async (req) => {
     const atual = await tx.get(ref)
     if (!atual.exists) throw falha('Cadastro não encontrado.', 'not-found')
     if (atual.get('status') !== 'pendente') throw falha('Este cadastro não está pendente.', 'failed-precondition')
+    // Cadastro oficial: só aprova com a Receita consultada e o CNPJ ATIVO.
+    if (aprovar && atual.get('cadastroOficial') === true) {
+      const receita = (await tx.get(db.collection('cadastrosOficiais').doc(uid))).get('receita') as DadosReceita | null | undefined
+      if (!receita) throw falha('A consulta à Receita não foi feita. Use "Consultar a Receita de novo" antes de aprovar.', 'failed-precondition')
+      if (!cnpjApto(receita.situacao)) throw falha(`CNPJ com situação ${receita.situacao} na Receita: não pode ser aprovado.`, 'failed-precondition')
+    }
     const mudancas = aprovar
       ? { status: 'ativo' as const, baseId, funcaoId, aprovadoPor: autor, aprovadoEm: agoraServidor() }
       : { status: 'recusado' as const }

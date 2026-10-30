@@ -26,6 +26,15 @@ service cloud.firestore {
       allow read: if logado() && (request.auth.uid == uid || equipe());
     }
 
+    // Cadastro oficial (empresa, representante, Receita): o próprio e a equipe.
+    match /cadastrosOficiais/{uid} {
+      allow read: if logado() && (request.auth.uid == uid || equipe());
+    }
+    // Conta e PIX: o próprio e quem vê valores. O ADM comum não vê.
+    match /dadosBancarios/{uid} {
+      allow read: if logado() && (request.auth.uid == uid || financeiro());
+    }
+
     match /bases/{baseId} {
       allow read: if logado();
     }
