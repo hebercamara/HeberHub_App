@@ -347,6 +347,9 @@ presença.
 Acompanhar a Auditoria (recusas) para calibrar raio e precisão, coletar o que for estranho e
 então liberar para os cerca de 200 prestadores (teto previsto: 400).
 
+**Em planejamento:** onboarding com acareação de dados e geração de contratos. Rascunho e
+decisões em `docs/PLANO-ONBOARDING.md` (ainda não implementado).
+
 **Pendências e ideias registradas:**
 - **Escala por carro** (planejada pelo dono, "com calma"): hoje existe só a marca NE por dia.
 - Dias marcados como NE contam como ausência nas regras de eventos ("todos os dias"). Confirmar
