@@ -73,19 +73,24 @@ export const salvarValorDiaria = onCall(async (req) => {
   return { ok: true, preenchidas }
 })
 
-/** Preenche diárias pendentes que agora têm valor vigente. Devolve quantas foram preenchidas. */
-async function preencherPendentes(autor: string): Promise<number> {
-  const pendentes = await lancamentos.where('pendente', '==', true).get()
+/**
+ * Preenche diárias pendentes que agora têm valor vigente. Diária lançada antes
+ * de a pessoa ter função usa a função atual dela. Devolve quantas foram preenchidas.
+ */
+export async function preencherPendentes(autor: string, uid?: string): Promise<number> {
+  const consulta = uid ? lancamentos.where('pendente', '==', true).where('uid', '==', uid) : lancamentos.where('pendente', '==', true)
+  const pendentes = await consulta.get()
   let preenchidas = 0
   for (const doc of pendentes.docs) {
     const ok = await db.runTransaction(async (tx) => {
       const atual = await tx.get(doc.ref)
       const l = atual.data() as Lancamento | undefined
       if (!l?.pendente || l.estornadoPor) return false
-      const valor = await valorVigente(tx, l.uid, l.funcaoId, l.data)
+      const funcaoId = l.funcaoId ?? ((await tx.get(db.collection('usuarios').doc(l.uid))).get('funcaoId') as string | null) ?? null
+      const valor = await valorVigente(tx, l.uid, funcaoId, l.data)
       const fechamento = await tx.get(db.collection('fechamentos').doc(l.competencia))
       if (valor === null || fechamento.get('status') === 'fechado') return false
-      tx.update(doc.ref, { valor, pendente: false })
+      tx.update(doc.ref, { valor, pendente: false, funcaoId })
       auditar(tx, { acao: 'diaria-pendente-preenchida', autor, alvo: doc.id, detalhes: { valor } })
       return true
     })

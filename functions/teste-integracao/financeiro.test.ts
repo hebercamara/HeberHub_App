@@ -54,6 +54,15 @@ describe('financeiro da Fase 2', () => {
     expect((await getDoc(ref)).data()).toMatchObject({ valor: 18000, pendente: false })
   })
 
+  it('diária pendente usa a função atribuída depois do check-in', async () => {
+    const ana = await prestadorAprovado(coordenacao, 'ana@teste.local', 'Ana', baseId)
+    expect((await ana.chamar<Checkin>('registrarPresenca', { qr, ...NA_BASE, deviceId: 'aparelho-ana' })).ok).toBe(true)
+    const ref = doc(coordenacao.db, 'lancamentos', `diaria_${ana.uid}_${HOJE}`)
+    expect((await getDoc(ref)).data()).toMatchObject({ pendente: true })
+    await coordenacao.chamar('atualizarUsuario', { uid: ana.uid, funcaoId })
+    expect((await getDoc(ref)).data()).toMatchObject({ valor: 15000, pendente: false, funcaoId })
+  })
+
   it('adicional e desconto exigem justificativa', async () => {
     await expect(coordenacao.chamar('lancarAjuste', { uid: maria.uid, tipo: 'desconto', valor: 2000, data: HOJE, justificativa: '' })).rejects.toThrow(/justificativa/)
     await coordenacao.chamar('lancarAjuste', { uid: maria.uid, tipo: 'desconto', valor: 2000, data: HOJE, justificativa: 'Avaria no baú' })

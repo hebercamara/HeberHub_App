@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { defineString } from 'firebase-functions/params'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { adminAuth, agoraServidor, auditar, db, emEmulador, exigirLogin, exigirPerfil, falha, texto } from './infra.js'
+import { preencherPendentes } from './cadastros.js'
 import { cnpjValido, limparCnpj } from './regras/cnpj.js'
 import type { Claims, Funcao, Perfil, Status, Usuario } from './tipos.js'
 
@@ -176,6 +177,8 @@ export const atualizarUsuario = onCall(async (req) => {
   })
 
   await aplicarClaims(uid, usuario)
+  // Diárias lançadas antes de a pessoa ter função passam a usar o valor dela.
+  if (mudancas.funcaoId) await preencherPendentes(autor, uid)
   return { ok: true }
 })
 
