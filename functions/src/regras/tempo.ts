@@ -1,7 +1,14 @@
 export const FUSO_OPERACAO = 'America/Sao_Paulo'
 
-// Janela em que o check-in vale a diária, em minutos desde a meia-noite (05:00 a 09:00).
-export const JANELA_CHECKIN = { inicio: 5 * 60, fim: 9 * 60 }
+// Janela padrão do check-in (cada base pode ter a sua).
+export const JANELA_PADRAO = { inicio: '05:00', fim: '09:00' }
+
+/** "HH:MM" → minutos desde a meia-noite; null se inválido. */
+export function minutosDoHorario(horario: unknown): number | null {
+  if (typeof horario !== 'string' || !/^\d{2}:\d{2}$/.test(horario)) return null
+  const [h, m] = horario.split(':').map(Number)
+  return h <= 23 && m <= 59 ? h * 60 + m : null
+}
 
 type PartesData = { ano: string; mes: string; dia: string; hora: number; minuto: number }
 
@@ -38,11 +45,13 @@ export function horarioEmSaoPaulo(instante: Date): string {
   return `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`
 }
 
-/** true se o instante está entre 05:00 e 09:00 (inclusive) em São Paulo. */
-export function dentroDaJanela(instante: Date): boolean {
+/** true se o instante está dentro da janela (inclusive nas pontas), em São Paulo. */
+export function dentroDaJanela(instante: Date, janela: { inicio: string; fim: string } = JANELA_PADRAO): boolean {
   const { hora, minuto } = partesEmSaoPaulo(instante)
   const minutos = hora * 60 + minuto
-  return minutos >= JANELA_CHECKIN.inicio && minutos <= JANELA_CHECKIN.fim
+  const inicio = minutosDoHorario(janela.inicio) ?? 0
+  const fim = minutosDoHorario(janela.fim) ?? 0
+  return minutos >= inicio && minutos <= fim
 }
 
 /** Soma dias a uma data AAAA-MM-DD. */
@@ -50,4 +59,9 @@ export function somarDias(data: string, dias: number): string {
   const instante = new Date(`${data}T12:00:00Z`)
   instante.setUTCDate(instante.getUTCDate() + dias)
   return instante.toISOString().slice(0, 10)
+}
+
+/** AAAA-MM-DD → competência AAAA-MM. */
+export function competenciaDe(data: string): string {
+  return data.slice(0, 7)
 }

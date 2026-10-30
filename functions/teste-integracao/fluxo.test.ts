@@ -1,34 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { deleteApp, initializeApp, type FirebaseApp } from 'firebase/app'
-import { connectAuthEmulator, createUserWithEmailAndPassword, getAuth } from 'firebase/auth'
-import { collection, connectFirestoreEmulator, doc, getDoc, getDocs, getFirestore, query, where } from 'firebase/firestore'
-import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions'
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { CNPJ_VALIDO, fecharApps, HOJE, novoUsuario, PROJETO } from './apoio.js'
 
-// Roda com RELOGIO_FIXO=2026-11-03T10:00:00Z (07:00 em São Paulo), definido no script.
-const PROJETO = 'demo-heberhub'
-const HOJE = '2026-11-03'
 const BASE = { lat: -23.55, lng: -46.63 }
-const CNPJ_VALIDO = '11.222.333/0001-81'
-
-const apps: FirebaseApp[] = []
-
-/** Um "celular": app Firebase próprio, ligado aos emuladores, com login criado. */
-async function novoUsuario(email: string) {
-  const app = initializeApp({ apiKey: 'chave-emulador', projectId: PROJETO }, email)
-  apps.push(app)
-  const auth = getAuth(app)
-  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
-  const db = getFirestore(app)
-  connectFirestoreEmulator(db, '127.0.0.1', 8080)
-  const functions = getFunctions(app, 'southamerica-east1')
-  connectFunctionsEmulator(functions, '127.0.0.1', 5001)
-  await createUserWithEmailAndPassword(auth, email, 'senha-de-teste-123')
-  const chamar = async <T = unknown>(nome: string, dados?: unknown) => (await httpsCallable<unknown, T>(functions, nome)(dados)).data
-  const renovarLogin = () => auth.currentUser!.getIdToken(true)
-  return { uid: auth.currentUser!.uid, db, chamar, renovarLogin }
-}
 
 type Checkin = { ok: boolean; motivo?: string; jaRegistrada?: boolean; distanciaMetros?: number }
 
@@ -43,9 +19,7 @@ describe('fluxo da Fase 1', () => {
     prestador = await novoUsuario('motorista@teste.local')
   })
 
-  afterAll(async () => {
-    await Promise.all(apps.map((app) => deleteApp(app)))
-  })
+  afterAll(fecharApps)
 
   it('só o e-mail configurado vira coordenação inicial', async () => {
     await expect(prestador.chamar('reivindicarCoordenacao', { nome: 'Intruso' })).rejects.toThrow(/não está autorizado/)
@@ -147,7 +121,8 @@ describe('regras do Firestore', () => {
 
   const comoPrestador = () => ambiente.authenticatedContext('p1', { perfil: 'prestador' }).firestore()
   const comoAdm = () => ambiente.authenticatedContext('a1', { perfil: 'adm' }).firestore()
-  const comoCoordenacao = () => ambiente.authenticatedContext('c1', { perfil: 'coordenacao' }).firestore()
+  const comoCoordenacao = () => ambiente.authenticatedContext('c1', { perfil: 'coordenacao', financeiro: true }).firestore()
+  const comoAdmFinanceiro = () => ambiente.authenticatedContext('f1', { perfil: 'adm', financeiro: true }).firestore()
 
   it('prestador lê o próprio cadastro e não o dos outros', async () => {
     await assertSucceeds(comoPrestador().doc('usuarios/p1').get())
@@ -165,6 +140,20 @@ describe('regras do Firestore', () => {
   it('coordenação lê a auditoria, mas também não os tokens do QR', async () => {
     await assertSucceeds(comoCoordenacao().doc('auditoria/a1').get())
     await assertFails(comoCoordenacao().doc('sessoes/b1_2026-11-03').get())
+  })
+
+  it('valores: só coordenação e ADM Financeiro leem', async () => {
+    await ambiente.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('lancamentos/l1').set({ uid: 'p1', valor: 15000 })
+      await ctx.firestore().doc('funcoes/f1').set({ nome: 'Motorista' })
+    })
+    await assertFails(comoPrestador().doc('lancamentos/l1').get())
+    await assertFails(comoAdm().doc('lancamentos/l1').get())
+    await assertSucceeds(comoAdmFinanceiro().doc('lancamentos/l1').get())
+    await assertSucceeds(comoCoordenacao().doc('lancamentos/l1').get())
+    // Nome da função (sem valor) é visível para a equipe, não para o prestador.
+    await assertSucceeds(comoAdm().doc('funcoes/f1').get())
+    await assertFails(comoPrestador().doc('funcoes/f1').get())
   })
 
   it('ninguém escreve direto pelo app', async () => {

@@ -16,6 +16,10 @@ service cloud.firestore {
     function coordenacao() {
       return logado() && perfil() == 'coordenacao';
     }
+    // Coordenação e ADM Financeiro: os únicos que veem valores.
+    function financeiro() {
+      return equipe() && request.auth.token.get('financeiro', false) == true;
+    }
 
     match /usuarios/{uid} {
       allow read: if logado() && (request.auth.uid == uid || equipe());
@@ -28,6 +32,28 @@ service cloud.firestore {
     // Prestador lê só as próprias presenças; ADM e coordenação leem todas.
     match /presencas/{presencaId} {
       allow read: if logado() && (resource.data.uid == request.auth.uid || equipe());
+    }
+
+    // Cadastros operacionais: nomes, sem valores.
+    match /operacoes/{id} {
+      allow read: if equipe();
+    }
+    match /funcoes/{id} {
+      allow read: if equipe();
+    }
+
+    // Tudo que tem dinheiro.
+    match /valoresDiaria/{id} {
+      allow read: if financeiro();
+    }
+    match /lancamentos/{id} {
+      allow read: if financeiro();
+    }
+    match /eventos/{id} {
+      allow read: if financeiro();
+    }
+    match /fechamentos/{competencia} {
+      allow read: if financeiro();
     }
 
     match /auditoria/{registroId} {

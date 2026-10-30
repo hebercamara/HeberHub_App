@@ -1,4 +1,5 @@
 import { onCall } from 'firebase-functions/v2/https'
+import { lancarDiaria, valorVigente } from './financeiro.js'
 import { agora as horaAtual, agoraServidor, auditar, db, exigirLogin } from './infra.js'
 import { MENSAGENS, validarCheckin, type Leitura, type MotivoRecusa } from './regras/checkin.js'
 import { lerConteudoQr } from './regras/qr.js'
@@ -59,6 +60,9 @@ export const registrarPresenca = onCall(async (req): Promise<RespostaCheckin> =>
       }
     }
 
+    // Última leitura antes das escritas: o valor da diária vigente hoje.
+    const valor = await valorVigente(tx, uid, usuario.funcaoId, resultado.data)
+
     const horario = horarioEmSaoPaulo(agora)
     tx.create(presencaRef, {
       uid,
@@ -75,6 +79,7 @@ export const registrarPresenca = onCall(async (req): Promise<RespostaCheckin> =>
       sessaoId: resultado.sessaoId,
       origem: 'qrcode',
     })
+    lancarDiaria(tx, { uid, usuario, data: resultado.data, presencaId: presencaRef.id, valor, autor: uid })
     if (!usuario.deviceId) tx.update(usuarioRef, { deviceId: resultado.deviceId })
     auditar(tx, { acao: 'checkin', autor: uid, alvo: presencaRef.id, detalhes: { distanciaMetros: resultado.distanciaMetros } })
     return { ok: true, jaRegistrada: false, horario, data: resultado.data, baseNome: base!.nome, distanciaMetros: resultado.distanciaMetros }

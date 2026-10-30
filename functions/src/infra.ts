@@ -45,6 +45,27 @@ export function exigirPerfil(req: CallableRequest, perfis: Perfil[]): string {
   return uid
 }
 
+/** Exige coordenação ou ADM Financeiro. */
+export function exigirFinanceiro(req: CallableRequest): string {
+  const uid = exigirPerfil(req, ['adm', 'coordenacao'])
+  if ((req.auth?.token as Claims).financeiro !== true) throw new HttpsError('permission-denied', 'Apenas a coordenação e o ADM Financeiro podem fazer isso.')
+  return uid
+}
+
+/** Lê uma data AAAA-MM-DD válida. */
+export function dataValida(valor: unknown, campo = 'a data'): string {
+  if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(valor) || Number.isNaN(Date.parse(`${valor}T12:00:00Z`))) {
+    throw falha(`Informe ${campo} no formato AAAA-MM-DD.`)
+  }
+  return valor
+}
+
+/** Lê um valor em centavos (inteiro, de 0 a R$ 100.000,00). */
+export function centavos(valor: unknown, campo = 'o valor'): number {
+  if (typeof valor !== 'number' || !Number.isInteger(valor) || valor < 0 || valor > 10_000_000) throw falha(`${campo[0].toUpperCase()}${campo.slice(1)} é inválido.`)
+  return valor
+}
+
 /** Lê um texto obrigatório do pedido, sem espaços nas pontas. */
 export function texto(valor: unknown, campo: string, { min = 1, max = 120 } = {}): string {
   if (typeof valor !== 'string') throw falha(`Informe ${campo}.`)

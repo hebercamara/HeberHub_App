@@ -11,22 +11,43 @@ export function LeitorQr({ aoLer, aoCancelar }: { aoLer: (texto: string) => void
   }, [aoLer])
 
   useEffect(() => {
-    if (!video.current) return
+    const elemento = video.current
+    if (!elemento) return
     let lido = false
-    const leitor = new QrScanner(
-      video.current,
-      (resultado) => {
-        if (lido) return
-        lido = true
-        leitor.stop()
-        aoLerRef.current(resultado.data)
-      },
-      { preferredCamera: 'environment', highlightScanRegion: true, highlightCodeOutline: true, returnDetailedScanResult: true },
-    )
-    leitor.start().catch(() => setErro('Não foi possível abrir a câmera. Permita o acesso à câmera nas configurações do navegador.'))
+    let leitor: QrScanner | null = null
+    // Começa um instante depois: se o componente for desmontado logo em seguida
+    // (o React faz isso em desenvolvimento), nenhuma câmera chega a abrir, e duas
+    // instâncias não disputam o mesmo <video>.
+    const inicio = setTimeout(() => {
+      const atual = new QrScanner(
+        elemento,
+        (resultado) => {
+          if (lido) return
+          lido = true
+          atual.stop()
+          aoLerRef.current(resultado.data)
+        },
+        {
+          preferredCamera: 'environment',
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+          returnDetailedScanResult: true,
+          // Procura no maior quadrado da imagem (o padrão é só o centro), para ler
+          // também quando o QR ocupa a tela inteira.
+          calculateScanRegion: (v) => {
+            const lado = Math.min(v.videoWidth, v.videoHeight)
+            const reduzido = Math.min(lado, 600)
+            return { x: (v.videoWidth - lado) / 2, y: (v.videoHeight - lado) / 2, width: lado, height: lado, downScaledWidth: reduzido, downScaledHeight: reduzido }
+          },
+        },
+      )
+      leitor = atual
+      atual.start().catch(() => setErro('Não foi possível abrir a câmera. Permita o acesso à câmera nas configurações do navegador.'))
+    }, 0)
     return () => {
-      leitor.stop()
-      leitor.destroy()
+      clearTimeout(inicio)
+      leitor?.stop()
+      leitor?.destroy()
     }
   }, [])
 

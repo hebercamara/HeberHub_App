@@ -28,6 +28,14 @@ async function baseAtiva(baseId: unknown): Promise<string> {
   return baseId
 }
 
+async function funcaoAtiva(funcaoId: unknown): Promise<string | null> {
+  if (funcaoId === undefined || funcaoId === null || funcaoId === '') return null
+  if (typeof funcaoId !== 'string') throw falha('Função inválida.')
+  const funcao = await db.collection('funcoes').doc(funcaoId).get()
+  if (!funcao.exists || funcao.get('ativa') !== true) throw falha('Função não encontrada ou inativa.', 'not-found')
+  return funcaoId
+}
+
 /** Prestador envia os dados da empresa logo após criar o login. */
 export const concluirCadastro = onCall(async (req) => {
   const uid = exigirLogin(req)
@@ -79,6 +87,7 @@ export const aprovarCadastro = onCall(async (req) => {
   const uid = texto(req.data?.uid, 'o usuário')
   const aprovar = req.data?.aprovar === true
   const baseId = aprovar ? await baseAtiva(req.data?.baseId) : null
+  const funcaoId = aprovar ? await funcaoAtiva(req.data?.funcaoId) : null
 
   const usuario = await db.runTransaction(async (tx) => {
     const ref = usuarios.doc(uid)
@@ -86,10 +95,10 @@ export const aprovarCadastro = onCall(async (req) => {
     if (!atual.exists) throw falha('Cadastro não encontrado.', 'not-found')
     if (atual.get('status') !== 'pendente') throw falha('Este cadastro não está pendente.', 'failed-precondition')
     const mudancas = aprovar
-      ? { status: 'ativo' as const, baseId, aprovadoPor: autor, aprovadoEm: agoraServidor() }
+      ? { status: 'ativo' as const, baseId, funcaoId, aprovadoPor: autor, aprovadoEm: agoraServidor() }
       : { status: 'recusado' as const }
     tx.update(ref, { ...mudancas, atualizadoEm: agoraServidor() })
-    auditar(tx, { acao: aprovar ? 'cadastro-aprovado' : 'cadastro-recusado', autor, alvo: uid, detalhes: { baseId } })
+    auditar(tx, { acao: aprovar ? 'cadastro-aprovado' : 'cadastro-recusado', autor, alvo: uid, detalhes: { baseId, funcaoId } })
     return { ...(atual.data() as Usuario), ...mudancas }
   })
 
@@ -106,6 +115,7 @@ export const criarUsuarioInterno = onCall(async (req) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw falha('E-mail inválido.')
   const nome = texto(req.data?.nome, 'o nome', { min: 3 })
   const baseId = req.data?.baseId ? await baseAtiva(req.data.baseId) : null
+  const funcaoId = await funcaoAtiva(req.data?.funcaoId)
 
   let uid: string
   try {
@@ -117,7 +127,7 @@ export const criarUsuarioInterno = onCall(async (req) => {
     throw e
   }
 
-  const usuario = { email, nome, telefone: '', perfil, financeiro: false, status: 'ativo' as const, baseId, deviceId: null }
+  const usuario = { email, nome, telefone: '', perfil, financeiro: false, status: 'ativo' as const, baseId, funcaoId, deviceId: null }
   const lote = db.batch()
   lote.set(usuarios.doc(uid), { ...usuario, criadoEm: agoraServidor(), atualizadoEm: agoraServidor(), aprovadoPor: autor })
   auditar(lote, { acao: 'usuario-interno-criado', autor, alvo: uid, detalhes: { perfil } })
@@ -143,6 +153,7 @@ export const atualizarUsuario = onCall(async (req) => {
     mudancas.status = pedido.status
   }
   if (pedido.baseId !== undefined) mudancas.baseId = pedido.baseId === null ? null : await baseAtiva(pedido.baseId)
+  if (pedido.funcaoId !== undefined) mudancas.funcaoId = await funcaoAtiva(pedido.funcaoId)
   if (pedido.liberarAparelho === true) mudancas.deviceId = null
 
   if (uid === autor && (mudancas.perfil !== undefined || mudancas.status !== undefined)) {

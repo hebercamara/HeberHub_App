@@ -7,7 +7,7 @@ import { useBaseEscolhida, useBases } from '../../lib/bases'
 import { formatarDataLonga, hojeEmSaoPaulo } from '../../lib/datas'
 import { db } from '../../lib/firebase'
 import { useSessao } from '../../lib/sessao'
-import { NOMES_FUNCAO, type Presenca, type Usuario } from '../../lib/tipos'
+import { NOMES_FUNCAO, type Presenca } from '../../lib/tipos'
 
 export function PresencasHoje() {
   const { usuario } = useSessao()
@@ -34,7 +34,7 @@ export function PresencasHoje() {
 
       <section className="cartao">
         <p className="destaque">
-          {presencas.length} de {totalAtivos} prestadores presentes
+          {presencas.length} de {totalAtivos} pessoas presentes
         </p>
         {presencas.length === 0 ? (
           <p className="suave">Nenhum check-in ainda hoje. A lista atualiza sozinha.</p>
@@ -51,10 +51,10 @@ export function PresencasHoje() {
             <tbody>
               {presencas.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.horario}</td>
+                  <td>{p.origem === 'manual' ? 'Manual' : p.horario}</td>
                   <td>{p.nome}</td>
                   <td>{p.funcao ? NOMES_FUNCAO[p.funcao] : '—'}</td>
-                  <td className="numero">{p.distanciaMetros} m</td>
+                  <td className="numero">{p.distanciaMetros === null ? '—' : `${p.distanciaMetros} m`}</td>
                 </tr>
               ))}
             </tbody>
@@ -70,7 +70,7 @@ function usePresencasDoDia(baseId: string | null, data: string): Presenca[] {
   useEffect(() => {
     if (!baseId) return
     return onSnapshot(query(collection(db, 'presencas'), where('baseId', '==', baseId), where('data', '==', data), orderBy('horario')), (snap) =>
-      setLista(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Presenca)),
+      setLista(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Presenca).filter((p) => !p.cancelada)),
     )
   }, [baseId, data])
   return lista
@@ -81,7 +81,7 @@ function useTotalDePrestadores(baseId: string | null): number {
   useEffect(() => {
     if (!baseId) return
     return onSnapshot(query(collection(db, 'usuarios'), where('baseId', '==', baseId), where('status', '==', 'ativo')), (snap) =>
-      setTotal(snap.docs.filter((d) => (d.data() as Usuario).perfil === 'prestador').length),
+      setTotal(snap.docs.length),
     )
   }, [baseId])
   return total

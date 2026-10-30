@@ -1,6 +1,7 @@
 import { onCall } from 'firebase-functions/v2/https'
 import { agoraServidor, auditar, db, exigirPerfil, falha, numero, texto } from './infra.js'
 import { coordenadaValida } from './regras/geo.js'
+import { JANELA_PADRAO, minutosDoHorario } from './regras/tempo.js'
 
 /** Coordenação cria ou altera uma base. */
 export const salvarBase = onCall(async (req) => {
@@ -15,8 +16,14 @@ export const salvarBase = onCall(async (req) => {
     lng: posicao.lng,
     raioMetros: Math.round(numero(dados.raioMetros, 'o raio', 20, 1000)),
     precisaoMaxMetros: Math.round(numero(dados.precisaoMaxMetros, 'a precisão máxima', 10, 200)),
+    janelaInicio: dados.janelaInicio ?? JANELA_PADRAO.inicio,
+    janelaFim: dados.janelaFim ?? JANELA_PADRAO.fim,
     ativa: dados.ativa !== false,
   }
+  const inicio = minutosDoHorario(base.janelaInicio)
+  const fim = minutosDoHorario(base.janelaFim)
+  if (inicio === null || fim === null) throw falha('Horário inválido. Use o formato HH:MM.')
+  if (inicio >= fim) throw falha('O horário de início deve ser antes do horário de fim.')
 
   const colecao = db.collection('bases')
   const ref = typeof dados.id === 'string' && dados.id ? colecao.doc(dados.id) : colecao.doc()

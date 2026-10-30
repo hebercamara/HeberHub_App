@@ -50,7 +50,16 @@ Sem o secret, o workflow de deploy apenas avisa e não publica nada.
 1. Abra `/primeiro-acesso` no app publicado e use o e-mail de `COORDENADOR_INICIAL_EMAIL`.
 2. Confirme o e-mail pelo link recebido e toque em "Ativar coordenação".
 3. Em **Bases**, cadastre a base (o botão "Usar minha posição atual" captura as coordenadas estando no local).
-4. Em **Usuários**, crie os acessos dos ADMs. Os prestadores se cadastram sozinhos em "Cadastre-se" e são aprovados em **Cadastros**.
+4. Em **Operações**, cadastre cada operação (ex.: "Kibon SP"), as funções dela e o valor da diária de cada função.
+5. Em **Usuários**, crie os acessos dos ADMs. Os prestadores se cadastram sozinhos em "Cadastre-se" e são aprovados em **Cadastros**, já com a função.
+
+## Financeiro
+
+- Cada check-in (ou presença manual) gera uma diária com o valor vigente congelado: o valor individual da pessoa, se houver, senão o da função.
+- Sem valor definido, a diária fica "sem valor" e é preenchida quando o valor for cadastrado. O mês não fecha com diárias sem valor.
+- Adicionais, descontos e eventos (o mesmo valor para várias pessoas) exigem justificativa. Correções são feitas por estorno; nada é apagado.
+- A coordenação fecha o mês (prazo: dia 5 do mês seguinte). Mês fechado não aceita lançamentos até ser reaberto, com justificativa.
+- Só a coordenação e o ADM Financeiro veem valores. Prestador e ADM comum não têm acesso.
 
 ## Testes
 

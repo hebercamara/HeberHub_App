@@ -23,6 +23,12 @@ describe('tempo', () => {
     expect(dentroDaJanela(new Date('2026-11-03T12:01:00Z'))).toBe(false) // 09:01
   })
 
+  it('respeita uma janela personalizada', () => {
+    const janela = { inicio: '06:30', fim: '07:15' }
+    expect(dentroDaJanela(new Date('2026-11-03T09:29:00Z'), janela)).toBe(false) // 06:29
+    expect(dentroDaJanela(new Date('2026-11-03T10:15:00Z'), janela)).toBe(true) // 07:15
+  })
+
   it('soma dias atravessando o mês', () => {
     expect(somarDias('2026-10-31', 1)).toBe('2026-11-01')
   })
@@ -92,13 +98,24 @@ describe('validarCheckin', () => {
     if (r.ok) expect(r.distanciaMetros).toBeLessThan(40)
   })
 
+  it('aceita check-in de ADM e coordenação', () => {
+    expect(validar({ usuario: { perfil: 'adm' } }).ok).toBe(true)
+    expect(validar({ usuario: { perfil: 'coordenacao' } }).ok).toBe(true)
+  })
+
+  it('usa a janela da base quando definida', () => {
+    const dezDaManha = new Date('2026-11-03T13:00:00Z')
+    expect(validar({ agora: dezDaManha }).ok).toBe(false)
+    const r = validarCheckin({ agora: dezDaManha, usuario, leitura, sessao, base: { ...base, janelaInicio: '00:00', janelaFim: '23:59' } })
+    expect(r.ok).toBe(true)
+  })
+
   it('aceita o primeiro aparelho quando nenhum está vinculado', () => {
     expect(validar({ usuario: { deviceId: null }, leitura: { deviceId: 'aparelho-novo' } }).ok).toBe(true)
   })
 
   it.each([
     ['usuario-inativo', { usuario: { status: 'pendente' as const } }],
-    ['usuario-inativo', { usuario: { perfil: 'adm' as const } }],
     ['sem-base', { usuario: { baseId: null } }],
     ['aparelho-diferente', { leitura: { deviceId: 'outro-aparelho' } }],
     ['qr-invalido', { leitura: { qr: 'qualquer coisa' } }],

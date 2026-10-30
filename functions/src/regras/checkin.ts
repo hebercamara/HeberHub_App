@@ -1,6 +1,6 @@
 import { coordenadaValida, distanciaMetros } from './geo.js'
 import { lerConteudoQr } from './qr.js'
-import { dataEmSaoPaulo, dentroDaJanela } from './tempo.js'
+import { dataEmSaoPaulo, dentroDaJanela, JANELA_PADRAO } from './tempo.js'
 import type { Base, Sessao, Usuario } from '../tipos.js'
 
 export type Leitura = {
@@ -30,7 +30,7 @@ export const MENSAGENS: Record<MotivoRecusa, string> = {
   'qr-invalido': 'Este QR Code não é do HeberHub.',
   'qr-de-outro-dia': 'Este QR Code não é o de hoje.',
   'qr-de-outra-base': 'Este QR Code é de outra base.',
-  'fora-do-horario': 'O check-in só vale das 5h às 9h.',
+  'fora-do-horario': 'Fora do horário de check-in desta base.',
   'gps-invalido': 'Não foi possível obter sua localização. Ative o GPS e tente de novo.',
   'gps-impreciso': 'A localização está imprecisa. Vá para um lugar aberto e tente de novo.',
   'fora-do-raio': 'Você está fora da área da base.',
@@ -53,7 +53,8 @@ export function validarCheckin(args: {
 }): Resultado {
   const { agora, usuario, leitura, sessao, base } = args
 
-  if (usuario.status !== 'ativo' || usuario.perfil !== 'prestador') return { ok: false, motivo: 'usuario-inativo' }
+  // Todos os perfis podem fazer check-in; basta o cadastro estar ativo.
+  if (usuario.status !== 'ativo') return { ok: false, motivo: 'usuario-inativo' }
   if (!usuario.baseId) return { ok: false, motivo: 'sem-base' }
 
   const deviceId = typeof leitura.deviceId === 'string' ? leitura.deviceId : ''
@@ -67,7 +68,8 @@ export function validarCheckin(args: {
   if (sessao.data !== hoje) return { ok: false, motivo: 'qr-de-outro-dia' }
   if (sessao.baseId !== usuario.baseId || !base) return { ok: false, motivo: 'qr-de-outra-base' }
 
-  if (!dentroDaJanela(agora)) return { ok: false, motivo: 'fora-do-horario' }
+  const janela = { inicio: base.janelaInicio ?? JANELA_PADRAO.inicio, fim: base.janelaFim ?? JANELA_PADRAO.fim }
+  if (!dentroDaJanela(agora, janela)) return { ok: false, motivo: 'fora-do-horario' }
 
   const posicao = { lat: leitura.lat, lng: leitura.lng } as { lat: number; lng: number }
   const precisao = leitura.precisao

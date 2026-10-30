@@ -7,7 +7,7 @@ import { mensagemDeErro } from '../../lib/erros'
 import { obterPosicao } from '../../lib/localizacao'
 import type { Base } from '../../lib/tipos'
 
-const NOVA: Omit<Base, 'id'> = { nome: '', lat: 0, lng: 0, raioMetros: 100, precisaoMaxMetros: 50, ativa: true }
+const NOVA: Omit<Base, 'id'> = { nome: '', lat: 0, lng: 0, raioMetros: 100, precisaoMaxMetros: 50, janelaInicio: '05:00', janelaFim: '09:00', ativa: true }
 
 export function Bases() {
   const { bases, carregando } = useBases()
@@ -36,7 +36,7 @@ export function Bases() {
             </button>
           </div>
           <p className="suave">
-            {b.lat.toFixed(6)}, {b.lng.toFixed(6)} · raio {b.raioMetros} m · precisão máxima do GPS {b.precisaoMaxMetros} m ·{' '}
+            Check-in das {b.janelaInicio ?? '05:00'} às {b.janelaFim ?? '09:00'} · raio {b.raioMetros} m · precisão máxima do GPS {b.precisaoMaxMetros} m ·{' '}
             <a href={`https://www.google.com/maps?q=${b.lat},${b.lng}`} target="_blank" rel="noreferrer">
               ver no mapa
             </a>
@@ -54,6 +54,8 @@ function FormularioBase({ base, aoTerminar }: { base: Base | null; aoTerminar: (
   const [lng, setLng] = useState(base ? String(base.lng) : '')
   const [raio, setRaio] = useState(String(inicial.raioMetros))
   const [precisao, setPrecisao] = useState(String(inicial.precisaoMaxMetros))
+  const [janelaInicio, setJanelaInicio] = useState(inicial.janelaInicio ?? '05:00')
+  const [janelaFim, setJanelaFim] = useState(inicial.janelaFim ?? '09:00')
   const [ativa, setAtiva] = useState(inicial.ativa)
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
@@ -80,7 +82,7 @@ function FormularioBase({ base, aoTerminar }: { base: Base | null; aoTerminar: (
     try {
       // Aceita vírgula decimal, como em "-23,55".
       const numero = (v: string) => Number(v.replace(',', '.'))
-      await api.salvarBase({ id: base?.id, nome, lat: numero(lat), lng: numero(lng), raioMetros: numero(raio), precisaoMaxMetros: numero(precisao), ativa })
+      await api.salvarBase({ id: base?.id, nome, lat: numero(lat), lng: numero(lng), raioMetros: numero(raio), precisaoMaxMetros: numero(precisao), janelaInicio, janelaFim, ativa })
       aoTerminar()
     } catch (err) {
       setErro(mensagemDeErro(err))
@@ -118,6 +120,16 @@ function FormularioBase({ base, aoTerminar }: { base: Base | null; aoTerminar: (
           <label>
             Precisão máxima do GPS (m)
             <input type="number" min={10} max={200} value={precisao} onChange={(e) => setPrecisao(e.target.value)} required />
+          </label>
+        </div>
+        <div className="linha">
+          <label>
+            Check-in a partir de
+            <input type="time" value={janelaInicio} onChange={(e) => setJanelaInicio(e.target.value)} required />
+          </label>
+          <label>
+            Check-in até
+            <input type="time" value={janelaFim} onChange={(e) => setJanelaFim(e.target.value)} required />
           </label>
         </div>
         <label className="opcao">

@@ -5,9 +5,11 @@ import { useSessao } from './lib/sessao'
 import { Aguardando } from './paginas/Aguardando'
 import { Cadastro } from './paginas/Cadastro'
 import { Bases } from './paginas/coordenacao/Bases'
+import { Operacoes } from './paginas/coordenacao/Operacoes'
 import { Usuarios } from './paginas/coordenacao/Usuarios'
 import { Entrar } from './paginas/Entrar'
 import { Cadastros } from './paginas/equipe/Cadastros'
+import { Financeiro } from './paginas/financeiro/Financeiro'
 import { PresencasHoje } from './paginas/equipe/PresencasHoje'
 import { QrDoDia } from './paginas/equipe/QrDoDia'
 import { PrimeiroAcesso } from './paginas/PrimeiroAcesso'
@@ -29,6 +31,7 @@ function App() {
   const ativo = sessao.usuario?.status === 'ativo' && sessao.perfil
   const equipe = ativo && (sessao.perfil === 'adm' || sessao.perfil === 'coordenacao')
   const coordenacao = ativo && sessao.perfil === 'coordenacao'
+  const financeiro = equipe && sessao.financeiro
 
   return (
     <Routes>
@@ -38,7 +41,8 @@ function App() {
       <Route path="/aguardando" element={sessao.login && sessao.usuario && !ativo ? <Aguardando /> : <Navigate to={inicio} replace />} />
 
       <Route element={ativo ? <Layout /> : <Navigate to={inicio} replace />}>
-        {sessao.perfil === 'prestador' && <Route path="/presenca" element={<Presenca />} />}
+        {/* Todos os perfis fazem check-in. */}
+        <Route path="/presenca" element={<Presenca />} />
         {equipe && (
           <>
             <Route path="/equipe/presencas" element={<PresencasHoje />} />
@@ -46,9 +50,11 @@ function App() {
             <Route path="/equipe/cadastros" element={<Cadastros />} />
           </>
         )}
+        {financeiro && <Route path="/financeiro" element={<Financeiro />} />}
         {coordenacao && (
           <>
             <Route path="/coordenacao/usuarios" element={<Usuarios />} />
+            <Route path="/coordenacao/operacoes" element={<Operacoes />} />
             <Route path="/coordenacao/bases" element={<Bases />} />
           </>
         )}

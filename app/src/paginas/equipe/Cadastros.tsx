@@ -2,7 +2,9 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { Aviso } from '../../componentes/Aviso'
 import { api } from '../../lib/api'
+import { SeletorFuncao } from '../../componentes/SeletorFuncao'
 import { useBases } from '../../lib/bases'
+import { useFuncoes } from '../../lib/cadastros'
 import { mascararCnpj } from '../../lib/cnpj'
 import { mensagemDeErro } from '../../lib/erros'
 import { db } from '../../lib/firebase'
@@ -34,6 +36,8 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
   const { bases } = useBases()
   const ativas = bases.filter((b) => b.ativa)
   const [baseId, setBaseId] = useState('')
+  const funcoes = useFuncoes()
+  const [funcaoId, setFuncaoId] = useState('')
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
   const baseEscolhida = baseId || ativas[0]?.id || ''
@@ -43,7 +47,7 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
     setErro('')
     setEnviando(true)
     try {
-      await api.aprovarCadastro({ uid: usuario.id, aprovar, baseId: aprovar ? baseEscolhida : undefined })
+      await api.aprovarCadastro({ uid: usuario.id, aprovar, baseId: aprovar ? baseEscolhida : undefined, funcaoId: aprovar ? funcaoId || null : undefined })
     } catch (e) {
       setErro(mensagemDeErro(e))
       setEnviando(false)
@@ -77,6 +81,7 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
           </select>
         </label>
       )}
+      {funcoes.length > 0 && <SeletorFuncao funcoes={funcoes} valor={funcaoId} aoMudar={setFuncaoId} rotulo="Função (define o valor da diária)" />}
       {ativas.length === 0 && <Aviso tipo="info">Cadastre uma base antes de aprovar prestadores.</Aviso>}
       <Aviso>{erro}</Aviso>
       <div className="acoes">

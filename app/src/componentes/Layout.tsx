@@ -3,7 +3,7 @@ import { useSessao } from '../lib/sessao'
 import { NOMES_PERFIL } from '../lib/tipos'
 
 export function Layout() {
-  const { usuario, perfil, sair } = useSessao()
+  const { usuario, perfil, financeiro, sair } = useSessao()
   const equipe = perfil === 'adm' || perfil === 'coordenacao'
 
   return (
@@ -26,10 +26,13 @@ export function Layout() {
         <nav className="abas" aria-label="Seções">
           <NavLink to="/equipe/presencas">Presenças de hoje</NavLink>
           <NavLink to="/equipe/qr">QR do dia</NavLink>
+          <NavLink to="/presenca">Minha presença</NavLink>
           <NavLink to="/equipe/cadastros">Cadastros</NavLink>
+          {financeiro && <NavLink to="/financeiro">Financeiro</NavLink>}
           {perfil === 'coordenacao' && (
             <>
               <NavLink to="/coordenacao/usuarios">Usuários</NavLink>
+              <NavLink to="/coordenacao/operacoes">Operações</NavLink>
               <NavLink to="/coordenacao/bases">Bases</NavLink>
             </>
           )}

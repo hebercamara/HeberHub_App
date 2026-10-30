@@ -228,7 +228,8 @@ label.opcao {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   padding: 12px;
   border: 1px solid var(--cor-borda);
@@ -493,6 +494,90 @@ button.link {
   overflow-wrap: anywhere;
 }
 
+h3 {
+  font-size: 1rem;
+  margin: 0 0 8px;
+}
+
+textarea {
+  font: inherit;
+  resize: vertical;
+}
+
+.bloco {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--cor-borda);
+}
+
+.bloco .linha {
+  align-items: end;
+}
+
+/* Financeiro */
+.resumo-numeros {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.resumo-numeros div {
+  display: flex;
+  flex-direction: column;
+}
+
+.resumo-numeros strong {
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rolagem {
+  overflow-x: auto;
+}
+
+.tabela tfoot th {
+  color: var(--cor-texto);
+  font-weight: 700;
+}
+
+.linha-clicavel {
+  cursor: pointer;
+}
+
+.linha-clicavel:hover td {
+  background: var(--cor-info-fundo);
+}
+
+.lancamentos li {
+  gap: 12px;
+  font-size: 0.95rem;
+}
+
+.lancamentos li.estornado {
+  color: var(--cor-texto-suave);
+  text-decoration: line-through;
+}
+
+.lancamento-valor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.lista-marcar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+}
+
 /* Folha do QR Code */
 .folha-qr {
   text-align: center;
@@ -544,5 +629,14 @@ button.link {
 
   .qr {
     max-width: 120mm;
+  }
+
+  .tabela {
+    font-size: 10pt;
+  }
+
+  .impressao-titulo {
+    color: #000;
+    font-size: 14pt;
   }
 }

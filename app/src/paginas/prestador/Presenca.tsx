@@ -14,7 +14,7 @@ import type { Presenca as RegistroPresenca } from '../../lib/tipos'
 type Etapa = { tipo: 'inicio' } | { tipo: 'lendo' } | { tipo: 'enviando'; texto: string } | { tipo: 'resultado'; resposta: RespostaCheckin } | { tipo: 'erro'; mensagem: string }
 
 export function Presenca() {
-  const { login } = useSessao()
+  const { login, usuario } = useSessao()
   const [etapa, setEtapa] = useState<Etapa>({ tipo: 'inicio' })
   const [posicao, setPosicao] = useState<Promise<Posicao> | null>(null)
   const historico = useHistorico(login!.uid)
@@ -45,19 +45,20 @@ export function Presenca() {
     <div className="pilha">
       <section className="cartao centro">
         <p className="suave">{formatarDataLonga(hoje)}</p>
+        {!usuario?.baseId && <Aviso tipo="info">Seu cadastro ainda não tem base. Peça à coordenação para definir em Usuários.</Aviso>}
 
         {etapa.tipo === 'inicio' &&
           (presencaDeHoje ? (
             <div className="resultado ok">
               <div className="resultado-icone">✓</div>
-              <p>Presença de hoje registrada às {presencaDeHoje.horario}.</p>
+              <p>{presencaDeHoje.origem === 'manual' ? 'Presença de hoje lançada pela coordenação.' : `Presença de hoje registrada às ${presencaDeHoje.horario}.`}</p>
             </div>
           ) : (
             <>
               <button className="grande" onClick={comecar}>
                 Registrar presença
               </button>
-              <p className="suave">Das 5h às 9h, na base, lendo o QR Code do dia.</p>
+              <p className="suave">Na base, no horário de check-in, lendo o QR Code do dia.</p>
             </>
           ))}
 
@@ -106,7 +107,7 @@ export function Presenca() {
             {historico.map((p) => (
               <li key={p.id}>
                 <span>{formatarData(p.data)}</span>
-                <span className="suave">{p.horario}</span>
+                <span className="suave">{p.origem === 'manual' ? 'lançada pela coordenação' : p.horario}</span>
               </li>
             ))}
           </ul>
@@ -131,7 +132,7 @@ function useHistorico(uid: string): RegistroPresenca[] {
   useEffect(
     () =>
       onSnapshot(query(collection(db, 'presencas'), where('uid', '==', uid), orderBy('data', 'desc'), limit(62)), (snap) =>
-        setLista(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RegistroPresenca)),
+        setLista(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RegistroPresenca).filter((p) => !p.cancelada)),
       ),
     [uid],
   )

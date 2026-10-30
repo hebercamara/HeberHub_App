@@ -48,7 +48,7 @@ export function QrDoDia() {
       <div className="cabecalho-secao nao-imprimir">
         <div>
           <h1>QR Code do dia</h1>
-          <p className="suave">Imprima e fixe no pátio. Ele só vale na data impressa, das 5h às 9h.</p>
+          <p className="suave">Imprima e fixe no pátio. Ele só vale na data impressa, no horário de check-in da base.</p>
         </div>
         <SeletorBase ativas={ativas} base={base} escolher={escolher} />
       </div>
@@ -70,7 +70,7 @@ export function QrDoDia() {
           <p className="folha-data">{formatarDataLonga(qr.data)}</p>
           <div className="qr" dangerouslySetInnerHTML={{ __html: qr.svg }} />
           <p>
-            Válido somente em <strong>{formatarData(qr.data)}</strong>, das 5h às 9h.
+            Válido somente em <strong>{formatarData(qr.data)}</strong>, das {base.janelaInicio ?? '05:00'} às {base.janelaFim ?? '09:00'}.
           </p>
           <p className="suave">Abra o HeberHub no seu celular e toque em "Registrar presença".</p>
           <button className="nao-imprimir" onClick={() => window.print()}>
