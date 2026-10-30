@@ -56,6 +56,11 @@ export const api = {
   reabrirEvento: chamada<{ id: string; justificativa: string }>('reabrirEvento'),
   mudarStatusEvento: chamada<{ id: string; status: 'pago' | 'cancelado' }>('mudarStatusEvento'),
   meuEventoHoje: chamada<void, { evento: { nome: string; veioHoje: boolean; apto: boolean } | null }>('meuEventoHoje'),
+  /** tipo null limpa a marca. Se havia presença, ela é retirada e a diária estornada. */
+  marcarAusencia: chamada<
+    { uid: string; data: string; tipo: 'falta' | 'nao-escalado' | null; justificativa?: string },
+    { ok: true; presencaRetirada: boolean; diariasEstornadas: number }
+  >('marcarAusencia'),
   registrarPresencaManual: chamada<{ uid: string; data: string; justificativa: string }>('registrarPresencaManual'),
   fecharMes: chamada<{ competencia: string }, { ok: true; liquido: number; pessoas: number }>('fecharMes'),
   reabrirMes: chamada<{ competencia: string; justificativa: string }>('reabrirMes'),

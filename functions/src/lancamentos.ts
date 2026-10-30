@@ -1,5 +1,5 @@
 import { onCall } from 'firebase-functions/v2/https'
-import { exigirMesAberto, lancamentos, lancarDiaria, novoLancamento, valorVigente } from './financeiro.js'
+import { estornar, exigirMesAberto, lancamentos, lancarDiaria, novoLancamento, valorVigente } from './financeiro.js'
 import { agora, agoraServidor, auditar, centavos, dataValida, db, exigirFinanceiro, exigirPerfil, falha, texto } from './infra.js'
 import { competenciaDe, dataEmSaoPaulo } from './regras/tempo.js'
 import type { Lancamento, Usuario } from './tipos.js'
@@ -92,27 +92,19 @@ export const estornarLancamento = onCall(async (req) => {
   const id = texto(req.data?.id, 'o lançamento')
   const motivo = justificativa(req.data?.justificativa)
 
-  const estornoRef = lancamentos.doc()
-  await db.runTransaction(async (tx) => {
+  const estornoRef = await db.runTransaction(async (tx) => {
     const original = await tx.get(lancamentos.doc(id))
     if (!original.exists) throw falha('Lançamento não encontrado.', 'not-found')
     const l = original.data() as Lancamento
     if (l.estornoDe) throw falha('Um estorno não pode ser estornado.', 'failed-precondition')
     if (l.estornadoPor) throw falha('Este lançamento já foi estornado.', 'failed-precondition')
     await exigirMesAberto(tx, l.data)
-    tx.create(
-      estornoRef,
-      novoLancamento(
-        { uid: l.uid, nome: l.nome, data: l.data, tipo: l.tipo, valor: -l.valor, justificativa: motivo, funcaoId: l.funcaoId, presencaId: l.presencaId, estornoDe: id },
-        autor,
-      ),
-    )
-    // Uma diária pendente estornada deixa de bloquear o fechamento.
-    tx.update(original.ref, { estornadoPor: estornoRef.id, pendente: false })
+    const estornoId = estornar(tx, { id, dados: l }, motivo, autor)
     if (l.tipo === 'diaria' && l.presencaId) tx.update(db.collection('presencas').doc(l.presencaId), { cancelada: true })
-    auditar(tx, { acao: 'lancamento-estornado', autor, alvo: id, detalhes: { uid: l.uid, estorno: estornoRef.id, valor: l.valor, justificativa: motivo } })
+    auditar(tx, { acao: 'lancamento-estornado', autor, alvo: id, detalhes: { uid: l.uid, estorno: estornoId, valor: l.valor, justificativa: motivo } })
+    return estornoId
   })
-  return { ok: true, id: estornoRef.id }
+  return { ok: true, id: estornoRef }
 })
 
 /**
@@ -156,19 +148,9 @@ export const registrarPresencaManual = onCall(async (req) => {
       registradoPor: autor,
       cancelada: false,
     })
-    if (diariaAnterior?.exists) {
-      // Presença que já foi cancelada: a nova diária ganha outro id.
-      const ref = lancamentos.doc()
-      tx.create(
-        ref,
-        novoLancamento(
-          { uid, nome: usuario.nome, data, tipo: 'diaria', valor: valor ?? 0, pendente: valor === null, funcaoId: usuario.funcaoId ?? null, presencaId: presencaRef.id, justificativa: motivo },
-          autor,
-        ),
-      )
-    } else {
-      lancarDiaria(tx, { uid, usuario, data, presencaId: presencaRef.id, valor, autor, justificativa: motivo })
-    }
+    lancarDiaria(tx, { uid, usuario, data, presencaId: presencaRef.id, valor, autor, justificativa: motivo, diariaAnteriorExiste: diariaAnterior?.exists })
+    // Quem estava marcado como falta ou não escalado nesse dia deixa de estar.
+    tx.delete(db.collection('ausencias').doc(presencaRef.id))
     auditar(tx, { acao: 'presenca-manual', autor, alvo: presencaRef.id, detalhes: { valor, justificativa: motivo } })
   })
   return { ok: true }

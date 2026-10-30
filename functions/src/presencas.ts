@@ -1,5 +1,5 @@
 import { onCall } from 'firebase-functions/v2/https'
-import { lancarDiaria, valorVigente } from './financeiro.js'
+import { lancamentos, lancarDiaria, valorVigente } from './financeiro.js'
 import { agora as horaAtual, agoraServidor, auditar, db, exigirLogin } from './infra.js'
 import type { Claims } from './tipos.js'
 import { MENSAGENS, validarCheckin, type Leitura, type MotivoRecusa } from './regras/checkin.js'
@@ -54,7 +54,7 @@ export const registrarPresenca = onCall(async (req): Promise<RespostaCheckin> =>
 
     const presencaRef = db.collection('presencas').doc(`${uid}_${resultado.data}`)
     const existente = await tx.get(presencaRef)
-    if (existente.exists) {
+    if (existente.exists && !existente.get('cancelada')) {
       return {
         ok: true,
         jaRegistrada: true,
@@ -65,11 +65,13 @@ export const registrarPresenca = onCall(async (req): Promise<RespostaCheckin> =>
       }
     }
 
+    // Presença retirada antes: a diária antiga (estornada) ocupa o id padrão.
+    const diariaAnterior = existente.exists ? await tx.get(lancamentos.doc(`diaria_${presencaRef.id}`)) : null
     // Última leitura antes das escritas: o valor da diária vigente hoje.
     const valor = await valorVigente(tx, uid, usuario.funcaoId, resultado.data)
 
     const horario = horarioEmSaoPaulo(agora)
-    tx.create(presencaRef, {
+    tx.set(presencaRef, {
       uid,
       nome: usuario.nome,
       funcao: usuario.funcao ?? null,
@@ -85,8 +87,11 @@ export const registrarPresenca = onCall(async (req): Promise<RespostaCheckin> =>
       origem: semQr ? 'localizacao' : 'qrcode',
       // Marca para a limpeza automática das coordenadas após 90 dias.
       temCoordenadas: true,
+      cancelada: false,
     })
-    lancarDiaria(tx, { uid, usuario, data: resultado.data, presencaId: presencaRef.id, valor, autor: uid })
+    lancarDiaria(tx, { uid, usuario, data: resultado.data, presencaId: presencaRef.id, valor, autor: uid, diariaAnteriorExiste: diariaAnterior?.exists })
+    // Quem estava marcado como não escalado e veio: a presença vale e a marca sai.
+    tx.delete(db.collection('ausencias').doc(presencaRef.id))
     if (!usuario.deviceId) tx.update(usuarioRef, { deviceId: resultado.deviceId })
     auditar(tx, { acao: 'checkin', autor: uid, alvo: presencaRef.id, detalhes: { distanciaMetros: resultado.distanciaMetros, semQr } })
     return { ok: true, jaRegistrada: false, horario, data: resultado.data, baseNome: base!.nome, distanciaMetros: resultado.distanciaMetros }

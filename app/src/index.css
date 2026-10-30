@@ -889,6 +889,83 @@ textarea {
   color: #e52421;
 }
 
+/* Cada dia do calendário é um botão que abre o menu do dia. */
+.calendario button.celula-dia {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.calendario button.marca-presenca {
+  background: var(--cor-ok-fundo);
+  color: var(--cor-ok);
+}
+
+.calendario button.marca-presenca.origem-manual {
+  background: var(--cor-info-fundo);
+  color: var(--cor-texto);
+}
+
+.calendario button.ausencia-falta {
+  background: var(--cor-erro-fundo);
+  color: var(--cor-erro);
+}
+
+.calendario button.ausencia-nao-escalado {
+  background: var(--cor-fundo);
+  color: var(--cor-texto-suave);
+  border: 1px solid var(--cor-borda);
+  font-size: 0.7rem;
+}
+
+.menu-dia-fundo {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.menu-dia {
+  position: fixed;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  max-width: 260px;
+  padding: 8px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 10px;
+  background: var(--cor-cartao);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+
+.menu-dia-titulo {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 6px;
+  padding: 4px 8px 8px;
+  border-bottom: 1px solid var(--cor-borda);
+  font-size: 0.9rem;
+}
+
+.menu-dia button {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cor-texto);
+  font-weight: 500;
+  text-align: left;
+}
+
+.menu-dia button:hover,
+.menu-dia button:focus-visible {
+  background: var(--cor-fundo);
+}
+
 /* Configurações */
 .subabas {
   display: flex;

@@ -50,6 +50,9 @@ export type Presenca = {
   cancelada?: boolean
 }
 
+/** Falta registrada ou não escalado, em ausencias/{uid_data}. */
+export type Ausencia = { id: string; uid: string; nome: string; baseId: string | null; data: string; tipo: 'falta' | 'nao-escalado'; justificativa: string | null }
+
 export type Operacao = { id: string; nome: string; ativa: boolean }
 
 export type FuncaoOperacional = { id: string; nome: string; operacaoId: string; operacaoNome: string; ativa: boolean }

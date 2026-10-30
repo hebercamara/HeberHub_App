@@ -50,11 +50,21 @@ export function novoLancamento(
  */
 export function lancarDiaria(
   tx: Transaction,
-  args: { uid: string; usuario: Usuario; data: string; presencaId: string; valor: number | null; autor: string; justificativa?: string | null },
+  args: {
+    uid: string
+    usuario: Usuario
+    data: string
+    presencaId: string
+    valor: number | null
+    autor: string
+    justificativa?: string | null
+    /** A presença já foi retirada antes e a diária dela (estornada) ocupa o id padrão. */
+    diariaAnteriorExiste?: boolean
+  },
 ): void {
   const { uid, usuario, data, presencaId, valor, autor } = args
   tx.create(
-    lancamentos.doc(`diaria_${presencaId}`),
+    args.diariaAnteriorExiste ? lancamentos.doc() : lancamentos.doc(`diaria_${presencaId}`),
     novoLancamento(
       {
         uid,
@@ -70,4 +80,28 @@ export function lancarDiaria(
       autor,
     ),
   )
+}
+
+/**
+ * Estorna um lançamento: cria o inverso e marca o original. Nada é apagado.
+ * Só escreve; quem chama já leu o lançamento e conferiu que o mês está aberto.
+ */
+export function estornar(
+  tx: Transaction,
+  original: { id: string; dados: Lancamento },
+  justificativa: string,
+  autor: string,
+): string {
+  const l = original.dados
+  const estornoRef = lancamentos.doc()
+  tx.create(
+    estornoRef,
+    novoLancamento(
+      { uid: l.uid, nome: l.nome, data: l.data, tipo: l.tipo, valor: -l.valor, justificativa, funcaoId: l.funcaoId, presencaId: l.presencaId, estornoDe: original.id },
+      autor,
+    ),
+  )
+  // Uma diária pendente estornada deixa de bloquear o fechamento.
+  tx.update(lancamentos.doc(original.id), { estornadoPor: estornoRef.id, pendente: false })
+  return estornoRef.id
 }

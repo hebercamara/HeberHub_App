@@ -2,6 +2,7 @@ import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestor
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Aviso } from '../../componentes/Aviso'
 import { Carregando } from '../../componentes/Carregando'
+import { MenuDia, type AlvoMenu } from '../../componentes/MenuDia'
 import { SemBase } from '../../componentes/SemBase'
 import { SeletorBase } from '../../componentes/SeletorBase'
 import { api } from '../../lib/api'
@@ -11,7 +12,7 @@ import { datasEntre, diaDaSemana, fimDoMes, formatarCompetencia, formatarData, f
 import { mensagemDeErro } from '../../lib/erros'
 import { db } from '../../lib/firebase'
 import { useSessao } from '../../lib/sessao'
-import { NOMES_FUNCAO, type Presenca, type Usuario } from '../../lib/tipos'
+import { NOMES_FUNCAO, type Ausencia, type Presenca, type Usuario } from '../../lib/tipos'
 
 type Visao = 'dia' | 'semana' | 'mes'
 
@@ -34,6 +35,7 @@ export function PresencasHoje() {
   const [inicio, fim] =
     visao === 'dia' ? [referencia, referencia] : visao === 'semana' ? [inicioDaSemana(referencia), somarDias(inicioDaSemana(referencia), 6)] : [`${referencia.slice(0, 7)}-01`, fimDoMes(referencia.slice(0, 7))]
   const presencas = usePresencas(base?.id ?? null, inicio, fim)
+  const ausencias = useAusencias(base?.id ?? null, inicio, fim)
 
   function andar(sentido: 1 | -1) {
     if (visao === 'dia') setReferencia(somarDias(referencia, sentido))
@@ -85,14 +87,26 @@ export function PresencasHoje() {
         </div>
       </div>
 
-      {visao === 'dia' ? <ListaDoDia presencas={presencas} baseId={base.id} data={referencia} /> : <Calendario presencas={presencas} baseId={base.id} datas={datasEntre(inicio, fim)} />}
+      {visao === 'dia' ? (
+        <ListaDoDia presencas={presencas} ausencias={ausencias} baseId={base.id} data={referencia} />
+      ) : (
+        <Calendario presencas={presencas} ausencias={ausencias} baseId={base.id} datas={datasEntre(inicio, fim)} />
+      )}
     </div>
   )
 }
 
-function ListaDoDia({ presencas, baseId, data }: { presencas: Presenca[]; baseId: string; data: string }) {
+/** Posição na tela para abrir o menu do dia logo abaixo do que foi tocado. */
+function posicao(e: React.MouseEvent<HTMLElement>) {
+  const r = e.currentTarget.getBoundingClientRect()
+  return { x: r.left, y: r.bottom + 4 }
+}
+
+function ListaDoDia({ presencas, ausencias, baseId, data }: { presencas: Presenca[]; ausencias: Ausencia[]; baseId: string; data: string }) {
   const usuarios = useUsuarios()
   const [lancando, setLancando] = useState(false)
+  const [menu, setMenu] = useState<AlvoMenu | null>(null)
+  const doDia = ausencias.filter((a) => a.data === data)
   const totalAtivos = usuarios.filter((u) => u.baseId === baseId && u.status === 'ativo').length
   const ordenadas = [...presencas].sort((a, b) => a.horario.localeCompare(b.horario))
   const presentes = new Set(presencas.map((p) => p.uid))
@@ -128,6 +142,7 @@ function ListaDoDia({ presencas, baseId, data }: { presencas: Presenca[]; baseId
                 <th>Função</th>
                 <th>Como</th>
                 <th className="numero">Distância</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -138,53 +153,67 @@ function ListaDoDia({ presencas, baseId, data }: { presencas: Presenca[]; baseId
                   <td>{p.funcao ? NOMES_FUNCAO[p.funcao] : '—'}</td>
                   <td>{ORIGEM[p.origem]?.nome ?? p.origem}</td>
                   <td className="numero">{p.distanciaMetros === null ? '—' : `${p.distanciaMetros} m`}</td>
+                  <td className="numero">
+                    <button className="link" onClick={(e) => setMenu({ uid: p.uid, nome: p.nome, data, presenca: p, ...posicao(e) })}>
+                      Alterar
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      {doDia.length > 0 && (
+        <div className="bloco">
+          {(['nao-escalado', 'falta'] as const).map((tipo) => {
+            const lista = doDia.filter((a) => a.tipo === tipo)
+            if (lista.length === 0) return null
+            return (
+              <p key={tipo}>
+                <strong>{tipo === 'falta' ? 'Faltas' : 'Não escalados'}:</strong>{' '}
+                {lista.map((a, i) => (
+                  <span key={a.id}>
+                    {i > 0 && ', '}
+                    <button className="link" onClick={(e) => setMenu({ uid: a.uid, nome: a.nome, data, ausencia: a, ...posicao(e) })}>
+                      {a.nome}
+                    </button>
+                  </span>
+                ))}
+              </p>
+            )
+          })}
+        </div>
+      )}
+      {menu && <MenuDia alvo={menu} aoFechar={() => setMenu(null)} />}
     </section>
   )
 }
 
-/** Grade pessoa × dia. ADM e coordenação lançam presença manual tocando num dia vazio. */
-function Calendario({ presencas, baseId, datas }: { presencas: Presenca[]; baseId: string; datas: string[] }) {
+/** Grade pessoa × dia. Tocar num dia abre o menu: presença, falta ou não escalado. */
+function Calendario({ presencas, ausencias, baseId, datas }: { presencas: Presenca[]; ausencias: Ausencia[]; baseId: string; datas: string[] }) {
   const usuarios = useUsuarios()
   const hoje = hojeEmSaoPaulo()
-  const [erro, setErro] = useState('')
-  const [enviando, setEnviando] = useState<string | null>(null)
+  const [menu, setMenu] = useState<AlvoMenu | null>(null)
 
   // Ativos da base, mais quem teve presença no período (mesmo que hoje esteja em outra base ou inativo).
   const pessoas = useMemo(() => {
     const mapa = new Map<string, string>()
     usuarios.filter((u) => u.baseId === baseId && u.status === 'ativo').forEach((u) => mapa.set(u.id, u.nome))
     presencas.forEach((p) => mapa.set(p.uid, mapa.get(p.uid) ?? p.nome))
+    ausencias.forEach((a) => mapa.set(a.uid, mapa.get(a.uid) ?? a.nome))
     return [...mapa.entries()].map(([uid, nome]) => ({ uid, nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
-  }, [usuarios, presencas, baseId])
+  }, [usuarios, presencas, ausencias, baseId])
 
   const porChave = useMemo(() => new Map(presencas.map((p) => [`${p.uid}_${p.data}`, p])), [presencas])
+  const ausenciaPorChave = useMemo(() => new Map(ausencias.map((a) => [`${a.uid}_${a.data}`, a])), [ausencias])
   const porDia = (data: string) => presencas.filter((p) => p.data === data).length
-
-  async function lancarManual(uid: string, nome: string, data: string) {
-    const justificativa = prompt(`Lançar presença manual para ${nome} em ${formatarData(data)}? Informe o motivo:`)
-    if (!justificativa) return
-    setErro('')
-    setEnviando(`${uid}_${data}`)
-    try {
-      await api.registrarPresencaManual({ uid, data, justificativa })
-    } catch (e) {
-      setErro(mensagemDeErro(e))
-    }
-    setEnviando(null)
-  }
 
   return (
     <section className="cartao">
       <p className="suave legenda">
-        ✓ QR Code · L localização · M manual · toque num dia vazio para lançar presença manual
+        ✓ QR Code · L localização · M manual · F falta · NE não escalado · toque num dia para alterar
       </p>
-      <Aviso>{erro}</Aviso>
       <div className="rolagem">
         <table className="tabela calendario">
           <thead>
@@ -206,23 +235,23 @@ function Calendario({ presencas, baseId, datas }: { presencas: Presenca[]; baseI
                 <td className="col-nome">{nome}</td>
                 {datas.map((d) => {
                   const p = porChave.get(`${uid}_${d}`)
-                  const podeLancar = !p && d <= hoje
+                  const a = p ? undefined : ausenciaPorChave.get(`${uid}_${d}`)
                   return (
                     <td key={d} className={`col-dia ${diaDaSemana(d) % 6 === 0 ? 'fim-de-semana' : ''} ${d === hoje ? 'hoje' : ''}`}>
-                      {p ? (
-                        <span className={`marca-presenca origem-${p.origem}`} title={`${ORIGEM[p.origem]?.nome ?? p.origem}${p.origem !== 'manual' ? ` às ${p.horario}` : ''}`}>
-                          {ORIGEM[p.origem]?.marca ?? '✓'}
-                        </span>
-                      ) : podeLancar ? (
-                        <button
-                          className="celula-vazia"
-                          disabled={enviando === `${uid}_${d}`}
-                          onClick={() => void lancarManual(uid, nome, d)}
-                          aria-label={`Lançar presença de ${nome} em ${formatarData(d)}`}
-                        >
-                          +
-                        </button>
-                      ) : null}
+                      <button
+                        className={`celula-dia ${p ? `marca-presenca origem-${p.origem}` : a ? `marca-ausencia ausencia-${a.tipo}` : 'celula-vazia'}`}
+                        title={
+                          p
+                            ? `${ORIGEM[p.origem]?.nome ?? p.origem}${p.origem !== 'manual' ? ` às ${p.horario}` : ''}`
+                            : a
+                              ? `${a.tipo === 'falta' ? 'Falta' : 'Não escalado'}${a.justificativa ? `: ${a.justificativa}` : ''}`
+                              : undefined
+                        }
+                        onClick={(e) => setMenu({ uid, nome, data: d, presenca: p, ausencia: a, ...posicao(e) })}
+                        aria-label={`${nome} em ${formatarData(d)}`}
+                      >
+                        {p ? (ORIGEM[p.origem]?.marca ?? '✓') : a ? (a.tipo === 'falta' ? 'F' : 'NE') : '+'}
+                      </button>
                     </td>
                   )
                 })}
@@ -245,8 +274,22 @@ function Calendario({ presencas, baseId, datas }: { presencas: Presenca[]; baseI
           </tfoot>
         </table>
       </div>
+      {menu && <MenuDia alvo={menu} aoFechar={() => setMenu(null)} />}
     </section>
   )
+}
+
+/** Faltas e não escalados da base no período, em tempo real. */
+function useAusencias(baseId: string | null, inicio: string, fim: string): Ausencia[] {
+  const chave = `${baseId}:${inicio}:${fim}`
+  const [estado, setEstado] = useState<{ chave: string; lista: Ausencia[] }>({ chave: '', lista: [] })
+  useEffect(() => {
+    if (!baseId) return
+    return onSnapshot(query(collection(db, 'ausencias'), where('baseId', '==', baseId), where('data', '>=', inicio), where('data', '<=', fim)), (snap) =>
+      setEstado({ chave: `${baseId}:${inicio}:${fim}`, lista: snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Ausencia) }),
+    )
+  }, [baseId, inicio, fim])
+  return estado.chave === chave ? estado.lista : []
 }
 
 /** Presenças da base no período, em tempo real (sem as canceladas). */

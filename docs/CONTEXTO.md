@@ -3,7 +3,7 @@
 > Documento de referência para quem for continuar o projeto, seja uma pessoa ou uma IA.
 > Explica o que o app faz, o que ele deliberadamente **não** faz, as regras de negócio
 > decididas com o dono do projeto (e por quê), a arquitetura técnica e como retomar o trabalho.
-> Atualizado em 30/10/2026, após a entrega dos eventos de presença.
+> Atualizado em 30/10/2026, após a entrega de falta e não escalado no calendário.
 
 ---
 
@@ -60,6 +60,8 @@ A empresa trabalha com **prestadores de serviço PJ** (motoristas e ajudantes) q
 | **Diária sem valor (pendente)** | Diária gerada quando não havia valor definido. É preenchida quando o valor ou a função for cadastrado; bloqueia o fechamento. |
 | **Lançamento** | Movimento financeiro: diária, adicional ou desconto. Nunca é apagado; corrige-se por **estorno** (lançamento inverso). |
 | **Lançamento em grupo** | Mesmo adicional ou desconto para várias pessoas escolhidas à mão. Entra no fechamento do mês. (Antes se chamava "Evento".) |
+| **Falta (F)** | Marca de que a pessoa não esteve presente, feita pela equipe. Quando havia presença, ela é retirada e a diária estornada. |
+| **Não escalado (NE)** | Marca de que a pessoa não estava escalada no dia. Pode ser planejada para dias futuros. Futuramente virá uma escala por carro. |
 | **Competência** | Mês do lançamento (AAAA-MM), do dia 1 ao último dia do mês. |
 | **Fechamento** | Ato da coordenação que congela os totais do mês e trava novos lançamentos nele. |
 | **Evento (de presença)** | Regra que paga adicional a quem esteve presente em dias específicos. Só a coordenação mexe. **Pago fora do fechamento.** |
@@ -77,6 +79,7 @@ A empresa trabalha com **prestadores de serviço PJ** (motoristas e ajudantes) q
 | Gerar e imprimir o QR do dia | | ✓ | ✓ | ✓ |
 | Aprovar ou recusar cadastros | | ✓ | ✓ | ✓ |
 | Lançar presença manual (com justificativa) | | ✓ | ✓ | ✓ |
+| Retirar presença (falta ou não escalado, com justificativa) e marcar NE | | ✓ | ✓ | ✓ |
 | Ver valores, Financeiro, exportar Excel e PDF | | | ✓ | ✓ |
 | Adicional, desconto, lançamento em grupo, estorno | | | ✓ | ✓ |
 | Fechar e reabrir o mês | | | | ✓ |
@@ -143,6 +146,17 @@ ADM ou a coordenação lança a presença, sempre com **justificativa**, de trê
 
 Ela gera a diária normalmente, não pode ser em data futura e fica marcada como "M" no calendário.
 
+### 6.4.1 Falta e não escalado (alterar um dia)
+Tocar em **qualquer dia** do calendário (ou em "Alterar" na lista do dia) abre um menu:
+- **dia com presença** (QR, localização ou manual): **Falta** ou **Não escalado**. A presença é
+  retirada (`cancelada`), a diária é **estornada** e a justificativa é obrigatória. Só em mês aberto.
+- **dia sem presença:** **Presença** (manual, até hoje) ou **Não escalado** (também em dias
+  futuros); se já houver marca, aparece também **Limpar marcação**.
+- As marcas ficam em `ausencias/{uid_data}` e aparecem no calendário como **F** e **NE**.
+- Se a pessoa marcada fizer check-in depois (ou receber presença manual), a presença vale e a
+  marca sai. Uma presença retirada não impede um novo check-in no mesmo dia; a diária nova
+  ganha outro id.
+
 ### 6.5 Financeiro (mensal)
 - **Valor da diária:** por função (Configurações › Funções e diárias) ou **individual** por
   pessoa (Usuários), sempre "a partir de" uma data, com histórico. O individual vence o da
@@ -185,8 +199,9 @@ Ela gera a diária normalmente, não pode ser em data futura e fica marcada como
 ### 6.7 Presenças (visão da equipe)
 - **Dia:** lista com horário, nome, tipo, como foi feito (QR, localização ou manual) e
   distância; contador "X de Y pessoas presentes"; botão de presença manual.
-- **Semana e Mês:** grade pessoa × dia (✓ QR, L localização, M manual), totais por pessoa e
-  por dia, nome fixo à esquerda ao rolar, e o "+" para presença manual.
+- **Semana e Mês:** grade pessoa × dia (✓ QR, L localização, M manual, F falta, NE não
+  escalado), totais por pessoa e por dia, nome fixo à esquerda ao rolar. Tocar num dia abre o
+  menu do dia (6.4.1).
 
 ### 6.8 Privacidade (LGPD)
 - O termo é versionado (`VERSAO_TERMO`, hoje 1, no app e no servidor). Mudou o texto?
@@ -216,6 +231,8 @@ Ela gera a diária normalmente, não pode ser em data futura e fica marcada como
 | **Fechamento até o dia 5**; mês calendário | Pedido do dono. |
 | **Coordenadas por 90 dias** | Pedido do dono (LGPD: mínimo necessário). |
 | Funções **duplicáveis** entre operações | Quase todas as funções existem em todas as operações, mudando só o valor. |
+| Equipe pode **retirar presença**, mesmo de check-in por QR | Pedido do dono ("preciso dessa autonomia"). Estorna a diária e exige justificativa; fica na auditoria. |
+| **Não escalado** como marca simples por dia | Pedido do dono. A escala por carro virá depois; por enquanto, só a marca. |
 | Configurações agrupam o que é raro | Menos abas no dia a dia; os cadastros pendentes ficam lá, com contador. |
 
 ## 8. Arquitetura técnica
@@ -271,6 +288,7 @@ docs/CONTEXTO.md          este documento
 | `eventos/{id}` | registros dos **lançamentos em grupo** (nome histórico) | coordenação e ADM Financeiro |
 | `fechamentos/{AAAA-MM}` | status, totais por pessoa, líquido, reabertura | coordenação e ADM Financeiro |
 | `eventosPresenca/{id}` | eventos de presença: dias, público, regras (faixas), status, resultado congelado | **só coordenação** |
+| `ausencias/{uid_data}` | falta ou não escalado: tipo, justificativa, baseId, quem marcou | ADM e coordenação |
 | `configuracoes/aparencia` | cores primária, secundária e fundo | **pública** (aparece no login) |
 | `auditoria/{id}` | ação, autor, alvo, detalhes, data e hora | só coordenação |
 
@@ -282,7 +300,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | Área | Funções |
 | --- | --- |
 | Usuários | `concluirCadastro`, `aprovarCadastro`, `criarUsuarioInterno`, `atualizarUsuario`, `reivindicarCoordenacao` |
-| Presença | `registrarPresenca` (QR ou localização), `registrarPresencaManual`, `gerarQrDoDia` |
+| Presença | `registrarPresenca` (QR ou localização), `registrarPresencaManual`, `marcarAusencia` (falta, não escalado ou limpar; retira presença e estorna a diária), `gerarQrDoDia` |
 | Cadastros | `salvarBase`, `salvarOperacao`, `salvarFuncao`, `duplicarFuncoes`, `salvarValorDiaria`, `salvarAparencia` |
 | Financeiro | `lancarAjuste`, `lancarEvento` (lançamento em grupo), `estornarLancamento`, `fecharMes`, `reabrirMes` |
 | Eventos | `salvarEvento`, `encerrarEvento`, `reabrirEvento`, `mudarStatusEvento` (pago ou cancelado), `meuEventoHoje` |
@@ -330,6 +348,9 @@ Acompanhar a Auditoria (recusas) para calibrar raio e precisão, coletar o que f
 então liberar para os cerca de 200 prestadores (teto previsto: 400).
 
 **Pendências e ideias registradas:**
+- **Escala por carro** (planejada pelo dono, "com calma"): hoje existe só a marca NE por dia.
+- Dias marcados como NE contam como ausência nas regras de eventos ("todos os dias"). Confirmar
+  com o dono se o NE deve ser desconsiderado nos eventos.
 - Revisão jurídica do termo de privacidade.
 - Criar `heberhub-prod` ou promover `heberhub-app` a produção antes do piloto.
 - Símbolo quadrado do logo, para o ícone da aba do navegador ficar legível.
@@ -346,7 +367,7 @@ então liberar para os cerca de 200 prestadores (teto previsto: 400).
 | Fase 1 | Login, autocadastro, aprovação, bases, QR do dia, check-in validado, presenças do dia |
 | Fase 2 | Operações, funções, valores com histórico, diária automática, adicionais, descontos, estorno, presença manual, fechamento, Excel e PDF, janela por base, check-in de todos os perfis |
 | Fase 3 | Termo LGPD, limpeza de coordenadas em 90 dias, auditoria, e-mails em português |
-| Depois | Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |
+| Depois | Falta e não escalado no calendário (retirar presença com estorno); Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
 
