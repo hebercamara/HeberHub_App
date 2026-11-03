@@ -183,7 +183,7 @@ export type CadastroOficial = {
   alertas: Alerta[]
   cartao?: { caminho: string | null; tipo: string }
   /** Versão aprovada (a que vale nos contratos). */
-  oficial?: { empresa: DadosEmpresa; representante: Representante; contato: { telefone: string; email: string }; receitaReferencia?: DadosEmpresa }
+  oficial?: { empresa: DadosEmpresa; representante: Representante; contato: { telefone: string; email: string }; receitaReferencia?: DadosEmpresa | null }
   versaoAtual?: number
   /** A Receita mudou depois da aprovação e falta escolher os valores. */
   divergenciasPendentes?: boolean
@@ -195,6 +195,8 @@ export type VersaoCadastro = {
   motivo: 'aprovacao' | 'atualizacao'
   fontes: Record<string, 'confere' | 'cadastro' | 'receita' | 'manual'>
   descartados: Record<string, string>
+  /** Conferência pelo Cartão CNPJ, quando a Receita não tinha os dados. */
+  conferenciaManual?: string | null
   autor: string
   em?: { toDate: () => Date }
 }

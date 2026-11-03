@@ -92,7 +92,14 @@ Acima da coordenação há mais dois perfis (etapa A1 do onboarding):
 - **Gestão:** tudo o que a coordenação faz e mais. É a conta do dono. **Só a Gestão** dá, tira
   ou altera os perfis Gestão e Jurídico (inclusive inativar quem os tem).
 - **Jurídico:** **lê tudo** (inclusive valores e auditoria), mas não altera a operação nem o
-  financeiro; o app mostra "Modo consulta". Vai alterar a parte de contratos (etapa C).
+  financeiro (lá o app mostra "Modo consulta"). Na **área Jurídica** ele trabalha: aprova
+  cadastros, importa a planilha, consulta a Receita e resolve mudanças. Abre direto nela.
+
+**Área Jurídica** (`/juridico`): funciona como um sistema à parte, com topo azul-escuro e o
+seletor **Operação | Jurídico** no alto (aparece para Gestão, coordenação e Jurídico). Abas:
+Painel (o que pede atenção), Cadastros (aprovação, a mesma tela de Configurações › Cadastros),
+Prestadores (cadastros oficiais, pendências e histórico), Planilha e Contratos (em construção).
+O ADM continua aprovando cadastros em Configurações › Cadastros.
 
 **Um CNPJ por pessoa:** o autocadastro recusa um CNPJ que já pertence a outro cadastro
 (recusados não contam). Configurações › Cadastros lista CNPJs repetidos em cadastros antigos.
@@ -112,23 +119,31 @@ seção **Cadastros**.
 3. Ela aceita o termo de privacidade e passa a criar os demais acessos.
 
 ### 6.2 Cadastro e aprovação de prestador (cadastro oficial, onboarding A2)
-1. O prestador toca em "Cadastre-se". **Passo 1:** cria o login (e-mail e senha).
-   **Passo 2:** preenche o cadastro oficial:
-   - **Empresa:** ao digitar o CNPJ, o servidor consulta a **Receita** (BrasilAPI; ReceitaWS de
-     reserva; guarda a consulta por 24 h em `consultasCnpj`) e preenche razão social e endereço.
-     CNPJ já usado por outra pessoa é recusado na hora. CNPJ fora de **ATIVA** não entra.
-   - **Cartão CNPJ** (PDF ou foto; foto é reduzida no celular), enviado ao servidor, que guarda
-     no Storage por **60 dias** (função agendada `limparCartoes`, 03:30).
-   - **Representante:** nome, CPF (validado), RG, sexo, nacionalidade, estado civil, profissão
-     e endereço (CEP preenche a rua; opção "mesmo endereço da empresa").
-   - **Contato e função** (motorista ou ajudante).
-   - **Conta para pagamento:** banco, agência, conta, tipo e chave PIX. Conta e chave têm de ser
-     do CNPJ: chave do tipo CPF é recusada; chave do tipo CNPJ tem de ser o próprio CNPJ; a
-     pessoa marca a declaração de titularidade.
-   - **Aceite do termo de privacidade** (versão 2).
-   O servidor gera **avisos** para quem aprova (não travam): atividade (CNAE) fora de
-   transporte, CPF diferente do que aparece no nome do MEI, razão social diferente da Receita,
-   Receita fora do ar.
+1. O prestador toca em "Cadastre-se" e segue **6 passos** (com barra de progresso e Voltar):
+   1. **Acesso:** e-mail e senha (o login é criado aqui).
+   2. **Empresa:** ao digitar o CNPJ, o servidor consulta a **Receita** (BrasilAPI; se ela não
+      achar, a ReceitaWS; guarda por 24 h em `consultasCnpj`) e preenche razão social e endereço.
+      CNPJ já usado por outra pessoa é recusado na hora; fora de **ATIVA** não entra. CNPJ que a
+      Receita **ainda não mostra** (empresa aberta há pouco) **não trava**: a pessoa continua e a
+      equipe confere pelo Cartão CNPJ.
+   3. **Cartão CNPJ** (PDF ou foto; foto é reduzida no celular), guardado no Storage por
+      **60 dias** (função agendada `limparCartoes`, 03:30).
+   4. **Responsável legal:** precisa ser o **titular ou um sócio** da empresa. O nome vem da
+      Receita (titular do MEI/empresário pela razão social; sócios pelo QSA): um só fica travado,
+      vários viram uma lista. O servidor confere nome e CPF (inteiro no MEI; os 6 dígitos que a
+      Receita mostra nos sócios) e **recusa** quem não for dono. Se a Receita não mostra os
+      sócios, entra com aviso e a equipe confere pelo Cartão CNPJ. Também: RG, sexo,
+      nacionalidade, estado civil, profissão e endereço (CEP preenche a rua; opção "mesmo
+      endereço da empresa").
+   5. **Pagamento:** telefone e conta (banco, agência, conta, tipo, chave PIX). Conta e chave
+      têm de ser da empresa: chave do tipo CPF é recusada; chave CNPJ tem de ser o próprio CNPJ;
+      a pessoa marca a declaração de titularidade.
+   6. **Revisão** de tudo e aceite do **termo de privacidade** (versão 2).
+   Quem se cadastra **não escolhe função** (motorista ou ajudante): a equipe define a função
+   operacional na aprovação. Os textos não falam em MEI, porque nem todos são MEI.
+   O servidor gera **avisos** para quem aprova: atividade (CNAE) fora de transporte, razão
+   social diferente da Receita e, os que pedem **conferência pelo Cartão CNPJ**, Receita fora do
+   ar, CNPJ que a Receita ainda não mostra e sócios que a Receita não mostra.
 2. O cadastro fica **pendente**, e a tela dele diz "aguardando aprovação".
 3. Uma **bolinha vermelha** com o número de pendentes aparece no botão Configurações para ADM
    e coordenação.
@@ -138,7 +153,9 @@ seção **Cadastros**.
 4. Em Configurações › Cadastros, alguém da equipe vê os dados, a situação na Receita, os
    avisos e o Cartão CNPJ (botão "Ver Cartão CNPJ"), e aprova escolhendo a **base**
    (obrigatória) e a **função** (opcional, define o valor), ou recusa. **Só aprova com a Receita
-   consultada e o CNPJ ATIVO** (botão "Consultar a Receita de novo"). A conta bancária aparece só
+   consultada e o CNPJ ATIVO** (botão "Consultar a Receita de novo"), **ou** com a
+   **conferência pelo Cartão CNPJ** descrita por quem aprova (campo de texto, obrigatório quando
+   há aviso desse tipo; fica gravado na versão do Cadastro Oficial). A conta bancária aparece só
    para quem vê valores. A tela do prestador libera sozinha.
    **Acareação (A4):** o que o formulário e a Receita dizem diferente (razão social e cada parte
    do endereço, comparados sem acento, pontuação ou abreviação como "R." e "Rua"; campo vazio
@@ -447,6 +464,7 @@ emissão de contratos).
 | Onboarding A1 | Perfis Gestão e Jurídico; só a Gestão dá esses perfis; um CNPJ por pessoa |
 | Onboarding A2 | Cadastro oficial completo, consulta à Receita, Cartão CNPJ (60 dias), conta do CNPJ, termo v2 |
 | Onboarding A3 | Planilha dos prestadores atuais (modelo, importação, recusas com motivo) e pedido de vínculo conferido |
+| Ajustes do onboarding | Área Jurídica separada (seletor Operação/Jurídico); cadastro em 6 passos; CNPJ ainda fora da Receita não trava; responsável legal conferido com titular/sócios; sem "MEI" e sem escolha de função; conferência pelo Cartão CNPJ na aprovação |
 | Onboarding A4 | Acareação formulário × Receita na aprovação, Cadastro Oficial em versões com histórico, alerta quando a Receita muda |
 | Depois | Falta e não escalado no calendário (retirar presença com estorno); Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |
 

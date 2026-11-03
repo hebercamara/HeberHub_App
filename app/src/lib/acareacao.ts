@@ -87,3 +87,6 @@ export function escolhasCompletas(divergencias: Divergencia[], escolhas: Partial
     return e && (e.fonte !== 'manual' || e.valor.trim().length > 0)
   })
 }
+
+/** Alertas que pedem conferência pelo Cartão CNPJ antes de aprovar (igual ao servidor). */
+export const ALERTAS_DE_CONFERENCIA: string[] = ['receita-indisponivel', 'receita-nao-encontrado', 'responsavel-nao-conferido']

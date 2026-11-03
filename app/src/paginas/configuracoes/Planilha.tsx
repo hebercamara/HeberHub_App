@@ -9,7 +9,7 @@ import { mensagemDeErro } from '../../lib/erros'
 import { db } from '../../lib/firebase'
 import { baixarModelo, lerPlanilha } from '../../lib/planilha'
 import { useSessao } from '../../lib/sessao'
-import { editaCoordenacao, type RelatorioImportacao } from '../../lib/tipos'
+import { ehCoordenacao, type RelatorioImportacao } from '../../lib/tipos'
 
 /**
  * Planilha dos prestadores atuais: cada linha vira um pré-cadastro sem login. Quando a
@@ -17,7 +17,8 @@ import { editaCoordenacao, type RelatorioImportacao } from '../../lib/tipos'
  */
 export function Planilha() {
   const { perfil } = useSessao()
-  const pode = editaCoordenacao(perfil)
+  // Gestão, coordenação e Jurídico trabalham na planilha.
+  const pode = ehCoordenacao(perfil)
   const [relatorio, setRelatorio] = useState<RelatorioImportacao | null>(null)
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)

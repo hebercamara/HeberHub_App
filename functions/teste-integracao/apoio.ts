@@ -8,6 +8,8 @@ export const PROJETO = 'demo-heberhub'
 export const HOJE = '2026-11-03'
 export const CNPJ_VALIDO = '11.222.333/0001-81'
 export const VERSAO_TERMO = 2
+/** A Receita simulada não mostra sócios: a aprovação pede a conferência pelo Cartão CNPJ. */
+export const CONFERENCIA = 'Conferido no Cartão CNPJ de teste: ATIVA e dono confere'
 /** CPF válido usado nos cadastros de teste (o MEI simulado de João da Silva tem este CPF). */
 export const CPF_TESTE = '529.982.247-25'
 /** Menor "PDF" aceito: só a assinatura. */
@@ -95,7 +97,7 @@ export async function coordenacaoInicial(): Promise<Celular> {
 export async function prestadorAprovado(coordenacao: Celular, email: string, nome: string, baseId: string, funcaoId?: string): Promise<Celular> {
   const p = await novoUsuario(email)
   await enviarCadastro(p, dadosCadastro(nome, novoCnpj()))
-  await coordenacao.chamar('aprovarCadastro', { uid: p.uid, aprovar: true, baseId, funcaoId })
+  await coordenacao.chamar('aprovarCadastro', { uid: p.uid, aprovar: true, baseId, funcaoId, conferenciaManual: CONFERENCIA })
   await p.renovarLogin()
   return p
 }

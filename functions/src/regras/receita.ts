@@ -22,8 +22,12 @@ export type DadosReceita = {
   mei: boolean
   cnae: { codigo: string; descricao: string }
   endereco: Endereco
+  /** Quadro de sócios (QSA). cpfParcial: como a Receita mostra (ex.: ***456789**), quando mostra. */
+  socios?: Socio[]
   fonte: 'brasilapi' | 'receitaws' | 'simulada'
 }
+
+export type Socio = { nome: string; qualificacao: string; cpfParcial: string }
 
 const txt = (v: unknown) => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '')
 
@@ -55,6 +59,11 @@ export function lerBrasilApi(j: Record<string, unknown>): DadosReceita {
       uf: txt(j.uf),
       cep: soDigitos(txt(j.cep)),
     },
+    socios: (Array.isArray(j.qsa) ? (j.qsa as Record<string, unknown>[]) : []).map((q) => ({
+      nome: txt(q.nome_socio),
+      qualificacao: txt(q.qualificacao_socio),
+      cpfParcial: txt(q.cnpj_cpf_do_socio),
+    })),
     fonte: 'brasilapi',
   }
 }
@@ -81,6 +90,7 @@ export function lerReceitaWs(j: Record<string, unknown>): DadosReceita {
       uf: txt(j.uf),
       cep: soDigitos(txt(j.cep)),
     },
+    socios: (Array.isArray(j.qsa) ? (j.qsa as Record<string, unknown>[]) : []).map((q) => ({ nome: txt(q.nome), qualificacao: txt(q.qual), cpfParcial: '' })),
     fonte: 'receitaws',
   }
 }
@@ -116,21 +126,68 @@ export function normalizar(valor: string): string {
     .trim()
 }
 
-export type Alerta = { codigo: 'receita-indisponivel' | 'cnae-fora' | 'cpf-diferente' | 'razao-diferente' | 'receita-mudou'; mensagem: string }
+/**
+ * Quem pode assinar pela empresa, segundo a Receita: os sócios do QSA ou, no empresário
+ * individual e no MEI (que não têm QSA), o titular, cujo nome e CPF estão na razão social.
+ */
+export function responsaveis(receita: DadosReceita): Socio[] {
+  const socios = (receita.socios ?? []).filter((s) => s.nome)
+  if (socios.length) return socios
+  const cpf = cpfNaRazaoSocial(receita.razaoSocial)
+  if (!cpf) return []
+  const nome = receita.razaoSocial.replace(/\s*\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/, '').trim()
+  return [{ nome, qualificacao: 'Titular', cpfParcial: cpf }]
+}
 
-/** Avisos para quem aprova. Nenhum deles trava sozinho; o bloqueio é a situação do CNPJ. */
-export function alertasDoCadastro(form: { razaoSocial: string; cpf: string }, receita: DadosReceita | null): Alerta[] {
-  if (!receita) return [{ codigo: 'receita-indisponivel', mensagem: 'A consulta à Receita não respondeu. Consulte de novo antes de aprovar.' }]
+/**
+ * O responsável informado é titular ou sócio da empresa na Receita? Compara o nome (sem
+ * acento) e o CPF: inteiro, ou só os dígitos que a Receita mostra (***456789**).
+ * 'sem-dados': a Receita não mostra quem é o dono; a equipe confere pelo Cartão CNPJ.
+ */
+export function conferirResponsavel(receita: DadosReceita, nome: string, cpf: string): 'confere' | 'diferente' | 'sem-dados' {
+  const lista = responsaveis(receita)
+  if (!lista.length) return 'sem-dados'
+  const socio = lista.find((s) => normalizar(s.nome) === normalizar(nome))
+  if (!socio) return 'diferente'
+  const visivel = soDigitos(socio.cpfParcial)
+  const digitos = soDigitos(cpf)
+  if (visivel.length === 11) return visivel === digitos ? 'confere' : 'diferente'
+  if (visivel.length === 6 && /^\*{3}\d{6}\*{2}$/.test(socio.cpfParcial.trim())) return digitos.slice(3, 9) === visivel ? 'confere' : 'diferente'
+  return 'confere'
+}
+
+export type Alerta = {
+  codigo: 'receita-indisponivel' | 'receita-nao-encontrado' | 'responsavel-nao-conferido' | 'cnae-fora' | 'razao-diferente' | 'receita-mudou'
+  mensagem: string
+}
+
+/** Avisos para quem aprova. Nenhum deles trava sozinho; o bloqueio é a situação do CNPJ e o responsável. */
+export function alertasDoCadastro(
+  form: { razaoSocial: string; nome: string; cpf: string },
+  receita: DadosReceita | null,
+  situacao: 'encontrado' | 'nao-encontrado' | 'indisponivel' = receita ? 'encontrado' : 'indisponivel',
+): Alerta[] {
+  if (situacao === 'nao-encontrado') {
+    return [
+      {
+        codigo: 'receita-nao-encontrado',
+        mensagem: 'CNPJ ainda não aparece na base da Receita (empresas abertas há pouco demoram a aparecer). Confira situação e dono no Cartão CNPJ.',
+      },
+    ]
+  }
+  if (!receita) return [{ codigo: 'receita-indisponivel', mensagem: 'A consulta à Receita não respondeu. Consulte de novo ou confira pelo Cartão CNPJ.' }]
   const alertas: Alerta[] = []
+  if (conferirResponsavel(receita, form.nome, form.cpf) === 'sem-dados') {
+    alertas.push({ codigo: 'responsavel-nao-conferido', mensagem: 'A Receita não mostra os sócios desta empresa. Confira no Cartão CNPJ se o responsável é o dono.' })
+  }
   if (!CNAES_ESPERADOS[receita.cnae.codigo]) {
     alertas.push({ codigo: 'cnae-fora', mensagem: `Atividade principal ${receita.cnae.codigo} (${receita.cnae.descricao || 'sem descrição'}) não é de transporte ou entrega.` })
-  }
-  const cpfDaEmpresa = receita.mei ? cpfNaRazaoSocial(receita.razaoSocial) : null
-  if (cpfDaEmpresa && cpfDaEmpresa !== soDigitos(form.cpf)) {
-    alertas.push({ codigo: 'cpf-diferente', mensagem: 'O CPF informado é diferente do CPF que aparece no nome da empresa (MEI).' })
   }
   if (normalizar(form.razaoSocial) !== normalizar(receita.razaoSocial)) {
     alertas.push({ codigo: 'razao-diferente', mensagem: `Razão social informada difere da Receita ("${receita.razaoSocial}").` })
   }
   return alertas
 }
+
+/** Alertas que exigem conferência manual pelo Cartão CNPJ antes de aprovar. */
+export const ALERTAS_DE_CONFERENCIA = ['receita-indisponivel', 'receita-nao-encontrado', 'responsavel-nao-conferido'] as const

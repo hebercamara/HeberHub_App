@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { cpfValido } from './cpf.js'
-import { alertasDoCadastro, cnpjApto, cpfNaRazaoSocial, lerBrasilApi, lerReceitaWs, normalizar } from './receita.js'
+import { alertasDoCadastro, cnpjApto, conferirResponsavel, cpfNaRazaoSocial, lerBrasilApi, lerReceitaWs, normalizar, responsaveis } from './receita.js'
 
 const brasilApi = {
   cnpj: '11222333000181',
@@ -65,11 +65,33 @@ describe('receita', () => {
     expect(normalizar('João  da Silva.')).toBe(normalizar('JOAO DA SILVA'))
   })
 
+  it('responsável: titular do MEI (pela razão social) ou sócio do QSA', () => {
+    const mei = lerBrasilApi(brasilApi)
+    expect(responsaveis(mei)).toEqual([{ nome: 'JOAO DA SILVA', qualificacao: 'Titular', cpfParcial: '52998224725' }])
+    expect(conferirResponsavel(mei, 'João da Silva', '529.982.247-25')).toBe('confere')
+    expect(conferirResponsavel(mei, 'João da Silva', '111.444.777-35')).toBe('diferente')
+    expect(conferirResponsavel(mei, 'Maria Souza', '529.982.247-25')).toBe('diferente')
+
+    const ltda = lerBrasilApi({
+      ...brasilApi,
+      razao_social: 'PAULA TRANSPORTES LTDA',
+      opcao_pelo_mei: false,
+      qsa: [{ nome_socio: 'PAULA SOUZA', qualificacao_socio: 'Sócio-Administrador', cnpj_cpf_do_socio: '***982247**' }],
+    })
+    expect(conferirResponsavel(ltda, 'Paula Souza', '529.982.247-25')).toBe('confere')
+    expect(conferirResponsavel(ltda, 'Paula Souza', '111.444.777-35')).toBe('diferente')
+    expect(conferirResponsavel({ ...ltda, socios: [], razaoSocial: 'EMPRESA X LTDA' }, 'Paula Souza', '529.982.247-25')).toBe('sem-dados')
+  })
+
   it('alertas', () => {
     const receita = lerBrasilApi(brasilApi)
-    expect(alertasDoCadastro({ razaoSocial: 'João da Silva 52998224725', cpf: '529.982.247-25' }, receita)).toEqual([])
-    const codigos = alertasDoCadastro({ razaoSocial: 'Outra Empresa', cpf: '111.444.777-35' }, { ...receita, cnae: { codigo: '4711-3/02', descricao: 'Mercado' } }).map((a) => a.codigo)
-    expect(codigos).toEqual(['cnae-fora', 'cpf-diferente', 'razao-diferente'])
-    expect(alertasDoCadastro({ razaoSocial: 'x', cpf: 'y' }, null)[0].codigo).toBe('receita-indisponivel')
+    expect(alertasDoCadastro({ razaoSocial: 'João da Silva 52998224725', nome: 'João da Silva', cpf: '529.982.247-25' }, receita)).toEqual([])
+    const codigos = alertasDoCadastro(
+      { razaoSocial: 'Outra Empresa', nome: 'Ana', cpf: '111.444.777-35' },
+      { ...receita, razaoSocial: 'OUTRA EMPRESA LTDA', mei: false, cnae: { codigo: '4711-3/02', descricao: 'Mercado' } },
+    ).map((a) => a.codigo)
+    expect(codigos).toEqual(['responsavel-nao-conferido', 'cnae-fora', 'razao-diferente'])
+    expect(alertasDoCadastro({ razaoSocial: 'x', nome: 'y', cpf: 'z' }, null)[0].codigo).toBe('receita-indisponivel')
+    expect(alertasDoCadastro({ razaoSocial: 'x', nome: 'y', cpf: 'z' }, null, 'nao-encontrado')[0].codigo).toBe('receita-nao-encontrado')
   })
 })

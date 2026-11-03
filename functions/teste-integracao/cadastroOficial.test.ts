@@ -3,7 +3,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { apagarCartoesAntigos } from '../src/cadastroOficial.js'
 import { adminAuth, balde, db } from '../src/infra.js'
-import { coordenacaoInicial, dadosCadastro, enviarCadastro, fecharApps, novoCnpj, novoUsuario, PDF_FALSO, type Celular } from './apoio.js'
+import { CONFERENCIA, coordenacaoInicial, dadosCadastro, enviarCadastro, fecharApps, novoCnpj, novoUsuario, PDF_FALSO, type Celular } from './apoio.js'
 
 const BAIXADA = '11444777000161'
 const MERCADINHO = '34028316000103'
@@ -59,15 +59,40 @@ describe('cadastro oficial (onboarding A2)', () => {
   it('atividade fora de transporte e razão social diferente viram aviso, sem travar', async () => {
     const caio = await novoUsuario('caio-oficial@teste.local')
     const r = await enviarCadastro(caio, dadosCadastro('Caio Mercado', MERCADINHO, { razaoSocial: 'Caio Comércio' }))
-    expect(r.alertas.map((a) => a.codigo)).toEqual(['cnae-fora', 'razao-diferente'])
+    expect(r.alertas.map((a) => a.codigo)).toEqual(['responsavel-nao-conferido', 'cnae-fora', 'razao-diferente'])
   })
 
-  it('Receita fora do ar: o cadastro entra, mas não é aprovado sem nova consulta', async () => {
+  it('Receita fora do ar: o cadastro entra e só é aprovado com a conferência pelo Cartão CNPJ', async () => {
     const duda = await novoUsuario('duda-oficial@teste.local')
     const r = await enviarCadastro(duda, dadosCadastro('Duda Espera', RECEITA_FORA_DO_AR))
     expect(r.alertas.map((a) => a.codigo)).toEqual(['receita-indisponivel'])
-    await expect(gestao.chamar('aprovarCadastro', { uid: duda.uid, aprovar: true, baseId })).rejects.toThrow(/Receita/)
+    await expect(gestao.chamar('aprovarCadastro', { uid: duda.uid, aprovar: true, baseId })).rejects.toThrow(/Cartão CNPJ/)
     await expect(gestao.chamar('reconsultarReceita', { uid: duda.uid })).rejects.toThrow(/não respondeu/)
+    // Com a conferência pelo Cartão CNPJ descrita, aprova; a versão guarda o que foi conferido.
+    await gestao.chamar('aprovarCadastro', { uid: duda.uid, aprovar: true, baseId, conferenciaManual: CONFERENCIA })
+    const versao = await db.collection('cadastrosOficiais').doc(duda.uid).collection('versoes').doc('1').get()
+    expect(versao.get('conferenciaManual')).toBe(CONFERENCIA)
+    expect(versao.get('receita')).toBeNull()
+  })
+
+  it('CNPJ que a Receita ainda não mostra entra, com aviso para a equipe', async () => {
+    const nova = await novoUsuario('nova-oficial@teste.local')
+    expect(await nova.chamar('consultarCnpj', { cnpj: '22334455000186' })).toMatchObject({ situacao: 'nao-encontrado' })
+    const r = await enviarCadastro(nova, dadosCadastro('Nova Empresa', '22334455000186'))
+    expect(r.alertas.map((a) => a.codigo)).toEqual(['receita-nao-encontrado'])
+  })
+
+  it('o responsável precisa ser titular ou sócio na Receita', async () => {
+    const intruso = await novoUsuario('intruso-oficial@teste.local')
+    // Ltda simulada: sócia PAULA SOUZA, CPF ***982247**.
+    const r = await intruso.chamar<{ responsaveis: { nome: string }[] }>('consultarCnpj', { cnpj: '12345678000195' })
+    expect(r.responsaveis).toEqual([{ nome: 'PAULA SOUZA', qualificacao: 'Sócio-Administrador' }])
+    await expect(enviarCadastro(intruso, dadosCadastro('Outra Pessoa', '12345678000195', { razaoSocial: 'Paula Transportes Ltda' }))).rejects.toThrow(/titular ou sócio/)
+    await expect(
+      enviarCadastro(intruso, dadosCadastro('Paula Souza', '12345678000195', { razaoSocial: 'Paula Transportes Ltda', cpf: '111.444.777-35' })),
+    ).rejects.toThrow(/titular ou sócio/)
+    const ok = await enviarCadastro(intruso, dadosCadastro('Paula Souza', '12345678000195', { razaoSocial: 'Paula Transportes Ltda' }))
+    expect(ok.alertas).toEqual([])
   })
 
   it('cartão: o próprio e a equipe veem; outro prestador não', async () => {
@@ -90,7 +115,7 @@ describe('cadastro oficial (onboarding A2)', () => {
   })
 
   it('aprova com a Receita em dia', async () => {
-    await gestao.chamar('aprovarCadastro', { uid: ana.uid, aprovar: true, baseId })
+    await gestao.chamar('aprovarCadastro', { uid: ana.uid, aprovar: true, baseId, conferenciaManual: CONFERENCIA })
     expect((await db.collection('usuarios').doc(ana.uid).get()).get('status')).toBe('ativo')
   })
 

@@ -1,7 +1,7 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
 import type { Faixa, Publico } from './eventos'
-import type { Alerta, DadosBancarios, DadosEmpresa, Funcao, Perfil, RelatorioImportacao, Representante } from './tipos'
+import type { Alerta, DadosBancarios, DadosEmpresa, Perfil, RelatorioImportacao, Representante } from './tipos'
 import type { CampoEmpresa, Escolha } from './acareacao'
 import type { Endereco } from './documentos'
 
@@ -12,14 +12,24 @@ function chamada<Entrada, Saida = { ok: true }>(nome: string) {
 }
 
 /** O CNPJ está na planilha da empresa: só nome e função, nada sensível. */
-type DaLista = { nome: string; funcao: Funcao | null } | null
+type DaLista = { nome: string } | null
 
 export type ResumoReceita =
   | { situacao: 'indisponivel' | 'nao-encontrado'; daLista: DaLista }
-  | { situacao: 'encontrado'; daLista: DaLista; apto: boolean; situacaoCadastral: string; razaoSocial: string; endereco: Endereco; cnae: { codigo: string; descricao: string }; mei: boolean }
+  | {
+      situacao: 'encontrado'
+      daLista: DaLista
+      apto: boolean
+      situacaoCadastral: string
+      razaoSocial: string
+      endereco: Endereco
+      cnae: { codigo: string; descricao: string }
+      mei: boolean
+      /** Titular ou sócios que aparecem na Receita (só nome e qualificação). */
+      responsaveis: { nome: string; qualificacao: string }[]
+    }
 
 export type EnvioCadastroOficial = {
-  funcao: Funcao
   telefone: string
   aceiteTermo: number
   empresa: DadosEmpresa
@@ -42,8 +52,8 @@ export const api = {
   aceitarTermo: chamada<{ versao: number }>('aceitarTermo'),
   reivindicarCoordenacao: chamada<{ nome: string }>('reivindicarCoordenacao'),
   assumirGestao: chamada<void>('assumirGestao'),
-  aprovarCadastro: chamada<{ uid: string; aprovar: boolean; baseId?: string; funcaoId?: string | null; escolhas?: Escolhas }>('aprovarCadastro'),
-  consolidarCadastro: chamada<{ uid: string; escolhas: Escolhas }>('consolidarCadastro'),
+  aprovarCadastro: chamada<{ uid: string; aprovar: boolean; baseId?: string; funcaoId?: string | null; escolhas?: Escolhas; conferenciaManual?: string }>('aprovarCadastro'),
+  consolidarCadastro: chamada<{ uid: string; escolhas: Escolhas; conferenciaManual?: string }>('consolidarCadastro'),
   criarUsuarioInterno: chamada<{ nome: string; email: string; perfil: Perfil; baseId?: string | null; funcaoId?: string | null }, { ok: true; uid: string }>(
     'criarUsuarioInterno',
   ),

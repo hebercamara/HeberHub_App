@@ -2,13 +2,13 @@ import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { Acareacao } from '../../componentes/Acareacao'
 import { Aviso } from '../../componentes/Aviso'
-import { divergencias, escolhasCompletas, ROTULO_CAMPO, type CampoEmpresa, type Escolha } from '../../lib/acareacao'
+import { ALERTAS_DE_CONFERENCIA, divergencias, escolhasCompletas, ROTULO_CAMPO, type CampoEmpresa, type Escolha } from '../../lib/acareacao'
 import { api } from '../../lib/api'
 import { enderecoEmLinha } from '../../lib/documentos'
 import { mensagemDeErro } from '../../lib/erros'
 import { db } from '../../lib/firebase'
 import { useSessao } from '../../lib/sessao'
-import { editaCoordenacao, type CadastroOficial, type Usuario, type VersaoCadastro } from '../../lib/tipos'
+import { ehCoordenacao, type CadastroOficial, type Usuario, type VersaoCadastro } from '../../lib/tipos'
 
 const FONTES = { cadastro: 'mantido do cadastro', receita: 'veio da Receita', manual: 'corrigido à mão' }
 
@@ -19,6 +19,7 @@ export function CadastroOficialUsuario({ uid, usuarios }: { uid: string; usuario
   const [versoes, setVersoes] = useState<VersaoCadastro[]>([])
   const [historico, setHistorico] = useState(false)
   const [escolhas, setEscolhas] = useState<Partial<Record<CampoEmpresa, Escolha>>>({})
+  const [conferencia, setConferencia] = useState('')
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
 
@@ -30,15 +31,18 @@ export function CadastroOficialUsuario({ uid, usuarios }: { uid: string; usuario
 
   if (!cadastro?.oficial) return null
   const { oficial } = cadastro
-  const divs = cadastro.divergenciasPendentes && cadastro.receita ? divergencias(oficial.empresa, cadastro.receita, oficial.receitaReferencia) : []
+  const divs = cadastro.divergenciasPendentes && cadastro.receita ? divergencias(oficial.empresa, cadastro.receita, oficial.receitaReferencia ?? undefined) : []
+  // O responsável deixou de aparecer como sócio numa consulta nova: confere pelo Cartão CNPJ.
+  const precisaConferir = cadastro.alertas.some((a) => ALERTAS_DE_CONFERENCIA.includes(a.codigo))
   const nome = (id: string) => usuarios.find((u) => u.id === id)?.nome ?? 'sistema'
 
   async function salvar() {
     setErro('')
     setEnviando(true)
     try {
-      await api.consolidarCadastro({ uid, escolhas })
+      await api.consolidarCadastro({ uid, escolhas, conferenciaManual: precisaConferir ? conferencia : undefined })
       setEscolhas({})
+      setConferencia('')
     } catch (e) {
       setErro(mensagemDeErro(e))
     }
@@ -54,14 +58,27 @@ export function CadastroOficialUsuario({ uid, usuarios }: { uid: string; usuario
         <dt>Endereço</dt>
         <dd>{enderecoEmLinha(oficial.empresa.endereco)}</dd>
       </dl>
-      {divs.length > 0 && (
+      {(divs.length > 0 || precisaConferir) && (
         <>
-          <Aviso tipo="info">A Receita mudou depois da aprovação. Escolha os valores que passam a valer.</Aviso>
-          <Acareacao divergencias={divs} escolhas={escolhas} aoMudar={setEscolhas} rotuloCadastro="Oficial atual" />
+          {divs.length > 0 && <Aviso tipo="info">A Receita mudou depois da aprovação. Escolha os valores que passam a valer.</Aviso>}
+          {cadastro.alertas
+            .filter((a) => ALERTAS_DE_CONFERENCIA.includes(a.codigo))
+            .map((a) => (
+              <Aviso key={a.codigo} tipo="info">
+                {a.mensagem}
+              </Aviso>
+            ))}
+          {divs.length > 0 && <Acareacao divergencias={divs} escolhas={escolhas} aoMudar={setEscolhas} rotuloCadastro="Oficial atual" />}
+          {precisaConferir && (
+            <label>
+              Conferência pelo Cartão CNPJ
+              <textarea rows={2} value={conferencia} onChange={(e) => setConferencia(e.target.value)} placeholder="Descreva o que conferiu: situação ATIVA e quem é o dono." />
+            </label>
+          )}
           <Aviso>{erro}</Aviso>
-          {editaCoordenacao(perfil) && (
+          {ehCoordenacao(perfil) && (
             <div className="acoes">
-              <button disabled={enviando || !escolhasCompletas(divs, escolhas)} onClick={() => void salvar()}>
+              <button disabled={enviando || !escolhasCompletas(divs, escolhas) || (precisaConferir && conferencia.trim().length < 10)} onClick={() => void salvar()}>
                 Salvar nova versão
               </button>
             </div>
@@ -79,6 +96,7 @@ export function CadastroOficialUsuario({ uid, usuarios }: { uid: string; usuario
               <li key={v.versao}>
                 <strong>Versão {v.versao}</strong> · {v.motivo === 'aprovacao' ? 'aprovação' : 'atualização'} por {nome(v.autor)}
                 {v.em && ` em ${v.em.toDate().toLocaleString('pt-BR')}`}
+                {v.conferenciaManual && <p className="suave">Conferência pelo Cartão CNPJ: {v.conferenciaManual}</p>}
                 {escolhidos.length === 0 ? (
                   <span className="suave"> · tudo conferia com a Receita</span>
                 ) : (

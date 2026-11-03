@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { adminAuth, db } from '../src/infra.js'
-import { coordenacaoInicial, dadosCadastro, enviarCadastro, fecharApps, novoCnpj, novoUsuario, prestadorAprovado, type Celular } from './apoio.js'
+import { CONFERENCIA, coordenacaoInicial, dadosCadastro, enviarCadastro, fecharApps, novoCnpj, novoUsuario, prestadorAprovado, type Celular } from './apoio.js'
 
 type Relatorio = { novas: number; atualizadas: number; recusadas: { linha: number; motivo: string }[]; avisos: { linha: number; motivo: string }[]; colunasIgnoradas: string[] }
 
@@ -63,7 +63,7 @@ describe('importação da planilha e vínculo (onboarding A3)', () => {
   it('quem está na planilha se cadastra e vira pedido de vínculo conferido', async () => {
     const eu = await novoUsuario('rui-planilha@teste.local')
     const consulta = await eu.chamar<{ daLista: { nome: string } | null }>('consultarCnpj', { cnpj: rui })
-    expect(consulta.daLista).toEqual({ nome: 'Rui Planilha', funcao: 'motorista' })
+    expect(consulta.daLista).toEqual({ nome: 'Rui Planilha' })
     await enviarCadastro(eu, { ...dadosCadastro('Rui Planilha', rui), telefone: '11977776666' })
     const cadastro = await db.collection('cadastrosOficiais').doc(eu.uid).get()
     const conferencias = cadastro.get('vinculo.conferencias') as { campo: string; confere: boolean }[]
@@ -76,7 +76,7 @@ describe('importação da planilha e vínculo (onboarding A3)', () => {
     ])
     expect(cadastro.get('vinculo.baseId')).toBe(baseId)
 
-    await gestao.chamar('aprovarCadastro', { uid: eu.uid, aprovar: true, baseId, funcaoId })
+    await gestao.chamar('aprovarCadastro', { uid: eu.uid, aprovar: true, baseId, funcaoId, conferenciaManual: CONFERENCIA })
     expect((await db.collection('preCadastros').doc(rui).get()).data()).toMatchObject({ status: 'vinculado', uid: eu.uid })
   })
 

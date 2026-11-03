@@ -50,12 +50,15 @@ describe('perfis Gestão e Jurídico', () => {
     await coordenadora.chamar('atualizarUsuario', { uid: adm.uid, financeiro: true })
   })
 
-  it('Jurídico lê, mas não altera a operação nem o financeiro', async () => {
+  it('Jurídico lê tudo, não altera a operação nem o financeiro, e trabalha na área Jurídica', async () => {
     await expect(juridico.chamar('salvarOperacao', { nome: 'Operação do Jurídico' })).rejects.toThrow(/permissão/)
     await expect(juridico.chamar('atualizarUsuario', { uid: coordenadora.uid, status: 'inativo' })).rejects.toThrow(/permissão/)
     await expect(juridico.chamar('lancarAjuste', { uid: coordenadora.uid })).rejects.toThrow(/permissão|Apenas/)
     const lido = await getDoc(doc(juridico.db, 'usuarios', gestao.uid))
     expect(lido.get('perfil')).toBe('gestao')
+    // Na área Jurídica (onboarding), ele trabalha: importa a planilha, por exemplo.
+    const r = await juridico.chamar<{ novas: number }>('importarPrestadores', { cabecalho: ['CNPJ', 'Nome'], linhas: [[novoCnpj(), 'Pessoa da Planilha']] })
+    expect(r.novas).toBe(1)
   })
 
   it('um CNPJ por pessoa', async () => {

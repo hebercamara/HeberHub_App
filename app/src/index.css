@@ -1170,3 +1170,116 @@ textarea {
   padding: 0 4px;
   font-weight: 600;
 }
+
+/* Passos do cadastro */
+.progresso p {
+  margin: 0 0 6px;
+}
+
+.progresso-barra {
+  display: flex;
+  gap: 4px;
+}
+
+.progresso-barra span {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--cor-borda);
+}
+
+.progresso-barra span.feito {
+  background: var(--cor-primaria);
+}
+
+/* Área Jurídica: topo com outra cor e seletor entre as áreas */
+:root {
+  --cor-juridico: #1f3a5f;
+  --cor-juridico-texto: #ffffff;
+}
+
+.modo-juridico .topo {
+  background: var(--cor-juridico);
+  color: var(--cor-juridico-texto);
+}
+
+.modo-juridico .abas a.active {
+  border-bottom-color: var(--cor-juridico);
+}
+
+.nome-modulo {
+  padding: 2px 10px;
+  border-left: 1px solid rgb(255 255 255 / 0.4);
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+.seletor-modulo {
+  display: flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+}
+
+.seletor-modulo a {
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.seletor-modulo a.ativo {
+  background: #ffffff;
+  color: var(--cor-texto-escuro, #1f2933);
+  opacity: 1;
+}
+
+@media (max-width: 480px) {
+  .nome-modulo {
+    display: none;
+  }
+}
+
+/* Painel do Jurídico */
+.painel-cartoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.painel-cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 12px;
+  background: var(--cor-cartao);
+  color: var(--cor-texto);
+  text-decoration: none;
+}
+
+.painel-cartao strong {
+  font-size: 1.8rem;
+}
+
+.painel-cartao.atencao {
+  border-color: var(--cor-primaria);
+}
+
+.painel-cartao.atencao strong {
+  color: var(--cor-primaria);
+}
+
+.painel-cartao.em-breve strong {
+  font-size: 1.2rem;
+}
+
+/* Campo travado (ex.: nome do responsável vindo da Receita) */
+input[readonly] {
+  background: var(--cor-fundo);
+  color: var(--cor-texto-suave);
+}

@@ -14,6 +14,9 @@ import { Configuracoes } from './paginas/configuracoes/Configuracoes'
 import { Funcoes } from './paginas/configuracoes/Funcoes'
 import { Operacoes } from './paginas/configuracoes/Operacoes'
 import { Planilha } from './paginas/configuracoes/Planilha'
+import { Contratos } from './paginas/juridico/Contratos'
+import { Painel } from './paginas/juridico/Painel'
+import { Prestadores } from './paginas/juridico/Prestadores'
 import { Entrar } from './paginas/Entrar'
 import { Eventos } from './paginas/eventos/Eventos'
 import { Financeiro } from './paginas/financeiro/Financeiro'
@@ -31,6 +34,7 @@ function destinoInicial(sessao: ReturnType<typeof useSessao>): string {
   if (!sessao.usuario) return '/cadastro'
   if (sessao.usuario.status !== 'ativo' || !sessao.perfil) return '/aguardando'
   if ((sessao.usuario.termoVersao ?? 0) < VERSAO_TERMO) return '/termo'
+  if (sessao.perfil === 'juridico') return '/juridico'
   return sessao.perfil === 'prestador' ? '/presenca' : '/equipe/presencas'
 }
 
@@ -70,7 +74,7 @@ function App() {
               <Route path="cadastros" element={<Cadastros />} />
               {coordenacao && (
                 <>
-                  <Route path="planilha" element={<Planilha />} />
+                  <Route path="planilha" element={<Navigate to="/juridico/planilha" replace />} />
                   <Route path="operacoes" element={<Operacoes />} />
                   <Route path="funcoes" element={<Funcoes />} />
                   <Route path="bases" element={<Bases />} />
@@ -87,6 +91,12 @@ function App() {
             <Route path="/coordenacao/usuarios" element={<Usuarios />} />
             <Route path="/coordenacao/auditoria" element={<Auditoria />} />
             <Route path="/eventos" element={<Eventos />} />
+            {/* Área Jurídica: cadastros oficiais, planilha e (em breve) contratos. */}
+            <Route path="/juridico" element={<Painel />} />
+            <Route path="/juridico/cadastros" element={<Cadastros />} />
+            <Route path="/juridico/prestadores" element={<Prestadores />} />
+            <Route path="/juridico/planilha" element={<Planilha />} />
+            <Route path="/juridico/contratos" element={<Contratos />} />
           </>
         )}
       </Route>

@@ -2,7 +2,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { Acareacao } from '../../componentes/Acareacao'
 import { Aviso } from '../../componentes/Aviso'
-import { divergencias, escolhasCompletas, type CampoEmpresa, type Escolha } from '../../lib/acareacao'
+import { ALERTAS_DE_CONFERENCIA, divergencias, escolhasCompletas, type CampoEmpresa, type Escolha } from '../../lib/acareacao'
 import { api } from '../../lib/api'
 import { SeletorFuncao } from '../../componentes/SeletorFuncao'
 import { useBases } from '../../lib/bases'
@@ -94,16 +94,25 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
   // Divergências entre o formulário e a Receita: quem aprova escolhe o valor oficial.
   const [escolhas, setEscolhas] = useState<Partial<Record<CampoEmpresa, Escolha>>>({})
   const divs = oficial?.receita ? divergencias(oficial.empresa, oficial.receita) : []
-  // Cadastro oficial só é aprovado com a Receita consultada, o CNPJ ATIVO e as divergências resolvidas.
+  // Sem a Receita (ou sem os sócios nela), quem aprova confere pelo Cartão CNPJ e descreve o que viu.
+  const [conferencia, setConferencia] = useState('')
+  const precisaConferir = Boolean(oficial && (!oficial.receita || oficial.alertas.some((a) => ALERTAS_DE_CONFERENCIA.includes(a.codigo))))
+  // Cadastro oficial só é aprovado com o CNPJ ATIVO, as divergências resolvidas e, se preciso, a conferência.
   const bloqueado =
-    usuario.cadastroOficial === true && (!oficial?.receita || oficial.receita.situacao !== 'ATIVA' || !escolhasCompletas(divs, escolhas))
+    usuario.cadastroOficial === true &&
+    (!oficial ||
+      (oficial.receita !== null && oficial.receita.situacao !== 'ATIVA') ||
+      !escolhasCompletas(divs, escolhas) ||
+      (precisaConferir && conferencia.trim().length < 10))
 
   async function decidir(aprovar: boolean) {
     if (!aprovar && !confirm(`Recusar o cadastro de ${usuario.nome}?`)) return
     setErro('')
     setEnviando(true)
     try {
-      await api.aprovarCadastro({ uid: usuario.id, aprovar, baseId: aprovar ? baseEscolhida : undefined, funcaoId: aprovar ? funcaoEscolhida || null : undefined, escolhas: aprovar ? escolhas : undefined })
+      await api.aprovarCadastro({ uid: usuario.id, aprovar, baseId: aprovar ? baseEscolhida : undefined, funcaoId: aprovar ? funcaoEscolhida || null : undefined, escolhas: aprovar ? escolhas : undefined,
+        conferenciaManual: aprovar && precisaConferir ? conferencia : undefined,
+      })
     } catch (e) {
       setErro(mensagemDeErro(e))
       setEnviando(false)
@@ -114,8 +123,12 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
     <section className="cartao">
       <h2>{usuario.nome}</h2>
       <dl className="dados">
-        <dt>Função</dt>
-        <dd>{usuario.funcao ? NOMES_FUNCAO[usuario.funcao] : '—'}</dd>
+        {usuario.funcao && (
+          <>
+            <dt>Função</dt>
+            <dd>{NOMES_FUNCAO[usuario.funcao]}</dd>
+          </>
+        )}
         <dt>Razão social</dt>
         <dd>{usuario.razaoSocial}</dd>
         <dt>CNPJ</dt>
@@ -127,6 +140,18 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
       </dl>
       {oficial && <DetalheOficial uid={usuario.id} cadastro={oficial} />}
       {divs.length > 0 && <Acareacao divergencias={divs} escolhas={escolhas} aoMudar={setEscolhas} rotuloCadastro="Formulário" />}
+      {precisaConferir && (
+        <label>
+          Conferência pelo Cartão CNPJ
+          <textarea
+            rows={2}
+            value={conferencia}
+            onChange={(e) => setConferencia(e.target.value)}
+            placeholder="Ex.: cartão emitido em 02/11, situação ATIVA, titular Fulano de Tal (mesmo nome e CPF do cadastro)."
+          />
+          <span className="suave">Abra o Cartão CNPJ e descreva o que conferiu: situação ATIVA e quem é o dono.</span>
+        </label>
+      )}
       {ativas.length > 1 && (
         <label>
           Base
@@ -192,12 +217,10 @@ function DetalheOficial({ uid, cadastro }: { uid: string; cadastro: CadastroOfic
         ) : (
           <Aviso>Receita: CNPJ com situação {receita.situacao}. Não pode ser aprovado.</Aviso>
         )
-      ) : (
-        <Aviso>A Receita ainda não foi consultada para este CNPJ. Consulte de novo antes de aprovar.</Aviso>
-      )}
+      ) : null}
       {cadastro.alertas
-        // Receita fora do ar e razão social diferente já aparecem em outro lugar.
-        .filter((a) => a.codigo !== 'receita-indisponivel' && a.codigo !== 'razao-diferente' && a.codigo !== 'receita-mudou')
+        // Razão social diferente aparece na comparação; mudança na Receita, em Usuários.
+        .filter((a) => a.codigo !== 'razao-diferente' && a.codigo !== 'receita-mudou')
         .map((a) => (
           <Aviso key={a.codigo} tipo="info">
             {a.mensagem}
@@ -206,7 +229,7 @@ function DetalheOficial({ uid, cadastro }: { uid: string; cadastro: CadastroOfic
       <dl className="dados">
         <dt>Endereço da empresa</dt>
         <dd>{enderecoEmLinha(empresa.endereco)}</dd>
-        <dt>Representante</dt>
+        <dt>Responsável legal</dt>
         <dd>
           {r.nome} · {r.sexo === 'F' ? 'feminino' : 'masculino'} · {r.nacionalidade} · {NOMES_ESTADO_CIVIL[r.estadoCivil as EstadoCivil]} · {r.profissao}
         </dd>
@@ -214,7 +237,7 @@ function DetalheOficial({ uid, cadastro }: { uid: string; cadastro: CadastroOfic
         <dd>
           CPF {mascararCpf(r.cpf)} · RG {r.rg}
         </dd>
-        <dt>Endereço do representante</dt>
+        <dt>Endereço do responsável</dt>
         <dd>{enderecoEmLinha(r.endereco)}</dd>
         <dt>Conta</dt>
         <dd>{financeiro ? <ContaBancaria uid={uid} /> : 'Preenchida (visível para quem vê valores)'}</dd>

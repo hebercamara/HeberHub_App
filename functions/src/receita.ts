@@ -16,6 +16,8 @@ async function buscarJson(url: string): Promise<{ status: number; json: Record<s
 /** Nos emuladores (RECEITA_SIMULADA=true), respostas fixas para os testes. */
 function receitaSimulada(cnpj: string): ResultadoReceita {
   if (cnpj === '99000000000159') return { indisponivel: true }
+  // Empresa aberta há pouco, que a Receita ainda não mostra.
+  if (cnpj === '22334455000186') return { encontrado: false }
   const base: DadosReceita = {
     cnpj,
     razaoSocial: 'EMPRESA TESTE LTDA',
@@ -25,11 +27,16 @@ function receitaSimulada(cnpj: string): ResultadoReceita {
     mei: false,
     cnae: { codigo: '4930-2/02', descricao: 'Transporte rodoviário de carga, intermunicipal' },
     endereco: { logradouro: 'RUA DAS FLORES', numero: '10', complemento: '', bairro: 'CENTRO', municipio: 'SAO PAULO', uf: 'SP', cep: '01001000' },
+    // Sem sócios: nos testes, quem se cadastra com esses CNPJs fica "não conferido".
+    socios: [],
     fonte: 'simulada',
   }
   // MEI de João da Silva (CPF 529.982.247-25)
   if (cnpj === '11222333000181') return { encontrado: true, dados: { ...base, razaoSocial: 'JOAO DA SILVA 52998224725', naturezaJuridica: '213-5 - Empresário (Individual)', mei: true } }
   if (cnpj === '11444777000161') return { encontrado: true, dados: { ...base, razaoSocial: 'EMPRESA BAIXADA LTDA', situacao: 'BAIXADA' } }
+  // Ltda com sócia administradora (CPF parcial como a Receita mostra).
+  if (cnpj === '12345678000195')
+    return { encontrado: true, dados: { ...base, razaoSocial: 'PAULA TRANSPORTES LTDA', socios: [{ nome: 'PAULA SOUZA', qualificacao: 'Sócio-Administrador', cpfParcial: '***982247**' }] } }
   if (cnpj === '34028316000103') return { encontrado: true, dados: { ...base, razaoSocial: 'MERCADINHO TESTE LTDA', cnae: { codigo: '4711-3/02', descricao: 'Comércio varejista de mercadorias' } } }
   return { encontrado: true, dados: base }
 }
@@ -52,12 +59,15 @@ export async function consultarReceita(cnpj: string, { renovar = false } = {}): 
     [`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, lerBrasilApi],
     [`https://receitaws.com.br/v1/cnpj/${cnpj}`, lerReceitaWs],
   ]
+  // "Não encontrado" só quando todas as fontes dizem isso: a BrasilAPI usa a base aberta da
+  // Receita, que demora a trazer empresas novas; a ReceitaWS consulta a Receita na hora.
+  let naoEncontrado = 0
   for (const [url, ler] of fontes) {
     try {
       const { status, json } = await buscarJson(url)
       if (status === 404 || (json && json.status === 'ERROR')) {
-        await ref.set({ dados: null, em: Timestamp.fromDate(agora()) })
-        return { encontrado: false }
+        naoEncontrado++
+        continue
       }
       if (json) {
         const dados = ler(json)
@@ -70,5 +80,6 @@ export async function consultarReceita(cnpj: string, { renovar = false } = {}): 
       // Tenta a próxima fonte.
     }
   }
+  if (naoEncontrado === fontes.length) return { encontrado: false }
   return { indisponivel: true }
 }

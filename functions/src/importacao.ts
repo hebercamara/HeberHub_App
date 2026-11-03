@@ -11,7 +11,7 @@ const MAXIMO_LINHAS = 1000
 type Recusa = { linha: number; cnpj: string; motivo: string }
 
 export const importarPrestadores = onCall(async (req) => {
-  const autor = exigirPerfil(req, ['coordenacao'])
+  const autor = exigirPerfil(req, ['coordenacao', 'juridico'])
   const { cabecalho, linhas } = (req.data ?? {}) as { cabecalho?: unknown; linhas?: unknown }
   if (!Array.isArray(cabecalho) || !Array.isArray(linhas)) throw falha('Envie a planilha.')
   if (linhas.length === 0) throw falha('A planilha está vazia.')
@@ -113,7 +113,7 @@ export const importarPrestadores = onCall(async (req) => {
 
 /** Remove um pré-cadastro importado por engano (só enquanto ninguém se vinculou a ele). */
 export const excluirPreCadastro = onCall(async (req) => {
-  const autor = exigirPerfil(req, ['coordenacao'])
+  const autor = exigirPerfil(req, ['coordenacao', 'juridico'])
   const cnpj = String(req.data?.cnpj ?? '')
   await db.runTransaction(async (tx) => {
     const ref = db.collection('preCadastros').doc(cnpj)

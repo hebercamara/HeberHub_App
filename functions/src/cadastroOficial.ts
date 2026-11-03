@@ -10,7 +10,7 @@ import { cpfValido, soDigitos } from './regras/cpf.js'
 import { VERSAO_TERMO } from './regras/privacidade.js'
 import { CAMPOS_EMPRESA, consolidar, divergencias, empresaDaReceita, type CampoEmpresa, type Empresa, type Escolha } from './regras/acareacao.js'
 import { conferirVinculo, type LinhaImportada } from './regras/importacao.js'
-import { alertasDoCadastro, cnpjApto, type DadosReceita, type Endereco } from './regras/receita.js'
+import { ALERTAS_DE_CONFERENCIA, alertasDoCadastro, cnpjApto, conferirResponsavel, responsaveis, type DadosReceita, type Endereco } from './regras/receita.js'
 import type { Funcao, Status } from './tipos.js'
 
 const usuarios = db.collection('usuarios')
@@ -64,7 +64,17 @@ function resumo(r: ResultadoReceita) {
   if ('indisponivel' in r) return { situacao: 'indisponivel' as const }
   if (!r.encontrado) return { situacao: 'nao-encontrado' as const }
   const d = r.dados
-  return { situacao: 'encontrado' as const, apto: cnpjApto(d.situacao), situacaoCadastral: d.situacao, razaoSocial: d.razaoSocial, endereco: d.endereco, cnae: d.cnae, mei: d.mei }
+  return {
+    situacao: 'encontrado' as const,
+    apto: cnpjApto(d.situacao),
+    situacaoCadastral: d.situacao,
+    razaoSocial: d.razaoSocial,
+    endereco: d.endereco,
+    cnae: d.cnae,
+    mei: d.mei,
+    // Nomes de titular e sócios são públicos na Receita; o CPF não sai daqui.
+    responsaveis: responsaveis(d).map((s) => ({ nome: s.nome, qualificacao: s.qualificacao })),
+  }
 }
 
 /** Ao digitar o CNPJ: confere se já está em uso e traz os dados da Receita para preencher o formulário. */
@@ -75,7 +85,7 @@ export const consultarCnpj = onCall(async (req) => {
   // Quem já trabalha com a empresa: avisa e preenche só nome e função (nada sensível,
   // porque qualquer um pode digitar um CNPJ).
   const importado = await db.collection('preCadastros').doc(cnpj).get()
-  const daLista = importado.exists && importado.get('status') === 'aguardando' ? { nome: importado.get('nome') as string, funcao: importado.get('funcao') as Funcao | null } : null
+  const daLista = importado.exists && importado.get('status') === 'aguardando' ? { nome: importado.get('nome') as string } : null
   return { ...resumo(await consultarReceita(cnpj)), daLista }
 })
 
@@ -124,7 +134,8 @@ export const enviarCadastroOficial = onCall(async (req) => {
   const d = (req.data ?? {}) as Record<string, Record<string, unknown> & { endereco?: unknown }>
   if ((req.data?.aceiteTermo as unknown) !== VERSAO_TERMO) throw falha('Para se cadastrar, leia e aceite o termo de privacidade.')
 
-  const funcao = opcao(req.data?.funcao as unknown, ['motorista', 'ajudante'] as const, 'a função: motorista ou ajudante') as Funcao
+  // A função não é escolhida por quem se cadastra (a equipe define); fica como veio da planilha, se houver.
+  const funcao: Funcao | null = req.data?.funcao === 'motorista' || req.data?.funcao === 'ajudante' ? req.data.funcao : null
   const telefone = texto(req.data?.telefone, 'o telefone', { min: 10, max: 20 })
   if (soDigitos(telefone).length < 10) throw falha('Telefone inválido.')
 
@@ -171,14 +182,19 @@ export const enviarCadastroOficial = onCall(async (req) => {
     pixChave,
   }
 
-  // Receita: fora da transação (rede). CNPJ fora de ATIVA não entra.
+  // Receita: fora da transação (rede). CNPJ fora de ATIVA não entra. CNPJ que a Receita ainda
+  // não mostra (empresa nova) entra, e a equipe confere pelo Cartão CNPJ.
   const receita = await consultarReceita(cnpj)
-  if ('encontrado' in receita && !receita.encontrado) throw falha('CNPJ não encontrado na Receita. Confira os números.')
+  const situacao = 'indisponivel' in receita ? 'indisponivel' : receita.encontrado ? 'encontrado' : 'nao-encontrado'
   const dadosReceita: DadosReceita | null = 'encontrado' in receita && receita.encontrado ? receita.dados : null
   if (dadosReceita && !cnpjApto(dadosReceita.situacao)) {
     throw falha(`Este CNPJ está com situação ${dadosReceita.situacao} na Receita. Só CNPJ ATIVO pode ser cadastrado.`, 'failed-precondition')
   }
-  const alertas = alertasDoCadastro({ razaoSocial: dadosEmpresa.razaoSocial, cpf }, dadosReceita)
+  // Quem assina precisa ser o titular ou um sócio da empresa.
+  if (dadosReceita && conferirResponsavel(dadosReceita, representante.nome, cpf) === 'diferente') {
+    throw falha('O responsável informado não aparece como titular ou sócio desta empresa na Receita. Informe o nome e o CPF do dono.', 'failed-precondition')
+  }
+  const alertas = alertasDoCadastro({ razaoSocial: dadosEmpresa.razaoSocial, nome: representante.nome, cpf }, dadosReceita, situacao)
 
   await db.runTransaction(async (tx) => {
     const refUsuario = usuarios.doc(uid)
@@ -241,17 +257,23 @@ export const enviarCadastroOficial = onCall(async (req) => {
 
 /** A equipe consulta a Receita de novo (por exemplo, quando ela estava fora do ar no envio). */
 export const reconsultarReceita = onCall(async (req) => {
-  const autor = exigirPerfil(req, ['adm', 'coordenacao'])
+  const autor = exigirPerfil(req, ['adm', 'coordenacao', 'juridico'])
   const uid = texto(req.data?.uid, 'o usuário')
   const ref = cadastros.doc(uid)
   const cadastro = await ref.get()
   if (!cadastro.exists) throw falha('Cadastro oficial não encontrado.', 'not-found')
   const empresa = cadastro.get('empresa') as { cnpj: string; razaoSocial: string }
-  const representante = cadastro.get('representante') as { cpf: string }
+  const representante = cadastro.get('representante') as { nome: string; cpf: string }
   const r = await consultarReceita(empresa.cnpj, { renovar: true })
   if ('indisponivel' in r) throw falha('A Receita não respondeu. Tente de novo em alguns minutos.', 'failed-precondition')
   const dados = r.encontrado ? r.dados : null
-  const alertas = alertasDoCadastro({ razaoSocial: empresa.razaoSocial, cpf: representante.cpf }, dados)
+  const aprovado = Boolean(cadastro.get('oficial'))
+  const alertas = alertasDoCadastro({ razaoSocial: empresa.razaoSocial, nome: representante.nome, cpf: representante.cpf }, dados, dados ? 'encontrado' : 'nao-encontrado')
+    // Já aprovado: a falta de sócios na Receita já foi conferida pelo Cartão CNPJ na aprovação.
+    .filter((a) => !(aprovado && a.codigo === 'responsavel-nao-conferido'))
+  if (dados && conferirResponsavel(dados, representante.nome, representante.cpf) === 'diferente') {
+    alertas.unshift({ codigo: 'responsavel-nao-conferido', mensagem: 'O responsável não aparece como titular ou sócio na consulta nova à Receita. Confira no Cartão CNPJ.' })
+  }
   // Já aprovado: se a Receita mudou em relação ao Cadastro Oficial, fica um alerta até alguém resolver.
   const atual = cadastro.get('oficial.empresa') as Empresa | undefined
   const referencia = cadastro.get('oficial.receitaReferencia') as Empresa | undefined
@@ -263,6 +285,12 @@ export const reconsultarReceita = onCall(async (req) => {
   await lote.commit()
   return { ok: true, situacao: dados?.situacao ?? 'NÃO ENCONTRADO', apto: dados ? cnpjApto(dados.situacao) : false }
 })
+
+/** Descrição da conferência manual pelo Cartão CNPJ (ou null). */
+export function lerConferencia(valor: unknown): string | null {
+  if (valor === undefined || valor === null || valor === '') return null
+  return texto(valor, 'a descrição da conferência', { min: 10, max: 300 })
+}
 
 /** Lê as escolhas da acareação vindas do app: { campo: { fonte, valor? } }. */
 export function lerEscolhas(valor: unknown): Partial<Record<CampoEmpresa, Escolha>> {
@@ -288,22 +316,37 @@ export function registrarVersao(
   escolhas: Partial<Record<CampoEmpresa, Escolha>>,
   autor: string,
   motivo: 'aprovacao' | 'atualizacao',
+  conferenciaManual: string | null = null,
 ): Empresa {
   const dados = cadastro.data() ?? {}
   const receita = dados.receita as DadosReceita | null
-  if (!receita) throw falha('A consulta à Receita não foi feita.', 'failed-precondition')
-  const anterior = dados.oficial as { empresa: Empresa; receitaReferencia?: Empresa } | undefined
+  // Sem Receita, ou sem os sócios nela: quem aprova confere pelo Cartão CNPJ e diz o que viu.
+  const precisaConferir = ((dados.alertas ?? []) as { codigo: string }[]).some((a) => (ALERTAS_DE_CONFERENCIA as readonly string[]).includes(a.codigo))
+  if ((!receita || precisaConferir) && !conferenciaManual) {
+    throw falha('Confira no Cartão CNPJ a situação ATIVA e o dono da empresa, e descreva a conferência.', 'failed-precondition')
+  }
+  const anterior = dados.oficial as { empresa: Empresa; receitaReferencia?: Empresa | null } | undefined
   const base = (anterior?.empresa ?? dados.empresa) as Empresa
-  const r = consolidar(base, receita, escolhas, anterior?.receitaReferencia)
+  const r = receita
+    ? consolidar(base, receita, escolhas, anterior?.receitaReferencia ?? undefined)
+    : { ok: true as const, oficial: base, fontes: Object.fromEntries(CAMPOS_EMPRESA.map(({ campo }) => [campo, 'cadastro'])), descartados: {} }
   if (!r.ok) throw falha(`Escolha o valor certo para: ${r.faltando.join(', ')}.`, 'failed-precondition')
   const versao = ((dados.versaoAtual as number | undefined) ?? 0) + 1
   // receitaReferencia: o que a Receita dizia nesta decisão (base para notar mudanças depois).
-  const oficial = { empresa: r.oficial, representante: dados.representante, contato: dados.contato, receitaReferencia: empresaDaReceita(receita) }
+  const oficial = {
+    empresa: r.oficial,
+    representante: dados.representante,
+    contato: dados.contato,
+    receitaReferencia: receita ? empresaDaReceita(receita) : null,
+  }
   tx.update(cadastro.ref, {
     oficial,
     versaoAtual: versao,
     divergenciasPendentes: false,
-    alertas: ((dados.alertas ?? []) as { codigo: string }[]).filter((a) => a.codigo !== 'receita-mudou'),
+    // Resolvidos nesta versão: a mudança na Receita e, se houve conferência pelo cartão, o que ela cobre.
+    alertas: ((dados.alertas ?? []) as { codigo: string }[]).filter(
+      (a) => a.codigo !== 'receita-mudou' && !(conferenciaManual && (ALERTAS_DE_CONFERENCIA as readonly string[]).includes(a.codigo)),
+    ),
     consolidadoPor: autor,
     consolidadoEm: agoraServidor(),
   })
@@ -314,7 +357,8 @@ export function registrarVersao(
     oficial,
     fontes: r.fontes,
     descartados: r.descartados,
-    receita: { situacao: receita.situacao, fonte: receita.fonte },
+    receita: receita ? { situacao: receita.situacao, fonte: receita.fonte } : null,
+    conferenciaManual,
     autor,
     em: agoraServidor(),
   })
@@ -324,13 +368,13 @@ export function registrarVersao(
 
 /** Depois de aprovado: resolve as divergências de uma consulta nova à Receita (nova versão). */
 export const consolidarCadastro = onCall(async (req) => {
-  const autor = exigirPerfil(req, ['adm', 'coordenacao'])
+  const autor = exigirPerfil(req, ['adm', 'coordenacao', 'juridico'])
   const uid = texto(req.data?.uid, 'o usuário')
   const escolhas = lerEscolhas(req.data?.escolhas)
   await db.runTransaction(async (tx) => {
     const cadastro = await tx.get(cadastros.doc(uid))
     if (!cadastro.get('oficial')) throw falha('Este cadastro ainda não foi aprovado.', 'failed-precondition')
-    const oficial = registrarVersao(tx, cadastro, escolhas, autor, 'atualizacao')
+    const oficial = registrarVersao(tx, cadastro, escolhas, autor, 'atualizacao', lerConferencia(req.data?.conferenciaManual))
     tx.update(usuarios.doc(uid), { razaoSocial: oficial.razaoSocial, atualizadoEm: agoraServidor() })
   })
   return { ok: true }

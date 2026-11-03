@@ -3,7 +3,7 @@ import { defineString } from 'firebase-functions/params'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { adminAuth, agoraServidor, auditar, db, emEmulador, exigirLogin, exigirPerfil, falha, perfilDe, texto } from './infra.js'
 import { preencherPendentes } from './cadastros.js'
-import { lerEscolhas, registrarVersao } from './cadastroOficial.js'
+import { lerConferencia, lerEscolhas, registrarVersao } from './cadastroOficial.js'
 import { PERFIS, recusaDePerfil, veValores } from './regras/perfis.js'
 import { cnpjApto, type DadosReceita } from './regras/receita.js'
 import type { Claims, Perfil, Usuario } from './tipos.js'
@@ -41,7 +41,7 @@ async function funcaoAtiva(funcaoId: unknown): Promise<string | null> {
 
 /** ADM ou coordenação aprova ou recusa um cadastro pendente. */
 export const aprovarCadastro = onCall(async (req) => {
-  const autor = exigirPerfil(req, ['adm', 'coordenacao'])
+  const autor = exigirPerfil(req, ['adm', 'coordenacao', 'juridico'])
   const uid = texto(req.data?.uid, 'o usuário')
   const aprovar = req.data?.aprovar === true
   const baseId = aprovar ? await baseAtiva(req.data?.baseId) : null
@@ -60,9 +60,8 @@ export const aprovarCadastro = onCall(async (req) => {
     let razaoSocialOficial: string | null = null
     if (oficial) {
       const receita = oficial.get('receita') as DadosReceita | null | undefined
-      if (!receita) throw falha('A consulta à Receita não foi feita. Use "Consultar a Receita de novo" antes de aprovar.', 'failed-precondition')
-      if (!cnpjApto(receita.situacao)) throw falha(`CNPJ com situação ${receita.situacao} na Receita: não pode ser aprovado.`, 'failed-precondition')
-      razaoSocialOficial = registrarVersao(tx, oficial, lerEscolhas(req.data?.escolhas), autor, 'aprovacao').razaoSocial
+      if (receita && !cnpjApto(receita.situacao)) throw falha(`CNPJ com situação ${receita.situacao} na Receita: não pode ser aprovado.`, 'failed-precondition')
+      razaoSocialOficial = registrarVersao(tx, oficial, lerEscolhas(req.data?.escolhas), autor, 'aprovacao', lerConferencia(req.data?.conferenciaManual)).razaoSocial
     }
     // Vínculo com a planilha: o pré-cadastro passa a apontar para esta pessoa.
     if (pre?.exists && pre.get('status') === 'aguardando') tx.update(refPre, { status: 'vinculado', uid, vinculadoPor: autor, vinculadoEm: agoraServidor() })

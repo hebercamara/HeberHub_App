@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { db } from '../src/infra.js'
-import { coordenacaoInicial, dadosCadastro, enviarCadastro, fecharApps, novoCnpj, novoUsuario, type Celular } from './apoio.js'
+import { CONFERENCIA, coordenacaoInicial, dadosCadastro, enviarCadastro, fecharApps, novoCnpj, novoUsuario, type Celular } from './apoio.js'
 
 describe('acareação e Cadastro Oficial em versões (onboarding A4)', () => {
   let gestao: Celular
@@ -19,9 +19,9 @@ describe('acareação e Cadastro Oficial em versões (onboarding A4)', () => {
   afterAll(fecharApps)
 
   it('não aprova sem escolher o valor de cada divergência', async () => {
-    await expect(gestao.chamar('aprovarCadastro', { uid: eva.uid, aprovar: true, baseId })).rejects.toThrow(/Número, Bairro/)
+    await expect(gestao.chamar('aprovarCadastro', { uid: eva.uid, aprovar: true, baseId, conferenciaManual: CONFERENCIA })).rejects.toThrow(/Número, Bairro/)
     await expect(
-      gestao.chamar('aprovarCadastro', { uid: eva.uid, aprovar: true, baseId, escolhas: { 'endereco.numero': { fonte: 'receita' } } }),
+      gestao.chamar('aprovarCadastro', { uid: eva.uid, aprovar: true, baseId, conferenciaManual: CONFERENCIA, escolhas: { 'endereco.numero': { fonte: 'receita' } } }),
     ).rejects.toThrow(/Bairro/)
   })
 
@@ -30,6 +30,7 @@ describe('acareação e Cadastro Oficial em versões (onboarding A4)', () => {
       uid: eva.uid,
       aprovar: true,
       baseId,
+      conferenciaManual: CONFERENCIA,
       escolhas: { 'endereco.numero': { fonte: 'receita' }, 'endereco.bairro': { fonte: 'manual', valor: 'Vila Nova (Centro)' } },
     })
     const cadastro = await db.collection('cadastrosOficiais').doc(eva.uid).get()
