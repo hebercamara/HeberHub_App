@@ -284,19 +284,33 @@ export const enviarCadastroOficial = onCall(async (req) => {
 export const reconsultarReceita = onCall(async (req) => {
   const autor = exigirPerfil(req, ['adm', 'coordenacao', 'juridico'])
   const uid = texto(req.data?.uid, 'o usuário')
+  const r = await atualizarReceita(uid, autor)
+  if (r.indisponivel) throw falha('A Receita não respondeu. Tente de novo em alguns minutos.', 'failed-precondition')
+  return { ok: true, situacao: r.dados?.situacao ?? 'NÃO ENCONTRADO', apto: r.dados ? cnpjApto(r.dados.situacao) : false }
+})
+
+/**
+ * Consulta a Receita de novo para um cadastro e atualiza situação, alertas e a marca de
+ * divergências. Usada pelo botão "Consultar a Receita de novo" e antes de emitir documentos.
+ */
+export async function atualizarReceita(
+  uid: string,
+  autor: string,
+): Promise<{ indisponivel: boolean; dados: DadosReceita | null; mudou: boolean; responsavelDiferente: boolean }> {
   const ref = cadastros.doc(uid)
   const cadastro = await ref.get()
   if (!cadastro.exists) throw falha('Cadastro oficial não encontrado.', 'not-found')
   const empresa = cadastro.get('empresa') as { cnpj: string; razaoSocial: string }
   const representante = cadastro.get('representante') as { nome: string; cpf: string }
   const r = await consultarReceita(empresa.cnpj, { renovar: true })
-  if ('indisponivel' in r) throw falha('A Receita não respondeu. Tente de novo em alguns minutos.', 'failed-precondition')
+  if ('indisponivel' in r) return { indisponivel: true, dados: null, mudou: false, responsavelDiferente: false }
   const dados = r.encontrado ? r.dados : null
   const aprovado = Boolean(cadastro.get('oficial'))
   const alertas = alertasDoCadastro({ razaoSocial: empresa.razaoSocial, nome: representante.nome, cpf: representante.cpf }, dados, dados ? 'encontrado' : 'nao-encontrado')
     // Já aprovado: a falta de sócios na Receita já foi conferida pelo Cartão CNPJ na aprovação.
     .filter((a) => !(aprovado && a.codigo === 'responsavel-nao-conferido'))
-  if (dados && conferirResponsavel(dados, representante.nome, representante.cpf) === 'diferente') {
+  const responsavelDiferente = Boolean(dados && conferirResponsavel(dados, representante.nome, representante.cpf) === 'diferente')
+  if (responsavelDiferente) {
     alertas.unshift({ codigo: 'responsavel-nao-conferido', mensagem: 'O responsável não aparece como titular ou sócio na consulta nova à Receita. Confira no Cartão CNPJ.' })
   }
   // Já aprovado: se a Receita mudou em relação ao Cadastro Oficial, fica um alerta até alguém resolver.
@@ -308,8 +322,8 @@ export const reconsultarReceita = onCall(async (req) => {
   lote.update(ref, { receita: dados, receitaConsultadaEm: agoraServidor(), alertas, divergenciasPendentes: mudou })
   auditar(lote, { acao: 'receita-consultada', autor, alvo: uid, detalhes: { situacao: dados?.situacao ?? 'nao-encontrado' } })
   await lote.commit()
-  return { ok: true, situacao: dados?.situacao ?? 'NÃO ENCONTRADO', apto: dados ? cnpjApto(dados.situacao) : false }
-})
+  return { indisponivel: false, dados, mudou, responsavelDiferente }
+}
 
 /** Descrição da conferência manual pelo Cartão CNPJ (ou null). */
 export function lerConferencia(valor: unknown): string | null {

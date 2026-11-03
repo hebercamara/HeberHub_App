@@ -302,7 +302,8 @@ button {
 }
 
 /* Rótulo com cara de botão (para escolher arquivo). */
-label.botao {
+label.botao,
+a.botao {
   display: inline-block;
   padding: 12px 18px;
   border-radius: 8px;
@@ -1282,4 +1283,131 @@ textarea {
 input[readonly] {
   background: var(--cor-fundo);
   color: var(--cor-texto-suave);
+}
+
+a.botao {
+  text-decoration: none;
+}
+
+/* Documentos (prévia, emitido e editor) com cara de papel */
+.documento {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #111;
+  background: #fff;
+}
+
+.documento p {
+  margin: 0 0 0.8em;
+}
+
+.documento table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8em 0;
+}
+
+.documento td,
+.documento th {
+  border: 1px solid #999;
+  padding: 4px 8px;
+  vertical-align: top;
+}
+
+.documento img {
+  max-width: 220px;
+  height: auto;
+}
+
+.documento mark {
+  background: #fff3a6;
+}
+
+.documento-rodape {
+  margin-top: 2em;
+  padding-top: 8px;
+  border-top: 1px solid #ccc;
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+  color: #555;
+}
+
+/* Editor de modelos: texto ao lado da lista de variáveis */
+.editor-modelo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 12px;
+  align-items: start;
+}
+
+@media (max-width: 820px) {
+  .editor-modelo {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editor-area .tiptap {
+  min-height: 420px;
+  padding: 12px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+  outline: none;
+}
+
+.barra-ferramentas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.ferramenta {
+  padding: 6px 10px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 6px;
+  background: var(--cor-cartao);
+  color: var(--cor-texto);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ferramenta.ligada {
+  background: var(--cor-juridico);
+  color: #fff;
+}
+
+.painel-variaveis {
+  position: sticky;
+  top: 12px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.painel-variaveis summary {
+  margin: 8px 0 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.painel-variaveis .variavel {
+  display: block;
+  width: 100%;
+  margin: 2px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 6px;
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+@media print {
+  .documento-impressao {
+    border: 0;
+    padding: 0;
+  }
 }

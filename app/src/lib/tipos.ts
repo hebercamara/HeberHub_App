@@ -205,3 +205,61 @@ export type VersaoCadastro = {
   autor: string
   em?: { toDate: () => Date }
 }
+
+// Contratos (onboarding C e D)
+export type TipoDocumento = 'contrato' | 'aditivo' | 'distrato' | 'quitacao' | 'comunicacao' | 'outro'
+export const NOMES_TIPO_DOCUMENTO: Record<TipoDocumento, string> = {
+  contrato: 'Contrato de prestação de serviços',
+  aditivo: 'Aditivo',
+  distrato: 'Distrato',
+  quitacao: 'Termo de quitação de dívida',
+  comunicacao: 'Comunicação prévia de rescisão',
+  outro: 'Outro',
+}
+
+/** Documento em modelosDocumento/{id}. emissao "equipe": todos os ADMs; "restrito": Gestão, coordenação e Jurídico. */
+export type ModeloDocumento = {
+  id: string
+  nome: string
+  tipo: TipoDocumento
+  emissao: 'equipe' | 'restrito'
+  conteudo: string
+  versaoAtual: number
+  ativo: boolean
+}
+
+export type CampoEmissao = 'FUNCAO_PRESTADA' | 'VALOR_DIARIA' | 'DATA_INICIO_CONTRATO' | 'DATA_FIM_SERVICO' | 'DATA_CONTRATO_ORIGINAL' | 'DATA_RESCISAO' | 'TESTEMUNHAS'
+
+export type CamposEmissao = {
+  FUNCAO_PRESTADA?: string
+  VALOR_DIARIA?: number
+  DATA_INICIO_CONTRATO?: string
+  DATA_FIM_SERVICO?: string
+  DATA_CONTRATO_ORIGINAL?: string
+  DATA_RESCISAO?: string
+  TESTEMUNHAS?: { nome: string; cpf: string }[]
+}
+
+/** Documento em documentos/{id}. */
+export type DocumentoEmitido = {
+  id: string
+  uid: string
+  nome: string
+  modeloId: string
+  modeloNome: string
+  tipo: TipoDocumento
+  versaoModelo: number
+  campos: CamposEmissao
+  html: string
+  codigo: string
+  status: 'emitido' | 'assinado' | 'cancelado'
+  emitidoPorNome: string
+  emitidoEm?: { toDate: () => Date }
+  assinadoEm?: { toDate: () => Date }
+  justificativaCancelamento?: string
+}
+
+export const NOMES_STATUS_DOCUMENTO: Record<DocumentoEmitido['status'], string> = { emitido: 'Aguardando assinatura', assinado: 'Assinado', cancelado: 'Cancelado' }
+
+export type Testemunha = { id: string; nome: string; cpf: string; ativa: boolean }
+export type Contratante = { razaoSocial: string; cnpj: string; endereco: string; representante: string; cidade: string }

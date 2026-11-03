@@ -1,7 +1,7 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
 import type { Faixa, Publico } from './eventos'
-import type { Alerta, DadosBancarios, DadosEmpresa, Perfil, RelatorioImportacao, Representante } from './tipos'
+import type { Alerta, CampoEmissao, CamposEmissao, Contratante, DadosBancarios, DadosEmpresa, ModeloDocumento, Perfil, RelatorioImportacao, Representante } from './tipos'
 import type { CampoEmpresa, Escolha } from './acareacao'
 import type { Endereco } from './documentos'
 
@@ -51,6 +51,15 @@ export const api = {
   verCartaoCnpj: chamada<{ uid?: string }, { tipo: string; base64: string }>('verCartaoCnpj'),
   importarPrestadores: chamada<{ cabecalho: string[]; linhas: string[][] }, RelatorioImportacao>('importarPrestadores'),
   excluirPreCadastro: chamada<{ cnpj: string }>('excluirPreCadastro'),
+  salvarContratante: chamada<Contratante>('salvarContratante'),
+  salvarTestemunha: chamada<{ id?: string; nome: string; cpf: string; ativa: boolean }, { ok: true; id: string }>('salvarTestemunha'),
+  salvarModelo: chamada<Omit<ModeloDocumento, 'id' | 'versaoAtual'> & { id?: string }, { ok: true; id: string }>('salvarModelo'),
+  prepararEmissao: chamada<{ uid: string; modeloId: string }, { campos: CampoEmissao[]; sugestoes: CamposEmissao; avisos: string[]; modeloNome: string }>('prepararEmissao'),
+  emitirDocumento: chamada<
+    { uid: string; modeloId: string; campos: CamposEmissao; previa?: boolean },
+    { html: string; faltando: string[] } | { ok: true; id: string; codigo: string }
+  >('emitirDocumento'),
+  marcarDocumento: chamada<{ id: string; acao: 'assinado' | 'cancelado'; justificativa?: string }, { ok: true; efeitos?: string[] }>('marcarDocumento'),
   reconsultarReceita: chamada<{ uid: string }, { ok: true; situacao: string; apto: boolean }>('reconsultarReceita'),
   aceitarTermo: chamada<{ versao: number }>('aceitarTermo'),
   reivindicarCoordenacao: chamada<{ nome: string }>('reivindicarCoordenacao'),

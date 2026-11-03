@@ -203,6 +203,37 @@ seção **Cadastros**.
 - A lista mostra quem já se cadastrou ("Vinculado") e quem ainda não ("Aguardando cadastro");
   o que aguarda pode ser removido. O último relatório fica em `importacoes`.
 
+### 6.2.2 Contratos (onboarding C e D)
+Em Jurídico › **Contratos** (subabas Emitir, Documentos emitidos, Modelos, Contratante e
+testemunhas). O ADM também entra na área Jurídica, mas só vê Cadastros e Contratos (Emitir e
+Documentos) e só emite os modelos liberados para ele.
+- **Modelos** (`modelosDocumento`): nome, tipo (contrato, aditivo, distrato, termo de quitação,
+  comunicação prévia de rescisão, outro), quem emite (**todos os ADMs** ou **só Gestão,
+  coordenação e Jurídico**) e ativo. Editor de texto (negrito, títulos, listas, alinhamento,
+  tabelas, logo) com **Importar Word (.docx)**; uma lista de **variáveis** insere `{{VARIAVEL}}`
+  no texto, e `{{G:portador|portadora}}` escolhe a palavra pelo sexo do responsável. O servidor
+  limpa o HTML (sem scripts) e recusa variável que não existe. **Texto novo = versão nova**
+  (`versoes/{n}`); cada documento guarda a versão usada. Os textos dos contratos **não ficam no
+  código** (o repositório é público): moram só no banco.
+- **Contratante e testemunhas** (`configuracoes/contratante`, `testemunhas`): dados da
+  empresa que contrata (aparecem nas variáveis CONTRATANTE_*) e testemunhas frequentes.
+- **Emitir:** escolhe o prestador (só quem tem Cadastro Oficial) e o modelo. Antes, o servidor
+  **consulta a Receita de novo**: CNPJ fora de ATIVA ou mudança desde o Cadastro Oficial
+  **bloqueiam** (resolve-se em Prestadores). Campos da emissão com sugestão: função (a da pessoa),
+  valor da diária (o vigente), início (hoje), último dia de serviço (última presença), contrato
+  original (último contrato emitido), rescisão (hoje) e duas testemunhas. **Prévia** antes de
+  emitir; dado que falta aparece marcado em amarelo e impede a emissão. Valores por extenso
+  ("cento e trinta e cinco reais e cinquenta centavos"), datas por extenso, estado civil e
+  nacionalidade concordando com o sexo.
+- **Documento emitido** (`documentos`): texto final, código de verificação (início do hash
+  SHA-256), modelo e versão, campos, quem emitiu. Botão **Imprimir ou salvar PDF** (o PDF é gerado
+  pelo navegador, com o código no rodapé). Assinatura fora do sistema (Clicksign); depois,
+  **Marcar como assinado** ou **Cancelar** (com justificativa; nada é apagado).
+- **Efeitos ao marcar como assinado:** contrato ou aditivo com diária → o valor vira a **diária
+  individual** a partir da data de início (mês precisa estar aberto); distrato → a pessoa fica
+  **inativa** depois do último dia de serviço (na hora, se o dia já passou; senão, pela função
+  agendada `inativacoesAgendadas`, 00:15).
+
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
    `heberhub:<baseId>_<data>:<token>`; o token é secreto e só sai do servidor por essa tela.
@@ -388,6 +419,9 @@ docs/CONTEXTO.md          este documento
 | `dadosBancarios/{uid}` | banco, agência, conta, tipo, chave PIX, declaração de titularidade | a própria pessoa; quem vê valores (não o ADM comum) |
 | `preCadastros/{cnpj}` | linha da planilha: nome, CPF, telefone, e-mail, tipo, baseId, funcaoId, status (aguardando, vinculado), uid | coordenação, Gestão e Jurídico |
 | `importacoes/{id}` | relatório de cada importação (novas, atualizadas, recusadas, avisos) | coordenação, Gestão e Jurídico |
+| `modelosDocumento/{id}` (+ `versoes/{n}`) | modelos: nome, tipo, quem emite, texto (HTML), versão atual, ativo | a equipe (versões: coordenação) |
+| `documentos/{id}` | documento emitido: prestador, modelo e versão, campos, texto final, hash e código, status (emitido, assinado, cancelado) | a equipe |
+| `testemunhas/{id}` e `configuracoes/contratante` | testemunhas frequentes e dados da contratante | a equipe |
 | `consultasCnpj/{cnpj}` | última resposta da Receita (vale 24 h) | **ninguém** (só o servidor) |
 | `configuracoes/aparencia` | cores primária, secundária e fundo | **pública** (aparece no login) |
 | `auditoria/{id}` | ação, autor, alvo, detalhes, data e hora | só coordenação |
@@ -401,6 +435,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | --- | --- |
 | Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
+| Contratos | `salvarContratante`, `salvarTestemunha`, `salvarModelo`, `prepararEmissao`, `emitirDocumento` (prévia ou emissão), `marcarDocumento` (assinado ou cancelado), `inativacoesAgendadas` (00:15) |
 | Usuários | `aprovarCadastro`, `criarUsuarioInterno`, `atualizarUsuario`, `reivindicarCoordenacao` (cria a Gestão), `assumirGestao` |
 | Presença | `registrarPresenca` (QR ou localização), `registrarPresencaManual`, `marcarAusencia` (falta, não escalado ou limpar; retira presença e estorna a diária), `gerarQrDoDia` |
 | Cadastros | `salvarBase`, `salvarOperacao`, `salvarFuncao`, `duplicarFuncoes`, `salvarValorDiaria`, `salvarAparencia` |
@@ -452,8 +487,9 @@ então liberar para os cerca de 200 prestadores (teto previsto: 400).
 **Em andamento:** onboarding com acareação de dados e geração de contratos, em
 `docs/PLANO-ONBOARDING.md`. **Etapa A completa:** A1 (perfis Gestão e Jurídico, CNPJ único), A2 (cadastro
 oficial com Receita, Cartão CNPJ e conta), A3 (planilha e vínculo) e A4 (acareação e Cadastro
-Oficial em versões) e **etapa B** (leitura automática do Cartão CNPJ). Próximas: C (modelos
-e emissão de contratos) e D (distrato, aditivo, quitação).
+Oficial em versões), **B** (leitura do Cartão CNPJ) e **C e D** (modelos e emissão de
+contratos, distrato, aditivo, quitação). **O plano de onboarding está implementado.** Ficam para
+o futuro: integração com o Clicksign e PDF gerado no servidor.
 
 **Pendências e ideias registradas:**
 - **Escala por carro** (planejada pelo dono, "com calma"): hoje existe só a marca NE por dia.
@@ -478,6 +514,7 @@ e emissão de contratos) e D (distrato, aditivo, quitação).
 | Onboarding A1 | Perfis Gestão e Jurídico; só a Gestão dá esses perfis; um CNPJ por pessoa |
 | Onboarding A2 | Cadastro oficial completo, consulta à Receita, Cartão CNPJ (60 dias), conta do CNPJ, termo v2 |
 | Onboarding A3 | Planilha dos prestadores atuais (modelo, importação, recusas com motivo) e pedido de vínculo conferido |
+| Onboarding C e D | Modelos com editor e importação de Word, variáveis e concordância, emissão com prévia e conferência da Receita, documentos com código, assinado (diária individual; distrato inativa) e cancelado |
 | Onboarding B | Leitura automática do Cartão CNPJ (PDF e foto), confronto com o formulário e com a Receita, aviso de cartão antigo |
 | Ajustes do onboarding | Área Jurídica separada (seletor Operação/Jurídico); cadastro em 6 passos; CNPJ ainda fora da Receita não trava; responsável legal conferido com titular/sócios; sem "MEI" e sem escolha de função; conferência pelo Cartão CNPJ na aprovação |
 | Onboarding A4 | Acareação formulário × Receita na aprovação, Cadastro Oficial em versões com histórico, alerta quando a Receita muda |

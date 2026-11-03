@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { useCadastrosOficiais, usePendentes, usePreCadastros } from '../../lib/cadastros'
+import { useDocumentos } from '../../lib/contratos'
 
 /** Início da área Jurídica: o que pede atenção e atalhos. */
 export function Painel() {
@@ -9,12 +10,13 @@ export function Painel() {
   const aprovados = cadastros.filter((c) => c.oficial).length
   const comPendencia = cadastros.filter((c) => c.oficial && (c.divergenciasPendentes || c.alertas?.some((a) => a.codigo === 'responsavel-nao-conferido'))).length
   const aguardando = preCadastros.filter((p) => p.status === 'aguardando').length
+  const paraAssinar = useDocumentos().filter((d) => d.status === 'emitido').length
 
   return (
     <div className="pilha">
       <div>
         <h1>Jurídico</h1>
-        <p className="suave">Cadastros oficiais dos prestadores, conferência com a Receita e, em breve, os contratos.</p>
+        <p className="suave">Cadastros oficiais dos prestadores, conferência com a Receita e contratos.</p>
       </div>
       <div className="painel-cartoes">
         <Link to="/juridico/cadastros" className={`painel-cartao ${pendentes ? 'atencao' : ''}`}>
@@ -33,9 +35,9 @@ export function Painel() {
           <strong>{aguardando}</strong>
           <span>da planilha ainda sem cadastro pelo link</span>
         </Link>
-        <Link to="/juridico/contratos" className="painel-cartao em-breve">
-          <strong>Contratos</strong>
-          <span>modelos e emissão (em construção)</span>
+        <Link to="/juridico/contratos/documentos" className={`painel-cartao ${paraAssinar ? 'atencao' : ''}`}>
+          <strong>{paraAssinar}</strong>
+          <span>documentos emitidos aguardando assinatura</span>
         </Link>
       </div>
     </div>

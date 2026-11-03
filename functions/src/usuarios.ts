@@ -24,6 +24,19 @@ async function aplicarClaims(uid: string, usuario: Pick<Usuario, 'perfil' | 'fin
   if (usuario.status !== 'ativo') await adminAuth.revokeRefreshTokens(uid)
 }
 
+/** Inativa um prestador (ex.: distrato assinado): bloqueia o acesso e registra o motivo. */
+export async function inativarUsuario(uid: string, autor: string, motivo: string): Promise<void> {
+  const usuario = await db.runTransaction(async (tx) => {
+    const ref = usuarios.doc(uid)
+    const atual = await tx.get(ref)
+    if (!atual.exists || atual.get('status') !== 'ativo') return null
+    tx.update(ref, { status: 'inativo', inativarEm: null, atualizadoEm: agoraServidor() })
+    auditar(tx, { acao: 'usuario-inativado', autor, alvo: uid, detalhes: { motivo } })
+    return { ...(atual.data() as Usuario), status: 'inativo' as const }
+  })
+  if (usuario) await aplicarClaims(uid, usuario)
+}
+
 async function baseAtiva(baseId: unknown): Promise<string> {
   if (typeof baseId !== 'string' || !baseId) throw falha('Escolha a base.')
   const base = await db.collection('bases').doc(baseId).get()

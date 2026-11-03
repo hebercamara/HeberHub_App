@@ -11,7 +11,9 @@ export function Layout() {
   const pendentes = usePendentes(equipe).length
   // A área Jurídica funciona como um sistema à parte: outro topo e outras abas.
   const { pathname } = useLocation()
-  const temJuridico = ehCoordenacao(perfil)
+  // Toda a equipe tem a área Jurídica; o ADM só com Cadastros e Contratos.
+  const temJuridico = equipe
+  const juridicoCompleto = ehCoordenacao(perfil)
   const juridico = temJuridico && pathname.startsWith('/juridico')
 
   return (
@@ -26,7 +28,7 @@ export function Layout() {
             <NavLink to="/equipe/presencas" className={juridico ? '' : 'ativo'}>
               Operação
             </NavLink>
-            <NavLink to="/juridico" className={juridico ? 'ativo' : ''}>
+            <NavLink to={juridicoCompleto ? '/juridico' : '/juridico/contratos'} className={juridico ? 'ativo' : ''}>
               Jurídico
             </NavLink>
           </nav>
@@ -42,15 +44,17 @@ export function Layout() {
 
       {juridico ? (
         <nav className="abas" aria-label="Seções do Jurídico">
-          <NavLink to="/juridico" end>
-            Painel
-          </NavLink>
+          {juridicoCompleto && (
+            <NavLink to="/juridico" end>
+              Painel
+            </NavLink>
+          )}
           <NavLink to="/juridico/cadastros" className="com-contador">
             Cadastros
             <Contador valor={pendentes} rotulo="cadastros aguardando aprovação" />
           </NavLink>
-          <NavLink to="/juridico/prestadores">Prestadores</NavLink>
-          <NavLink to="/juridico/planilha">Planilha</NavLink>
+          {juridicoCompleto && <NavLink to="/juridico/prestadores">Prestadores</NavLink>}
+          {juridicoCompleto && <NavLink to="/juridico/planilha">Planilha</NavLink>}
           <NavLink to="/juridico/contratos">Contratos</NavLink>
         </nav>
       ) : (

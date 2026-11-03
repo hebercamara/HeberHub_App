@@ -56,7 +56,9 @@ continua com uma conta só para o cadastro, os contratos e o check-in.
 - **Quem emite:** cada modelo diz se pode ser emitido por **todos os ADMs** (ex.: contratação de
   motorista) ou **só por Gestão, Coordenação e Jurídico** (ex.: supervisor).
 - **O contrato traz valores**, e o valor da diária do contrato **alimenta a diária individual**
-  da pessoa a partir da data de início. O ADM que emite contrato de motorista vê esse valor,
+  da pessoa a partir da data de início **quando o contrato é marcado como assinado** (mudado na
+  implementação: antes era "ao emitir"; assim um contrato emitido por engano e cancelado não
+  mexe na diária). O ADM que emite contrato de motorista vê esse valor,
   mas continua sem ver adicionais, descontos e o restante do financeiro.
 - **Assinatura:** hoje é pelo **Clicksign**, fora do sistema. A integração com o Clicksign fica para
   o futuro.
@@ -150,8 +152,8 @@ Sugestões automáticas na emissão:
 | --- | --- |
 | A | Perfis Gestão e Jurídico; importação da planilha; link de cadastro novo; vínculo por CNPJ; formulário completo; upload do Cartão CNPJ; consulta à Receita; bloqueio de CNPJ inapto; acareação formulário × Receita; Cadastro Oficial versionado; termo v2 |
 | B (pronta) | Leitura automática do Cartão CNPJ (texto do PDF; OCR para foto) como terceira fonte; apagar o arquivo em 60 dias |
-| C | Tipos e modelos de documento com editor e variáveis; quem pode emitir cada modelo; prévia; PDF; histórico de emitidos; valor do contrato alimentando a diária |
-| D | Distrato, aditivo e termo de quitação com novo alerta de divergência; no futuro, Clicksign |
+| C (pronta) | Tipos e modelos de documento com editor e variáveis; quem pode emitir cada modelo; prévia; PDF (pelo navegador); histórico de emitidos; valor do contrato alimentando a diária (ao marcar como assinado) |
+| D (pronta) | Distrato, aditivo e termo de quitação com nova consulta à Receita antes de emitir; no futuro, Clicksign |
 
 ## O que ainda falta receber do dono
 

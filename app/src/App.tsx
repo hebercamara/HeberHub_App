@@ -14,7 +14,13 @@ import { Configuracoes } from './paginas/configuracoes/Configuracoes'
 import { Funcoes } from './paginas/configuracoes/Funcoes'
 import { Operacoes } from './paginas/configuracoes/Operacoes'
 import { Planilha } from './paginas/configuracoes/Planilha'
-import { Contratos } from './paginas/juridico/Contratos'
+import { lazy, Suspense } from 'react'
+import { Ajustes } from './paginas/juridico/contratos/Ajustes'
+import { Contratos } from './paginas/juridico/contratos/Contratos'
+import { Documentos } from './paginas/juridico/contratos/Documentos'
+import { Emitir } from './paginas/juridico/contratos/Emitir'
+import { Modelos } from './paginas/juridico/contratos/Modelos'
+import { VerDocumento } from './paginas/juridico/contratos/VerDocumento'
 import { Painel } from './paginas/juridico/Painel'
 import { Prestadores } from './paginas/juridico/Prestadores'
 import { Entrar } from './paginas/Entrar'
@@ -27,6 +33,9 @@ import { Presenca } from './paginas/prestador/Presenca'
 import { Privacidade } from './paginas/Privacidade'
 import { VERSAO_TERMO } from './lib/privacidade'
 import { ehCoordenacao, ehEquipe } from './lib/tipos'
+
+// O editor de modelos é grande: só carrega quando aberto.
+const EditorModelo = lazy(() => import('./paginas/juridico/contratos/EditorModelo'))
 
 /** Para onde cada pessoa vai ao abrir o app, conforme o login e o cadastro. */
 function destinoInicial(sessao: ReturnType<typeof useSessao>): string {
@@ -83,6 +92,14 @@ function App() {
               )}
             </Route>
             <Route path="/equipe/cadastros" element={<Navigate to="/configuracoes/cadastros" replace />} />
+            {/* Área Jurídica para toda a equipe: o ADM aprova cadastros e emite os modelos liberados. */}
+            {!coordenacao && <Route path="/juridico" element={<Navigate to="/juridico/contratos" replace />} />}
+            <Route path="/juridico/cadastros" element={<Cadastros />} />
+            <Route path="/juridico/contratos" element={<Contratos />}>
+              <Route index element={<Emitir />} />
+              <Route path="documentos" element={<Documentos />} />
+              <Route path="documentos/:id" element={<VerDocumento />} />
+            </Route>
           </>
         )}
         {financeiro && <Route path="/financeiro" element={<Financeiro />} />}
@@ -91,12 +108,24 @@ function App() {
             <Route path="/coordenacao/usuarios" element={<Usuarios />} />
             <Route path="/coordenacao/auditoria" element={<Auditoria />} />
             <Route path="/eventos" element={<Eventos />} />
-            {/* Área Jurídica: cadastros oficiais, planilha e (em breve) contratos. */}
+            {/* Área Jurídica: painel, prestadores, planilha e, nos contratos, modelos e ajustes. */}
             <Route path="/juridico" element={<Painel />} />
-            <Route path="/juridico/cadastros" element={<Cadastros />} />
             <Route path="/juridico/prestadores" element={<Prestadores />} />
             <Route path="/juridico/planilha" element={<Planilha />} />
-            <Route path="/juridico/contratos" element={<Contratos />} />
+            <Route path="/juridico/contratos/modelos" element={<Contratos />}>
+              <Route index element={<Modelos />} />
+              <Route
+                path=":id"
+                element={
+                  <Suspense fallback={<p className="suave">Carregando o editor…</p>}>
+                    <EditorModelo />
+                  </Suspense>
+                }
+              />
+            </Route>
+            <Route path="/juridico/contratos/ajustes" element={<Contratos />}>
+              <Route index element={<Ajustes />} />
+            </Route>
           </>
         )}
       </Route>
