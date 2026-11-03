@@ -96,7 +96,11 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
   const divs = oficial?.receita ? divergencias(oficial.empresa, oficial.receita) : []
   // Sem a Receita (ou sem os sócios nela), quem aprova confere pelo Cartão CNPJ e descreve o que viu.
   const [conferencia, setConferencia] = useState('')
-  const precisaConferir = Boolean(oficial && (!oficial.receita || oficial.alertas.some((a) => ALERTAS_DE_CONFERENCIA.includes(a.codigo))))
+  const precisaConferir = Boolean(
+    oficial &&
+      ((!oficial.receita && !oficial.alertas.some((a) => a.codigo === 'conferido-pelo-cartao')) ||
+        oficial.alertas.some((a) => ALERTAS_DE_CONFERENCIA.includes(a.codigo))),
+  )
   // Cadastro oficial só é aprovado com o CNPJ ATIVO, as divergências resolvidas e, se preciso, a conferência.
   const bloqueado =
     usuario.cadastroOficial === true &&
@@ -227,6 +231,14 @@ function DetalheOficial({ uid, cadastro }: { uid: string; cadastro: CadastroOfic
           </Aviso>
         ))}
       <dl className="dados">
+        <dt>Cartão CNPJ</dt>
+        <dd>
+          {cadastro.cartao?.leitura?.dados
+            ? `Lido (${cadastro.cartao.leitura.metodo === 'pdf' ? 'PDF' : 'foto'}): situação ${cadastro.cartao.leitura.dados.situacao}${
+                cadastro.cartao.leitura.dados.emitidoEm ? `, emitido em ${cadastro.cartao.leitura.dados.emitidoEm.split('-').reverse().join('/')}` : ''
+              }`
+            : 'Não lido automaticamente; confira o arquivo'}
+        </dd>
         <dt>Endereço da empresa</dt>
         <dd>{enderecoEmLinha(empresa.endereco)}</dd>
         <dt>Responsável legal</dt>

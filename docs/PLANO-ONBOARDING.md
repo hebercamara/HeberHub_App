@@ -149,7 +149,7 @@ Sugestões automáticas na emissão:
 | Etapa | Entrega |
 | --- | --- |
 | A | Perfis Gestão e Jurídico; importação da planilha; link de cadastro novo; vínculo por CNPJ; formulário completo; upload do Cartão CNPJ; consulta à Receita; bloqueio de CNPJ inapto; acareação formulário × Receita; Cadastro Oficial versionado; termo v2 |
-| B | Leitura automática do Cartão CNPJ (texto do PDF; OCR para foto) como terceira fonte; apagar o arquivo em 60 dias |
+| B (pronta) | Leitura automática do Cartão CNPJ (texto do PDF; OCR para foto) como terceira fonte; apagar o arquivo em 60 dias |
 | C | Tipos e modelos de documento com editor e variáveis; quem pode emitir cada modelo; prévia; PDF; histórico de emitidos; valor do contrato alimentando a diária |
 | D | Distrato, aditivo e termo de quitação com novo alerta de divergência; no futuro, Clicksign |
 

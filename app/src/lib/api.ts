@@ -29,6 +29,9 @@ export type ResumoReceita =
       responsaveis: { nome: string; qualificacao: string }[]
     }
 
+/** O que o servidor leu do Cartão CNPJ logo no envio. */
+export type LeituraDoCartao = { ok: true; lido: boolean; outroCnpj: boolean; situacao: string | null; emitidoEm: string | null; recente: boolean | null }
+
 export type EnvioCadastroOficial = {
   telefone: string
   aceiteTermo: number
@@ -43,7 +46,7 @@ export type RespostaCheckin =
 
 export const api = {
   consultarCnpj: chamada<{ cnpj: string }, ResumoReceita>('consultarCnpj'),
-  enviarCartaoCnpj: chamada<{ tipo: string; base64: string }>('enviarCartaoCnpj'),
+  enviarCartaoCnpj: chamada<{ tipo: string; base64: string; cnpj?: string }, LeituraDoCartao>('enviarCartaoCnpj'),
   enviarCadastroOficial: chamada<EnvioCadastroOficial, { ok: true; alertas: Alerta[] }>('enviarCadastroOficial'),
   verCartaoCnpj: chamada<{ uid?: string }, { tipo: string; base64: string }>('verCartaoCnpj'),
   importarPrestadores: chamada<{ cabecalho: string[]; linhas: string[][] }, RelatorioImportacao>('importarPrestadores'),

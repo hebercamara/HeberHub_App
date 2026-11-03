@@ -24,7 +24,7 @@ export type DadosReceita = {
   endereco: Endereco
   /** Quadro de sócios (QSA). cpfParcial: como a Receita mostra (ex.: ***456789**), quando mostra. */
   socios?: Socio[]
-  fonte: 'brasilapi' | 'receitaws' | 'simulada'
+  fonte: 'brasilapi' | 'receitaws' | 'simulada' | 'cartao'
 }
 
 export type Socio = { nome: string; qualificacao: string; cpfParcial: string }
@@ -157,7 +157,17 @@ export function conferirResponsavel(receita: DadosReceita, nome: string, cpf: st
 }
 
 export type Alerta = {
-  codigo: 'receita-indisponivel' | 'receita-nao-encontrado' | 'responsavel-nao-conferido' | 'cnae-fora' | 'razao-diferente' | 'receita-mudou'
+  codigo:
+    | 'receita-indisponivel'
+    | 'receita-nao-encontrado'
+    | 'responsavel-nao-conferido'
+    | 'cnae-fora'
+    | 'razao-diferente'
+    | 'receita-mudou'
+    | 'cartao-nao-lido'
+    | 'cartao-antigo'
+    | 'cartao-divergente'
+    | 'conferido-pelo-cartao'
   mensagem: string
 }
 

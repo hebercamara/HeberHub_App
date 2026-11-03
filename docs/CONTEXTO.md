@@ -127,7 +127,13 @@ seção **Cadastros**.
       Receita **ainda não mostra** (empresa aberta há pouco) **não trava**: a pessoa continua e a
       equipe confere pelo Cartão CNPJ.
    3. **Cartão CNPJ** (PDF ou foto; foto é reduzida no celular), guardado no Storage por
-      **60 dias** (função agendada `limparCartoes`, 03:30).
+      **60 dias** (função agendada `limparCartoes`, 03:30). **Leitura automática (etapa B):**
+      o PDF é lido pelo texto (biblioteca `unpdf`, carregada só nessa função); a foto, pelo OCR
+      do **Google Cloud Vision** (precisa da API "Cloud Vision" ativada no projeto; sem ela, a
+      foto fica "não lida" e a equipe confere o arquivo). Os campos lidos (CNPJ, razão social,
+      situação, natureza, CNAE, endereço, data de emissão) ficam em `cartao.leitura`. Na hora,
+      a pessoa vê: cartão de **outro CNPJ** ou **não ATIVO** trava o passo; cartão com **mais de
+      30 dias** só gera aviso.
    4. **Responsável legal:** precisa ser o **titular ou um sócio** da empresa. O nome vem da
       Receita (titular do MEI/empresário pela razão social; sócios pelo QSA): um só fica travado,
       vários viram uma lista. O servidor confere nome e CPF (inteiro no MEI; os 6 dígitos que a
@@ -141,6 +147,14 @@ seção **Cadastros**.
    6. **Revisão** de tudo e aceite do **termo de privacidade** (versão 2).
    Quem se cadastra **não escolhe função** (motorista ou ajudante): a equipe define a função
    operacional na aprovação. Os textos não falam em MEI, porque nem todos são MEI.
+   **Confronto com o cartão (etapa B):** no envio, o cartão lido vira a terceira fonte. Cartão
+   de outro CNPJ é recusado. Avisos: cartão antigo (mais de 30 dias), cartão diferente do
+   cadastro (razão social ou endereço), cartão não lido. **Sem Receita** (fora do ar ou CNPJ
+   novo), o cartão decide: não ATIVO ou titular diferente (no empresário individual, nome e CPF
+   estão no nome da empresa) é recusado; cartão recente, ATIVO e com o titular certo gera o aviso
+   "conferido pelo cartão" e **dispensa a conferência à mão**. O Cartão CNPJ **não traz o quadro
+   de sócios**: numa sociedade (Ltda) sem sócios na Receita, a conferência do dono continua
+   sendo feita à mão pela equipe.
    O servidor gera **avisos** para quem aprova: atividade (CNAE) fora de transporte, razão
    social diferente da Receita e, os que pedem **conferência pelo Cartão CNPJ**, Receita fora do
    ar, CNPJ que a Receita ainda não mostra e sócios que a Receita não mostra.
@@ -438,8 +452,8 @@ então liberar para os cerca de 200 prestadores (teto previsto: 400).
 **Em andamento:** onboarding com acareação de dados e geração de contratos, em
 `docs/PLANO-ONBOARDING.md`. **Etapa A completa:** A1 (perfis Gestão e Jurídico, CNPJ único), A2 (cadastro
 oficial com Receita, Cartão CNPJ e conta), A3 (planilha e vínculo) e A4 (acareação e Cadastro
-Oficial em versões). Próximas: etapa B (leitura automática do Cartão CNPJ) e C (modelos e
-emissão de contratos).
+Oficial em versões) e **etapa B** (leitura automática do Cartão CNPJ). Próximas: C (modelos
+e emissão de contratos) e D (distrato, aditivo, quitação).
 
 **Pendências e ideias registradas:**
 - **Escala por carro** (planejada pelo dono, "com calma"): hoje existe só a marca NE por dia.
@@ -464,6 +478,7 @@ emissão de contratos).
 | Onboarding A1 | Perfis Gestão e Jurídico; só a Gestão dá esses perfis; um CNPJ por pessoa |
 | Onboarding A2 | Cadastro oficial completo, consulta à Receita, Cartão CNPJ (60 dias), conta do CNPJ, termo v2 |
 | Onboarding A3 | Planilha dos prestadores atuais (modelo, importação, recusas com motivo) e pedido de vínculo conferido |
+| Onboarding B | Leitura automática do Cartão CNPJ (PDF e foto), confronto com o formulário e com a Receita, aviso de cartão antigo |
 | Ajustes do onboarding | Área Jurídica separada (seletor Operação/Jurídico); cadastro em 6 passos; CNPJ ainda fora da Receita não trava; responsável legal conferido com titular/sócios; sem "MEI" e sem escolha de função; conferência pelo Cartão CNPJ na aprovação |
 | Onboarding A4 | Acareação formulário × Receita na aprovação, Cadastro Oficial em versões com histórico, alerta quando a Receita muda |
 | Depois | Falta e não escalado no calendário (retirar presença com estorno); Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |

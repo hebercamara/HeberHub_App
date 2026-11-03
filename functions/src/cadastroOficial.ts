@@ -4,7 +4,10 @@ import { FieldValue, Timestamp, type DocumentSnapshot, type Transaction } from '
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { agora, agoraServidor, auditar, balde, db, exigirLogin, exigirPerfil, falha, perfilDe, texto } from './infra.js'
+import { lerArquivoDoCartao, type Leitura } from './leituraCartao.js'
 import { consultarReceita, type ResultadoReceita } from './receita.js'
+import { aplicarCartao, cartaoRecente } from './regras/cartaoCnpj.js'
+import { dataEmSaoPaulo } from './regras/tempo.js'
 import { cnpjValido, limparCnpj } from './regras/cnpj.js'
 import { cpfValido, soDigitos } from './regras/cpf.js'
 import { VERSAO_TERMO } from './regras/privacidade.js'
@@ -106,12 +109,23 @@ export const enviarCartaoCnpj = onCall(async (req) => {
 
   const ref = cadastros.doc(uid)
   const anterior = (await ref.get()).get('cartao.caminho') as string | undefined
+  // Lê o cartão na hora, para avisar a pessoa se for de outro CNPJ, antigo ou não ATIVO.
+  const leitura = await lerArquivoDoCartao(bytes, tipo)
   const caminho = `cartoesCnpj/${uid}/cartao-${Date.now()}.${tipo === 'application/pdf' ? 'pdf' : tipo.split('/')[1]}`
   const bucket = balde()
   await bucket.file(caminho).save(bytes, { contentType: tipo, resumable: false })
-  await ref.set({ cartao: { caminho, tipo, tamanho: bytes.length, enviadoEm: agoraServidor() } }, { merge: true })
+  await ref.set({ cartao: { caminho, tipo, tamanho: bytes.length, enviadoEm: agoraServidor(), leitura: { ...leitura, lidoEm: agoraServidor() } } }, { merge: true })
   if (anterior && anterior !== caminho) await bucket.file(anterior).delete({ ignoreNotFound: true })
-  return { ok: true }
+  const cnpjInformado = typeof req.data?.cnpj === 'string' ? limparCnpj(req.data.cnpj) : ''
+  const d = leitura.dados
+  return {
+    ok: true,
+    lido: d !== null,
+    outroCnpj: Boolean(d && cnpjInformado && d.cnpj !== cnpjInformado),
+    situacao: d?.situacao ?? null,
+    emitidoEm: d?.emitidoEm ?? null,
+    recente: d ? cartaoRecente(d, dataEmSaoPaulo(agora())) : null,
+  }
 })
 
 /** O próprio prestador ou a equipe vê o Cartão CNPJ enquanto ele estiver guardado. */
@@ -194,9 +208,10 @@ export const enviarCadastroOficial = onCall(async (req) => {
   if (dadosReceita && conferirResponsavel(dadosReceita, representante.nome, cpf) === 'diferente') {
     throw falha('O responsável informado não aparece como titular ou sócio desta empresa na Receita. Informe o nome e o CPF do dono.', 'failed-precondition')
   }
-  const alertas = alertasDoCadastro({ razaoSocial: dadosEmpresa.razaoSocial, nome: representante.nome, cpf }, dadosReceita, situacao)
+  const alertasReceita = alertasDoCadastro({ razaoSocial: dadosEmpresa.razaoSocial, nome: representante.nome, cpf }, dadosReceita, situacao)
+  const hoje = dataEmSaoPaulo(agora())
 
-  await db.runTransaction(async (tx) => {
+  const alertas = await db.runTransaction(async (tx) => {
     const refUsuario = usuarios.doc(uid)
     const refCadastro = cadastros.doc(uid)
     const refPre = db.collection('preCadastros').doc(cnpj)
@@ -205,6 +220,15 @@ export const enviarCadastroOficial = onCall(async (req) => {
     if (atual.exists && status !== 'pendente' && status !== 'recusado') throw falha('Seu cadastro já foi aprovado.', 'already-exists')
     if (!cadastro.get('cartao.caminho')) throw falha('Envie o Cartão CNPJ (PDF ou foto).')
     if (await cnpjEmUso(tx, cnpj, uid)) throw falha('Este CNPJ já está cadastrado no HeberHub. Fale com a equipe da sua base.', 'already-exists')
+    // Terceira fonte: o que foi lido do Cartão CNPJ.
+    const { alertas, recusa } = aplicarCartao(
+      alertasReceita,
+      cadastro.get('cartao.leitura') as Leitura | undefined,
+      { cnpj, nome: representante.nome, cpf, empresa: dadosEmpresa },
+      dadosReceita,
+      hoje,
+    )
+    if (recusa) throw falha(recusa, 'failed-precondition')
 
     // CNPJ da planilha: vira pedido de vínculo, com a conferência dos dados.
     const importado = pre.exists && pre.get('status') === 'aguardando' ? (pre.data() as LinhaImportada & { baseId: string | null; funcaoId: string | null }) : null
@@ -251,6 +275,7 @@ export const enviarCadastroOficial = onCall(async (req) => {
     )
     tx.set(bancarios.doc(uid), { ...banco, declaracaoTitular: true, atualizadoEm: agoraServidor() })
     auditar(tx, { acao: 'cadastro-oficial-enviado', autor: uid, alvo: uid, detalhes: { alertas: alertas.map((a) => a.codigo) } })
+    return alertas
   })
   return { ok: true, alertas }
 })
@@ -321,8 +346,11 @@ export function registrarVersao(
   const dados = cadastro.data() ?? {}
   const receita = dados.receita as DadosReceita | null
   // Sem Receita, ou sem os sócios nela: quem aprova confere pelo Cartão CNPJ e diz o que viu.
-  const precisaConferir = ((dados.alertas ?? []) as { codigo: string }[]).some((a) => (ALERTAS_DE_CONFERENCIA as readonly string[]).includes(a.codigo))
-  if ((!receita || precisaConferir) && !conferenciaManual) {
+  const codigos = ((dados.alertas ?? []) as { codigo: string }[]).map((a) => a.codigo)
+  const precisaConferir = codigos.some((c) => (ALERTAS_DE_CONFERENCIA as readonly string[]).includes(c))
+  // Sem Receita, o cartão lido (recente, ATIVA, titular confere) já vale como conferência.
+  const semFonte = !receita && !codigos.includes('conferido-pelo-cartao')
+  if ((semFonte || precisaConferir) && !conferenciaManual) {
     throw falha('Confira no Cartão CNPJ a situação ATIVA e o dono da empresa, e descreva a conferência.', 'failed-precondition')
   }
   const anterior = dados.oficial as { empresa: Empresa; receitaReferencia?: Empresa | null } | undefined

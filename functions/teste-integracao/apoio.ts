@@ -2,6 +2,7 @@ import { deleteApp, initializeApp, type FirebaseApp } from 'firebase/app'
 import { connectAuthEmulator, createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword } from 'firebase/auth'
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions'
+import { pdfComTexto } from './pdf.js'
 
 export const PROJETO = 'demo-heberhub'
 // Os testes rodam com RELOGIO_FIXO=2026-11-03T10:00:00Z (07:00 em São Paulo), definido no script.
@@ -38,9 +39,48 @@ export function dadosCadastro(nome: string, cnpj: string, extras: { razaoSocial?
   }
 }
 
-/** Envia o Cartão CNPJ e o cadastro oficial. */
-export async function enviarCadastro(c: { chamar: <T = unknown>(nome: string, dados?: unknown) => Promise<T> }, dados: ReturnType<typeof dadosCadastro>) {
-  await c.chamar('enviarCartaoCnpj', { tipo: 'application/pdf', base64: PDF_FALSO })
+/** Linhas de um Cartão CNPJ de teste que combina com os dados do cadastro. */
+export function linhasDoCartao(dados: ReturnType<typeof dadosCadastro>, opcoes: { situacao?: string; emitido?: string } = {}): string[] {
+  const c = dados.empresa.cnpj.replace(/\D/g, '')
+  const e = dados.empresa.endereco
+  const individual = /\d{11}$/.test(dados.empresa.razaoSocial)
+  return [
+    'CADASTRO NACIONAL DA PESSOA JURÍDICA',
+    'NÚMERO DE INSCRIÇÃO',
+    `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}`,
+    'NOME EMPRESARIAL',
+    dados.empresa.razaoSocial.toUpperCase(),
+    'CÓDIGO E DESCRIÇÃO DA ATIVIDADE ECONÔMICA PRINCIPAL',
+    '49.30-2-02 - Transporte rodoviário de carga, intermunicipal',
+    'CÓDIGO E DESCRIÇÃO DA NATUREZA JURÍDICA',
+    individual ? '213-5 - Empresário (Individual)' : '206-2 - Sociedade Empresária Limitada',
+    'LOGRADOURO',
+    e.logradouro.toUpperCase(),
+    'NÚMERO',
+    e.numero,
+    'COMPLEMENTO',
+    e.complemento || '********',
+    'CEP',
+    e.cep,
+    'BAIRRO/DISTRITO',
+    e.bairro.toUpperCase(),
+    'MUNICÍPIO',
+    e.municipio.toUpperCase(),
+    'UF',
+    e.uf,
+    'SITUAÇÃO CADASTRAL',
+    opcoes.situacao ?? 'ATIVA',
+    `Emitido no dia ${opcoes.emitido ?? '01/11/2026'} às 10:00:00 (data e hora de Brasília).`,
+  ]
+}
+
+/** Envia o Cartão CNPJ (um PDF de verdade, que combina com os dados) e o cadastro oficial. */
+export async function enviarCadastro(
+  c: { chamar: <T = unknown>(nome: string, dados?: unknown) => Promise<T> },
+  dados: ReturnType<typeof dadosCadastro>,
+  cartao: string[] = linhasDoCartao(dados),
+) {
+  await c.chamar('enviarCartaoCnpj', { tipo: 'application/pdf', base64: pdfComTexto(cartao).toString('base64'), cnpj: dados.empresa.cnpj })
   return c.chamar<{ ok: true; alertas: { codigo: string }[] }>('enviarCadastroOficial', dados)
 }
 

@@ -181,7 +181,12 @@ export type CadastroOficial = {
   contato: { telefone: string; email: string }
   receita: DadosReceita | null
   alertas: Alerta[]
-  cartao?: { caminho: string | null; tipo: string }
+  cartao?: {
+    caminho: string | null
+    tipo: string
+    /** O que foi lido do arquivo (PDF pelo texto; foto pelo OCR). */
+    leitura?: { dados: { cnpj: string; situacao: string; razaoSocial: string; emitidoEm: string | null } | null; metodo: 'pdf' | 'ocr'; erro: string | null }
+  }
   /** Versão aprovada (a que vale nos contratos). */
   oficial?: { empresa: DadosEmpresa; representante: Representante; contato: { telefone: string; email: string }; receitaReferencia?: DadosEmpresa | null }
   versaoAtual?: number

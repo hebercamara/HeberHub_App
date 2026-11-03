@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { Aviso } from '../componentes/Aviso'
 import { CamposEndereco } from '../componentes/CamposEndereco'
 import { TelaSimples } from '../componentes/TelaSimples'
-import { api, type ResumoReceita } from '../lib/api'
+import { api, type LeituraDoCartao, type ResumoReceita } from '../lib/api'
 import { cnpjValido, limparCnpj, mascararCnpj } from '../lib/cnpj'
 import { cpfValido, ENDERECO_VAZIO, enderecoEmLinha, mascararCpf, prepararArquivo } from '../lib/documentos'
 import { mensagemDeErro } from '../lib/erros'
@@ -126,6 +126,7 @@ function FormularioOficial() {
   const [aceite, setAceite] = useState(false)
   const [consulta, setConsulta] = useState<Consulta>({ tipo: 'nada' })
   const [cartao, setCartao] = useState<'nenhum' | 'enviando' | 'enviado'>('nenhum')
+  const [leitura, setLeitura] = useState<LeituraDoCartao | null>(null)
   const [erroCartao, setErroCartao] = useState('')
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -181,9 +182,10 @@ function FormularioOficial() {
   async function escolherCartao(arquivo: File | undefined) {
     if (!arquivo) return
     setErroCartao('')
+    setErro('')
     setCartao('enviando')
     try {
-      await api.enviarCartaoCnpj(await prepararArquivo(arquivo))
+      setLeitura(await api.enviarCartaoCnpj({ ...(await prepararArquivo(arquivo)), cnpj: limparCnpj(empresa.cnpj) }))
       setCartao('enviado')
     } catch (err) {
       setErroCartao(err instanceof Error && !('code' in err) ? err.message : mensagemDeErro(err))
@@ -206,6 +208,8 @@ function FormularioOficial() {
       if (cnpjInapto) return 'Só CNPJ ATIVO na Receita pode ser cadastrado.'
     }
     if (passo === 3 && cartao !== 'enviado') return 'Envie o Cartão CNPJ (PDF ou foto).'
+    if (passo === 3 && leitura?.outroCnpj) return 'Este Cartão CNPJ é de outro CNPJ. Envie o cartão desta empresa.'
+    if (passo === 3 && leitura?.lido && leitura.situacao !== 'ATIVA') return `O Cartão CNPJ mostra a situação ${leitura.situacao}. Só CNPJ ATIVO pode ser cadastrado.`
     if (passo === 4 && !cpfValido(representante.cpf)) return 'CPF inválido. Confira os números.'
     if (passo === 5 && !declaracao) return 'Confirme que a conta e a chave PIX estão no nome da empresa.'
     return ''
@@ -293,7 +297,7 @@ function FormularioOficial() {
               <input type="file" accept="application/pdf,image/*" onChange={(e) => void escolherCartao(e.target.files?.[0])} disabled={cartao === 'enviando'} />
             </label>
             {cartao === 'enviando' && <p className="suave">Enviando o cartão…</p>}
-            {cartao === 'enviado' && <Aviso tipo="ok">Cartão CNPJ recebido. Se quiser trocar, escolha outro arquivo.</Aviso>}
+            {cartao === 'enviado' && <ResultadoLeitura leitura={leitura} />}
             <Aviso>{erroCartao}</Aviso>
           </fieldset>
         )}
@@ -491,6 +495,23 @@ function FormularioOficial() {
           Sair
         </button>
       </p>
+    </>
+  )
+}
+
+/** O que o servidor leu do cartão: confere, antigo, de outro CNPJ ou não lido. */
+function ResultadoLeitura({ leitura }: { leitura: LeituraDoCartao | null }) {
+  if (!leitura) return <Aviso tipo="ok">Cartão CNPJ recebido. Se quiser trocar, escolha outro arquivo.</Aviso>
+  if (!leitura.lido) return <Aviso tipo="info">Cartão recebido, mas não conseguimos ler o arquivo automaticamente. A equipe confere. Se tiver o PDF, prefira enviá-lo.</Aviso>
+  if (leitura.outroCnpj) return <Aviso>Este Cartão CNPJ é de outro CNPJ. Envie o cartão desta empresa.</Aviso>
+  if (leitura.situacao !== 'ATIVA') return <Aviso>O cartão mostra a situação {leitura.situacao}. Só CNPJ ATIVO pode ser cadastrado.</Aviso>
+  const emitido = leitura.emitidoEm ? leitura.emitidoEm.split('-').reverse().join('/') : null
+  return (
+    <>
+      <Aviso tipo="ok">Lemos o cartão: CNPJ confere e a situação é ATIVA{emitido ? `, emitido em ${emitido}` : ''}.</Aviso>
+      {!leitura.recente && (
+        <Aviso tipo="info">O cartão tem mais de 30 dias. Se puder, baixe um novo no site da Receita e envie de novo (não é obrigatório).</Aviso>
+      )}
     </>
   )
 }

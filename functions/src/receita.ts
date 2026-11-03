@@ -17,7 +17,7 @@ async function buscarJson(url: string): Promise<{ status: number; json: Record<s
 function receitaSimulada(cnpj: string): ResultadoReceita {
   if (cnpj === '99000000000159') return { indisponivel: true }
   // Empresa aberta há pouco, que a Receita ainda não mostra.
-  if (cnpj === '22334455000186') return { encontrado: false }
+  if (cnpj.startsWith('22334455')) return { encontrado: false }
   const base: DadosReceita = {
     cnpj,
     razaoSocial: 'EMPRESA TESTE LTDA',
