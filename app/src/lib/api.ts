@@ -52,7 +52,16 @@ export const api = {
   importarPrestadores: chamada<{ cabecalho: string[]; linhas: string[][] }, RelatorioImportacao>('importarPrestadores'),
   excluirPreCadastro: chamada<{ cnpj: string }>('excluirPreCadastro'),
   salvarContratante: chamada<Contratante>('salvarContratante'),
-  testarClicksign: chamada<void, { ok: boolean; ambiente: 'sandbox' | 'producao'; motivo?: 'sem-token' | 'token-recusado' | 'erro' | 'sem-resposta'; status?: number }>('testarClicksign'),
+  testarClicksign: chamada<
+    void,
+    {
+      ok: boolean
+      ambiente: 'sandbox' | 'producao'
+      motivo?: 'sem-token' | 'token-recusado' | 'outra-combinacao' | 'sem-resposta'
+      funcionou?: string | null
+      tentativas: { descricao: string; status: number | null; resposta: string }[]
+    }
+  >('testarClicksign'),
   salvarModelo: chamada<Omit<ModeloDocumento, 'id' | 'versaoAtual'> & { id?: string }, { ok: true; id: string }>('salvarModelo'),
   prepararEmissao: chamada<{ uid: string; modeloId: string }, { campos: CampoEmissao[]; sugestoes: CamposEmissao; avisos: string[]; modeloNome: string }>('prepararEmissao'),
   emitirDocumento: chamada<

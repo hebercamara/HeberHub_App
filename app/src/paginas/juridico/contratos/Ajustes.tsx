@@ -98,14 +98,14 @@ function FormContratante({ inicial }: { inicial: Contratante | null }) {
 
 const MOTIVOS = {
   'sem-token': 'O token do Clicksign não chegou ao sistema. Confira o secret CLICKSIGN_TOKEN no ambiente Firebase-dev do GitHub e publique de novo.',
-  'token-recusado': 'O Clicksign recusou o token. Gere um novo no painel do Clicksign (no mesmo ambiente: sandbox ou produção) e atualize o secret.',
-  erro: 'O Clicksign respondeu com erro. Tente de novo em alguns minutos.',
+  'token-recusado': 'O Clicksign recusou o token em todas as tentativas. Gere um novo no painel do Clicksign e atualize o secret.',
+  'outra-combinacao': 'O token funciona, mas não do jeito configurado. Veja abaixo qual combinação deu certo.',
   'sem-resposta': 'O Clicksign não respondeu. Tente de novo em alguns minutos.',
 }
 
 /** Confere se o token cadastrado no GitHub funciona. */
 function TesteClicksign() {
-  const [resultado, setResultado] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
+  const [resultado, setResultado] = useState<{ tipo: 'ok' | 'erro'; texto: string; tentativas: Awaited<ReturnType<typeof api.testarClicksign>>['tentativas'] } | null>(null)
   const [testando, setTestando] = useState(false)
 
   async function testar() {
@@ -114,9 +114,13 @@ function TesteClicksign() {
     try {
       const r = await api.testarClicksign()
       const onde = r.ambiente === 'producao' ? 'conta de produção' : 'área de testes (sandbox)'
-      setResultado(r.ok ? { tipo: 'ok', texto: `Conectado ao Clicksign (${onde}).` } : { tipo: 'erro', texto: `${MOTIVOS[r.motivo ?? 'erro']} (${onde})` })
+      setResultado(
+        r.ok
+          ? { tipo: 'ok', texto: `Conectado ao Clicksign (${onde}).`, tentativas: r.tentativas }
+          : { tipo: 'erro', texto: `${MOTIVOS[r.motivo ?? 'token-recusado']} Configurado: ${onde}.`, tentativas: r.tentativas },
+      )
     } catch (e) {
-      setResultado({ tipo: 'erro', texto: mensagemDeErro(e) })
+      setResultado({ tipo: 'erro', texto: mensagemDeErro(e), tentativas: [] })
     }
     setTestando(false)
   }
@@ -126,6 +130,16 @@ function TesteClicksign() {
       <h2>Clicksign</h2>
       <p className="suave">Confere se a chave de acesso (token) cadastrada no GitHub é aceita pelo Clicksign. Não envia nada para assinatura.</p>
       {resultado && <Aviso tipo={resultado.tipo}>{resultado.texto}</Aviso>}
+      {resultado && resultado.tentativas.length > 0 && (
+        <ul className="lista">
+          {resultado.tentativas.map((t) => (
+            <li key={t.descricao}>
+              {t.status !== null && t.status >= 200 && t.status < 300 ? '✓' : '✗'} {t.descricao}: {t.status ?? 'sem resposta'}
+              {t.resposta && <span className="suave"> · {t.resposta}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="acoes">
         <button className="secundario" disabled={testando} onClick={() => void testar()}>
           {testando ? 'Testando…' : 'Testar conexão com o Clicksign'}
