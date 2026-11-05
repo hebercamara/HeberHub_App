@@ -2,11 +2,10 @@
 
 > Rascunho em construção com o dono do projeto. **Ainda não implementado.**
 > Quando for implementado, as decisões passam para `docs/CONTEXTO.md`.
-> Última atualização: 05/11/2026 (planilha real do diário de campo de setembro/2026
-> analisada; terceira rodada de respostas: cadastro do agregado, novas funções, desconto do
-> agregado por operação).
+> Última atualização: 05/11/2026 (os dois modelos reais analisados: operação de sorvete,
+> setembro/2026, e operação de carga seca, outubro/2026; quarta rodada de respostas).
 > **Atenção:** o repositório é público. Este documento **não** traz nomes de pessoas, placas
-> nem clientes da planilha real, só a estrutura.
+> nem clientes, nem CPFs das planilhas reais, só a estrutura.
 
 ## Objetivo
 
@@ -19,7 +18,7 @@ A ideia é aproveitar o que já existe: o cadastro das pessoas, as bases, as ope
 funções, o **check-in** (que diz se a pessoa veio) e as marcas **Falta** e **Não escalado**.
 O diário de campo é a "escala por carro" que já estava anotada como pendência.
 
-## O diário de campo de hoje (planilha de setembro/2026)
+## Modelo 1: operação de sorvete (planilha de setembro/2026)
 
 Recebido em 05/11/2026: um arquivo Excel com **quatro abas**, de uma operação (sorvete,
 "porta de loja"). Cerca de **30 a 34 linhas por dia**, uma por **saída de caminhão**.
@@ -37,15 +36,15 @@ Recebido em 05/11/2026: um arquivo Excel com **quatro abas**, de uma operação 
 | --- | --- | --- |
 | DATA | dia da saída | o **diário** do dia |
 | CARGA | número da carga (ano + dia do ano + sequência; o dia é o da véspera, quando a carga é montada) | **carga** emplacada na rota |
-| BROKER | cliente/distribuidor da carga (uma sigla) | **operação** |
+| BROKER | **distribuidor/vendedor terceirizado** do fabricante, responsável pela venda daquela região (não é o cliente do contrato) | **broker** da carga, com contato, para falar com o vendedor se a entrega der problema |
 | PLACA | placa do caminhão (digitada à mão) | **veículo** escolhido de uma lista: acaba com placa digitada diferente a cada dia |
-| A/C | **A** = agregado, **C** = frota da casa (a confirmar) | vem **sozinho** do cadastro do veículo |
+| A/C | **A** = agregado, **C** = frota da casa (confirmado) | vem **sozinho** do cadastro do veículo |
 | TEM. LARGADA | temperatura do baú na saída | **temperatura de saída** (com o aviso acima de −30 °C) |
 | TIPO | tipo do veículo (F.S, VUC, HR, rabeco, toco) | vem **sozinho** do cadastro do veículo |
 | MOTORISTA / AJUDANTE | nomes digitados | pessoas escolhidas da lista (com check-in, CNH e NE ligados) |
 | ROTEIRO | cidade ou bairro principal da rota | **roteiro** da rota |
 | SETOR/GRADE | região (ABC, Centro, Zona Sul, Zona Leste) | **setor** (lista configurável por operação) |
-| D / R sob "V" e "M" | caixas de **devolução** e **reentrega**, em dois grupos ("V" e "M": significado a confirmar) | **retorno** da rota |
+| D / R sob "V" e "M" | caixas de **devolução** e **reentrega**, em dois grupos. Provável: **V = varejo** e **M = mercado** (o roteiro classifica cada cliente como varejo, AS, PQS; mercado tem fila e procedimento próprio). O dono vai confirmar | **retorno** da rota, separado por tipo de cliente |
 | TOTAL DE CAIXA VEICULO | caixas carregadas | **caixas carregadas** (conferente) |
 | CAIXAS REENTREGA | caixas que voltam para entregar outro dia (o topo soma "T. CX REPRO") | **reentrega** |
 | Topo: "SAÍRAM" / "RESTAM" | contadores de saídas do dia | painel do dia, calculado |
@@ -59,14 +58,81 @@ Recebido em 05/11/2026: um arquivo Excel com **quatro abas**, de uma operação 
 - **Temperaturas de saída acima de −30 °C** aparecem algumas vezes: no app viram aviso.
 - **Não existem hoje:** horário de saída e de chegada, km, temperatura de chegada. Entram como
   campos novos.
-- **Mesma placa em mais de uma linha no dia**, às vezes com motoristas diferentes e com A e C
-  trocados: pode ser mais de uma saída do caminhão no dia ou erro de digitação (a confirmar).
+- **Mesma placa em mais de uma linha no dia:** é **segunda viagem** (confirmado). Nessa
+  operação, que recebe por caixa, o agregado que volta cedo pode sair de novo e ganhar mais
+  uma saída. No app, um veículo pode ter **várias rotas no mesmo dia**.
 
-### Espinha dorsal única (decisão do dono)
+## Modelo 2: operação de carga seca (planilha de outubro/2026)
+
+Recebido em 05/11/2026: um arquivo com **duas abas**. Cerca de **45 a 60 saídas por dia**.
+
+| Aba | Para que serve hoje | Vira no app |
+| --- | --- | --- |
+| **Escala** | Planejamento do dia: sequência, frota, placa, roteiro, DT, perfil, caixas, situação, motorista e CPF, ajudante e CPF, telemetria | A **escala por carro** (véspera) |
+| **Diário de Campo** | Execução: data, perfil cobrado, sequência, status, DT, placa, perfil, frota, motorista, ajudante, modalidade, largada, chegada, km inicial e final, total, km do cliente, diferença, telemetria, temperatura, observação | A **rota**, com a jornada completa |
+
+### Colunas novas em relação ao modelo 1
+
+| Coluna | O que é | No app |
+| --- | --- | --- |
+| DT | número do documento de transporte do cliente (como a CARGA do modelo 1) | **número da carga** |
+| Q / CT | sequência da saída no dia | ordem da rota no diário |
+| STATUS / SITUAÇÃO | "ENTREGA" (a confirmar outros) | **tipo de serviço** da rota |
+| FROTA | número interno do veículo na frota | **número da frota** no cadastro do veículo |
+| PERFIL | tipo do veículo: HR, VUC, VUC-E, VAN-E, Saveiro, toco (o "-E" é elétrico) | vem do cadastro do veículo |
+| COB | perfil **cobrado** do cliente (quase sempre igual ao PERFIL; a confirmar) | **perfil cobrado** da rota (padrão = perfil do veículo) |
+| ROTEIRO (diário) | **modalidade** contratada (ex.: HR com ajudante, VAN elétrica sem ajudante, Saveiro, projetos especiais) | **modalidade** da rota (lista por operação) |
+| ROTEIRO (escala) | nome da rota/região (ex.: zona leste 1, cidade do interior, "2 dias", "3 dias") | **roteiro** |
+| CX | caixas previstas na escala | **caixas carregadas** |
+| LARGADA / CHEGADA | horário de saída e de chegada (a largada está sempre 06:00) | **horário de saída e de chegada** |
+| KM INICIAL / FINAL / TOTAL | odômetro e km rodados | **km de saída e de chegada**; total calculado |
+| KM UNB / DIF | km que o **cliente** considera para a rota e a diferença para o rodado | **km do cliente** e **diferença** calculada |
+| TELEMETRIA | conta do rastreador do veículo ou "SEM TELEMETRIA" | **rastreador** no cadastro do veículo |
+| TEMP SAIDA | vazia nessa operação (carga seca) | campo existe, não obrigatório nessa operação |
+| OBSERVAÇÃO | quase sempre "N/A"; às vezes "CARRO DE VIAGEM" (km 0 no dia) | **ocorrências**; **viagem de vários dias** vira tipo próprio |
+| "SEM AJUDANTE" | escrito no lugar do nome | rota sem ajudante (campo vazio, sem texto) |
+
+### O que o modelo 2 mostra
+- **Uma saída pode levar mais de uma DT** (mesmo caminhão, mesma equipe, duas linhas no dia).
+  No app: uma rota com **várias cargas**.
+- **Viagens de 2 ou 3 dias** (roteiros com "2DIAS"/"3DIAS", "carro de viagem"): a rota começa
+  num dia e termina em outro. **Atenção:** quem está viajando **não consegue fazer check-in na
+  base**; a presença dos dias de viagem precisa vir da escala (ou de presença manual).
+- **Reentrega** aparece como roteiro próprio.
+- A escala traz **CPF digitado à mão**; no app ele vem do cadastro e não precisa circular em
+  planilha.
+- O **km do cliente** quase nunca bate com o rodado: o app mostra a diferença por rota e por
+  veículo.
+
+## A espinha dorsal única (decisão do dono)
+
 **Todas as operações usam a mesma estrutura de diário.** Cada operação pode ter cor própria e
-pode não precisar de algum campo (ex.: caixas), mas os campos **existem para todas** e são
-preenchidos do mesmo jeito. Proposta: em Configurações › Operações, marcar quais campos são
-**obrigatórios** naquela operação; os outros ficam disponíveis e opcionais.
+pode não precisar de algum campo, mas os campos **existem para todas** e são preenchidos do
+mesmo jeito. Em Configurações › Operações, marca-se quais campos são **obrigatórios** naquela
+operação (ex.: temperatura no sorvete; km do cliente na carga seca).
+
+Cada **rota** (uma saída de um veículo) tem:
+
+| Grupo | Campos | De onde vem |
+| --- | --- | --- |
+| Identificação | data, operação, sequência, **tipo de serviço** (entrega, reentrega, porta de loja, viagem de vários dias), cargas/DTs (uma ou mais), broker, roteiro, setor, modalidade, perfil cobrado | escala da véspera ou importação do roteiro |
+| Veículo | placa, número da frota, tipo/perfil, **da casa ou agregado**, rastreador | cadastro do veículo (escolhe a placa, o resto vem sozinho) |
+| Equipe | motorista, ajudante(s) ou "sem ajudante" | escala; confere CNH, check-in e NE |
+| Saída | horário, km, temperatura do baú | equipe na base |
+| Chegada | horário, km, temperatura do baú | equipe na base |
+| Km | rodado (calculado), km do cliente, diferença (calculada) | calculado / digitado |
+| Caixas | carregadas, entregues (calculado), reentrega e devolução (por varejo e mercado, se confirmado) | conferente e armazém, lançado pela equipe |
+| Fechamento da rota | observação, ocorrências, quem lançou e quando | equipe |
+
+**Porta de loja (decidido):** é um **tipo de serviço**, possível em **qualquer operação**: o
+caminhão fica parado em frente a um supermercado vendendo (mais comum no verão). Não tem
+roteiro de entregas; a forma de contar e pagar fica a confirmar.
+
+**Broker (decidido):** cadastro de **brokers por operação** (nome, região, contato do
+vendedor). A carga aponta o broker, e o diário mostra o contato quando a entrega dá problema.
+
+**Roteiro do cliente (decidido):** o app aceita **importar o roteiro como o cliente manda hoje**
+(clientes, endereço, caixas, peso, carga e placa); o formato é ajustado na prática.
 
 ## Ponto de atenção: "não é relógio de ponto"
 
@@ -113,7 +179,9 @@ Responsável Legal é conferido com o titular ou com os sócios na Receita.
   aceitam de novo).
 
 **Novo: mais funções além de motorista e ajudante** (decidido em 05/11/2026): também
-**conferente**, **manobrista** e outras. Isso **já é possível** hoje: as funções operacionais
+**conferente**, **manobrista** e outras. Todos fazem **check-in** e recebem diária como
+qualquer prestador; o conferente só **não lança caixas no app** (quem lança é a equipe
+administrativa). Isso **já é possível** hoje: as funções operacionais
 são livres em Configurações › Funções e diárias. O que falta é uma marca na função:
 **"dirige veículo (exige CNH)"** (motorista, manobrista), para o app saber de quem cobrar a CNH.
 
@@ -371,16 +439,19 @@ usam o app (a equipe lança); prestador nosso no caminhão do agregado recebe a 
 agregado tem desconto (valor por operação); CNH do motorista do agregado não é acompanhada
 agora; agregado pode ter mais de um caminhão.
 
-**Sobre a planilha real (abertas)**
-14. Na coluna **A/C**, "A" é agregado e "C" é a frota da casa? A mesma placa às vezes aparece
-    como A e como C no mesmo dia: é um erro ou faz sentido?
-15. A mesma placa aparece **mais de uma vez no mesmo dia**: é o caminhão saindo de novo
-    (segunda viagem) ou erro de digitação?
-16. Nas colunas de retorno, o que significam **"V"** e **"M"** (cada um com D e R)?
-17. **BROKER** é o cliente (a operação)? Cada operação tem um broker só?
-18. O **roteiro** (aba "impressao roteiro") vem de um sistema do cliente? Dá para receber
-    sempre nesse formato, para o app importar?
-19. O **segundo modelo** de diário de campo: só chegou um arquivo (com quatro abas). Se havia
-    outro, falta enviar.
-20. **"Porta de loja"** é o tipo dessa operação? Existem outros tipos (ex.: transferência,
-    abastecimento de CD) com jeito diferente de trabalhar?
+Também respondidas: A/C (agregado ou frota da casa); segunda viagem no mesmo dia existe;
+broker é o vendedor/distribuidor do fabricante; roteiro importado como o cliente manda; porta
+de loja é tipo de serviço de qualquer operação; conferente faz check-in normal.
+
+**Sobre os dois modelos (abertas)**
+14. **V e M** no retorno do modelo 1: confirmar se é varejo e mercado.
+15. **COB** no modelo 2: é o perfil que o cliente paga (às vezes diferente do veículo que
+    saiu)?
+16. **Largada** está sempre 06:00 no modelo 2: é o horário real ou o horário padrão? O app
+    deve registrar o real?
+17. **Viagem de vários dias:** como a presença de motorista e ajudante conta nos dias fora (a
+    escala vale como presença?) e como a rota é paga?
+18. **Porta de loja:** como é cobrado do cliente e pago (por dia parado, por caixa vendida)?
+    Registra caixas?
+19. **KM UNB:** é o km que o cliente paga? A diferença é cobrada ou só acompanhada?
+20. **Outros status** além de "ENTREGA" (ex.: reentrega, viagem, porta de loja, cancelada)?
