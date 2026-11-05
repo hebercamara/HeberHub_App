@@ -2,7 +2,7 @@
 
 > Rascunho em construção com o dono do projeto. **Ainda não implementado.**
 > Quando for implementado, as decisões passam para `docs/CONTEXTO.md`.
-> Última atualização: 05/11/2026 (agregados, veículos e baús sorveteiros incluídos; ainda
+> Última atualização: 05/11/2026 (respostas do dono sobre agregados, baús e CNH; ainda
 > antes de receber o diário de campo real).
 > **Próximo passo:** o dono envia o modelo do diário de campo usado hoje; este plano é
 > ajustado a ele (nomes de colunas, ordem das tarefas, o que é anotado).
@@ -28,26 +28,36 @@ PJ, pagos por diária). Proposta para não ferir essa decisão:
 - A **diária continua igual**: uma presença por dia, sem horas extras e sem cálculo por hora.
 - **Decisão do dono:** confirmar que é isso mesmo (ver perguntas no fim).
 
-## Os quatro cadastros
+## Os cadastros
 
-O dono trouxe duas categorias de parceiros e dois tipos de equipamento. Proposta: quatro
-cadastros que se ligam entre si.
+O dono trouxe duas categorias de parceiros (prestador e agregado), a frota e, no futuro, os
+baús sorveteiros. Respostas do dono em 05/11/2026 já incorporadas abaixo.
 
 ```
- PRESTADOR (já existe)          AGREGADO (novo)
- pessoa PJ, recebe diária       empresa PJ com caminhão próprio,
- motorista, ajudante...         cuida do próprio motorista e ajudante
-        │                              │ é dono de
-        │ vai dentro de                ▼
-        └──────────────►  VEÍCULO (novo)  ◄──── BAÚ (novo, em breve)
-                          da empresa ou        sorveteiro, até −40 °C,
-                          de um agregado       montado num caminhão
+ PRESTADOR (já existe)              AGREGADO (novo)
+ pessoa PJ, recebe diária           empresa PJ com caminhão próprio,
+ motorista, ajudante...             cuida do próprio motorista e ajudante
+ + CNH com validade (motoristas)    ├── caminhões do agregado (dentro do cadastro dele)
+        │                           └── equipe do agregado (só nome, sem check-in)
+        │ vai dentro de                     │
+        ▼                                   ▼
+ VEÍCULOS DA EMPRESA  ─────────►  ROTA do diário de campo  ◄──── temperatura do baú
+                                  (carro + equipe + cargas)       na saída e na chegada
 ```
 
 ### 1. Prestador (o que já existe)
 Continua igual: autocadastro, Receita, Cartão CNPJ, conta, contratos, check-in e diária. O
 cadastro atual **já aceita empresas que não são MEI** (Ltda, empresário individual): o
 Responsável Legal é conferido com o titular ou com os sócios na Receita.
+
+**Novo: validade da CNH dos motoristas** (pedido do dono). Guardar número, categoria e
+**validade** da CNH, com:
+- aviso antes de vencer (ex.: 30 dias) numa lista "CNHs vencendo";
+- aviso ao escalar como motorista alguém com CNH vencida (bloquear ou só avisar: a decidir);
+- a empresa já guarda as CNHs numa pasta na nuvem: o app pode guardar só os dados e o
+  **link** para o arquivo, ou receber o arquivo (a decidir).
+- Atenção: isso muda uma decisão do onboarding ("CNH fica fora do sistema") e é dado pessoal
+  novo, então o **termo de privacidade sobe de versão** (todos aceitam de novo).
 
 ### 2. Agregado (novo)
 Empresa (CNPJ) que trabalha com **caminhão próprio** e **cuida da própria equipe** (motorista
@@ -57,47 +67,61 @@ responsável legal, conta, contratos e versões), com a **categoria "Agregado"**
 | O que muda | Prestador | Agregado |
 | --- | --- | --- |
 | Quem é | uma pessoa PJ que trabalha | uma empresa que presta o serviço com o próprio caminhão |
-| Veículo | usa o da empresa | tem **um ou mais veículos** próprios cadastrados |
-| Equipe | ele mesmo | **motorista e ajudante dele**, que podem não ser o dono da empresa |
-| Pagamento | diária por presença | a definir: por dia, por rota, por entrega, por km ou valor fechado |
-| Documentos a mais | — | do veículo (CRLV, RNTRC/ANTT, seguro, tacógrafo), a confirmar |
+| Veículo | usa o da empresa | **caminhões cadastrados dentro do cadastro do agregado** |
+| Equipe | ele mesmo | **motorista e ajudante dele**, só pelo nome, **sem check-in** |
+| Pagamento | diária por presença | **depende do cliente (operação)**: por saída ou por caixa entregue (ver abaixo) |
+| Documentos a mais | CNH (motoristas) | **documento do caminhão (CRLV)**; o resto não é necessário |
 | Contrato | contrato de prestação | modelo próprio de **contrato de agregado** (o editor de modelos já permite) |
 
-**Equipe do agregado (a decidir):** cadastrar o motorista e o ajudante do agregado como
-**pessoas ligadas a ele**, sem diária, só para aparecer na escala e fazer check-in (saber
-quem foi no carro). Assim o diário de campo mostra todo mundo do mesmo jeito.
+**Caminhões do agregado (decidido):** ficam **dentro do cadastro do agregado**, não na lista
+de veículos da empresa. Motivo do dono: amarrar o carro ao agregado. **Quando o distrato do
+agregado é assinado, os caminhões dele saem da disponibilidade** junto (na mesma data em que o
+agregado fica inativo) e não aparecem mais na escala. Para cada caminhão: placa, modelo, tipo,
+capacidade e o **CRLV** (documento do caminhão), com a validade do licenciamento.
 
-### 3. Veículo (novo)
+**Equipe do agregado (decidido):** o motorista e o ajudante do agregado **não fazem check-in**
+e **não recebem diária** da empresa: o agregado se vira com eles. Eles só aparecem **pelo nome**
+na escala, para o diário mostrar quem foi em cada carro.
+**Equipe mista:** às vezes um **prestador nosso** vai no caminhão do agregado, conforme a
+necessidade. Esse prestador **faz check-in e recebe a diária normalmente**, como em qualquer
+outro carro (a confirmar).
+
+**Pagamento do agregado (decidido em linhas gerais):** depende do **cliente (operação)**:
+- **Por saída:** cada dia em que o caminhão sai para entregar = um valor fixo cheio. Espelha o
+  cliente que paga a empresa por dia de carro na rua.
+- **Por caixa entregue:** um valor **por caixa entregue**, possivelmente com um **valor fixo
+  pequeno** por saída (o dono vai confirmar se esse fixo existe). Espelha o cliente que paga a
+  empresa por caixa entregue.
+
+Proposta: uma **tabela de valores do agregado por operação**, com dois campos (valor por
+saída e valor por caixa entregue; um deles pode ser zero), sempre "a partir de" uma data, como
+os valores de diária. A cada rota encerrada de um caminhão de agregado, o servidor gera os
+lançamentos (saída e/ou caixas × valor), com o valor congelado, em centavos, corrigidos só por
+estorno. **Consequência importante:** as **caixas entregues** passam a valer dinheiro, então
+precisam ser **conferidas pela equipe** antes de virar pagamento (não só digitadas pelo
+motorista).
+
+### 3. Veículos da empresa (novo)
 Placa, modelo, ano, tipo (VUC, 3/4, toco, truck...), capacidade (caixas e/ou peso), base,
-**dono** (a empresa ou um agregado), situação (**disponível**, **em manutenção**,
-**inativo**), documentos com vencimento (licenciamento, seguro) e histórico de manutenções.
-O caminhão do agregado entra na escala já com a equipe do agregado como sugestão.
+situação (**disponível**, **em manutenção**, **inativo**), documento (CRLV com validade) e
+histórico de manutenções. Os caminhões dos agregados ficam no cadastro de cada agregado, mas
+**aparecem juntos** na hora de montar a escala.
 
-### 4. Baú sorveteiro (novo, em breve)
-Equipamento caro e específico (refrigerado até **−40 °C**), que precisa de **manutenção sempre
-em dia**. Fica num cadastro próprio, separado do caminhão, porque:
-- o baú pode **mudar de caminhão** (o app guarda em qual caminhão ele esteve e quando);
-- tem **manutenção própria** (aparelho de frio, vedação, isolamento), diferente da do caminhão.
-
-O que guardar: número de identificação (patrimônio/série), fabricante e modelo do aparelho de
-frio, capacidade, temperatura mínima, caminhão em que está montado, situação (em uso,
-disponível, em manutenção), **plano de manutenção preventiva** (a cada X dias ou X horas de
-motor do frio) e histórico de manutenções com custo e oficina.
-
-**Avisos que o app daria:** manutenção preventiva vencendo (ex.: 15 dias antes), baú vencido
-não pode ir para a escala (ou vai com aviso, a decidir), caminhão escalado com baú em
-manutenção.
-
-**Futuro possível:** registrar a **temperatura** do baú na saída e no retorno de cada rota
-(anotada à mão no começo; mais adiante, lida de um sensor).
+### 4. Baú sorveteiro (adiado)
+**Decisão do dono:** os baús **não serão cadastrados nos próximos meses**. Fica para o futuro
+(baú com cadastro próprio, troca de caminhão, manutenção preventiva com avisos).
+**O que entra agora:** no diário de campo, cada rota registra a **temperatura do baú na saída**
+e a **temperatura na chegada** (anotadas à mão). O app pode avisar quando a temperatura estiver
+acima de um limite (ex.: acima de −18 °C), a definir com o dono.
 
 ## Conceitos novos (rascunho)
 
 | Termo | Significado |
 | --- | --- |
-| **Agregado** | Empresa (CNPJ) com caminhão próprio, que cuida do próprio motorista e ajudante. Mesmo cadastro oficial do prestador, com a categoria "Agregado". |
-| **Veículo** | Carro ou caminhão: placa, modelo, tipo (ex.: VUC, 3/4, toco), capacidade (caixas e/ou peso), base, **dono** (empresa ou agregado), situação (**disponível**, **em manutenção**, **inativo**) e observação. |
-| **Baú** | Baú sorveteiro (até −40 °C), cadastrado à parte e montado num caminhão; tem manutenção preventiva própria. |
+| **Agregado** | Empresa (CNPJ) com caminhão próprio, que cuida do próprio motorista e ajudante. Mesmo cadastro oficial do prestador, com a categoria "Agregado"; os caminhões dele ficam dentro do cadastro dele. Pago por saída e/ou por caixa entregue, conforme o cliente. |
+| **Equipe do agregado** | Motorista e ajudante do agregado. Entram na escala só pelo nome; sem check-in e sem diária. |
+| **Veículo** | Carro ou caminhão: placa, modelo, tipo (ex.: VUC, 3/4, toco), capacidade (caixas e/ou peso), base, situação (**disponível**, **em manutenção**, **inativo**), CRLV e observação. Da empresa (cadastro de veículos) ou de um agregado (dentro do cadastro dele). |
+| **CNH** | Número, categoria e validade da carteira de motorista do prestador, com aviso antes de vencer. |
 | **Diário de campo** | A folha de um **dia** numa **base**. Junta veículos, pessoas, rotas e ocorrências daquele dia. Tem situação: **em preparo** → **em andamento** → **encerrado**. |
 | **Rota** (ou viagem) | Um veículo saindo da base num dia, com uma equipe e cargas. Fica dentro do diário de campo. Um mesmo carro pode ter mais de uma rota no dia (a confirmar). |
 | **Equipe da rota** | Quem vai no carro: um **motorista** e zero ou mais **ajudantes**. |
@@ -105,7 +129,7 @@ manutenção.
 | **Reserva** | Pessoas escaladas para estar na base sem carro definido (cobrem faltas). A confirmar. |
 | **Carga** | Um lote a entregar (pedido, nota, cliente ou região), com a **quantidade de caixas**. |
 | **Emplacamento** | Colocar uma carga dentro de um veículo (de uma rota). Uma carga vai para um só carro; um carro leva várias cargas, até a capacidade. |
-| **Acompanhamento da rota** | O que acontece depois da saída: horário e km na saída e no retorno, caixas entregues, devolvidas ou com problema, e ocorrências. |
+| **Acompanhamento da rota** | O que acontece depois da saída: horário, km e **temperatura do baú** na saída e no retorno, caixas entregues, devolvidas ou com problema, e ocorrências. |
 | **Ocorrência** | Anotação com horário: pneu furado, cliente fechado, atraso, avaria, troca de pessoa etc. |
 
 ## Como o dia funcionaria (fluxo proposto)
@@ -130,26 +154,33 @@ manutenção.
 3. **Carregamento**
    - Ajusta o emplacamento final: quantas **caixas entraram** em cada carro.
 4. **Saída**
-   - Marca a saída da rota: **horário** e **km do painel (odômetro)**. Pode ser feito pelo
+   - Marca a saída da rota: **horário**, **km do painel (odômetro)** e **temperatura do baú**.
+     Pode ser feito pelo
      motorista no celular ou pela equipe (a decidir).
 5. **Durante a rota**
    - Ocorrências anotadas com horário (pela equipe ou pelo motorista).
 6. **Retorno**
-   - Marca o retorno: **horário**, **km do painel**, **caixas entregues** e **caixas
-     devolvidas** (com motivo). O app calcula sozinho:
+   - Marca o retorno: **horário**, **km do painel**, **temperatura do baú na chegada**,
+     **caixas entregues** e **caixas devolvidas** (com motivo). O app calcula sozinho:
      - **km rodados** = km do retorno − km da saída;
      - **horas rodadas** = retorno − saída;
      - **aproveitamento** = entregues ÷ carregadas.
    - O app avisa números estranhos: km de retorno menor que o de saída, mais caixas
-     entregues que carregadas, rota que não voltou até certa hora.
+     entregues que carregadas, rota que não voltou até certa hora, temperatura acima do limite.
+   - Em caminhão de **agregado**, as caixas entregues conferidas pela equipe viram o pagamento
+     dele (ver "Pagamento do agregado").
 7. **Encerramento do diário**
    - A equipe confere e **encerra** o dia. Depois de encerrado, correções só com justificativa
      (fica na auditoria, como no restante do app).
 
 ## Ligação com o que já existe
 
-- **Presença e diária não mudam:** quem fez check-in recebe a diária, como hoje. O diário de
-  campo **não gera dinheiro** na primeira versão.
+- **Presença e diária não mudam:** quem fez check-in recebe a diária, como hoje, inclusive o
+  prestador nosso que vai no caminhão de um agregado. Para os **prestadores**, o diário de
+  campo **não gera dinheiro**.
+- **Agregados geram dinheiro pelo diário:** cada rota encerrada de caminhão de agregado gera
+  os lançamentos dele (saída e/ou caixas entregues), conforme a tabela da operação.
+- **Distrato do agregado** tira de uma vez o agregado, os caminhões e a equipe dele da escala.
 - **NE automático:** escalar substitui a marcação manual de NE (que continua possível).
 - **Falta sugerida, não automática:** o app sugere, a equipe confirma (a regra hoje é que a
   falta é marcada por alguém da equipe, com justificativa).
@@ -165,14 +196,14 @@ manutenção.
 
 | Coleção | Conteúdo |
 | --- | --- |
-| `usuarios/{uid}` (já existe) | ganha `categoria` (prestador ou agregado) e, para a equipe de um agregado, `agregadoUid` |
-| `veiculos/{id}` | placa, modelo, tipo, capacidade em caixas (e peso?), baseId, dono (empresa ou uid do agregado), situação, vencimentos, observação |
+| `usuarios/{uid}` (já existe) | ganha `categoria` (prestador ou agregado) |
+| `cnhs/{uid}` | número, categoria, validade, link do arquivo (a decidir); só a equipe lê |
+| `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome, função (CNH, se for exigida) |
+| `veiculos/{id}` | placa, modelo, tipo, capacidade em caixas (e peso?), baseId, dono (`empresa` ou uid do agregado), situação, CRLV e validade, observação. Na tela, os do agregado aparecem dentro do cadastro dele. |
 | `veiculos/{id}/manutencoes/{id}` | início, fim previsto, fim real, motivo, oficina, custo (centavos; só quem vê valores) |
-| `baus/{id}` | identificação, aparelho de frio, temperatura mínima, veiculoId atual, situação, plano preventivo, próxima manutenção |
-| `baus/{id}/montagens/{id}` | em qual caminhão esteve, de quando até quando |
-| `baus/{id}/manutencoes/{id}` | data, tipo (preventiva ou corretiva), o que foi feito, oficina, custo |
+| `valoresAgregado/{id}` | operação, valor por saída, valor por caixa entregue (centavos), início; só quem vê valores |
 | `diarios/{baseId_data}` | base, data, situação (em preparo, em andamento, encerrado), observações do dia, quem encerrou |
-| `rotas/{id}` | diário, veículo, motorista, ajudantes, saída (hora, km), retorno (hora, km), caixas carregadas, entregues e devolvidas, situação |
+| `rotas/{id}` | diário, operação, veículo, motorista, ajudantes (prestadores e/ou equipe do agregado), saída (hora, km, temperatura), retorno (hora, km, temperatura), caixas carregadas, entregues e devolvidas, conferido por, situação |
 | `cargas/{id}` | diário, identificação (pedido, cliente, região), caixas, rota em que foi emplacada |
 | `ocorrencias/{id}` | rota ou diário, horário, tipo, texto, quem anotou |
 
@@ -182,13 +213,14 @@ O id `baseId_data` do diário segue o mesmo padrão do QR do dia (`sessoes`).
 
 | Etapa | O que entra | Por que nessa ordem |
 | --- | --- | --- |
-| **E0. Agregados** | Categoria "Agregado" no cadastro oficial, equipe ligada ao agregado, modelo de contrato de agregado | Reaproveita quase todo o onboarding pronto. |
-| **E1. Veículos** | Cadastro da frota (da empresa e dos agregados), situação (disponível, manutenção, inativo), vencimentos e histórico de manutenção | Base de tudo; simples e rápido de usar. |
-| **E1b. Baús** | Cadastro dos baús, caminhão em que está montado, manutenção preventiva com avisos | Logo depois dos veículos; protege o equipamento mais caro. |
+| **E0. Agregados** | Categoria "Agregado" no cadastro oficial, caminhões (com CRLV) e equipe dentro do cadastro dele, distrato tirando tudo da disponibilidade, modelo de contrato de agregado | Reaproveita quase todo o onboarding pronto. |
+| **E1. Veículos e CNH** | Frota da empresa (situação, CRLV, manutenção) e validade das CNHs dos motoristas, com avisos | Base de tudo; simples e rápido de usar. |
 | **E2. Escala por carro** | Diário de campo do dia, rotas, pessoas dentro dos carros, reserva, NE automático | É a "escala por carro" já pedida; substitui a planilha da véspera. |
 | **E3. Chegada ao vivo** | Check-in aparecendo dentro de cada carro, "não veio", troca de pessoa, falta confirmada | Junta a escala com o que o app já faz melhor. |
 | **E4. Cargas e emplacamento** | Cargas com caixas, colocar carga no carro, aviso de capacidade | Depende de saber como as cargas chegam hoje (lista do cliente? planilha?). |
-| **E5. Jornada da rota** | Saída e retorno (hora e km), caixas entregues e devolvidas, ocorrências, cálculos e avisos | Fecha o ciclo do dia. |
+| **E5. Jornada da rota** | Saída e retorno (hora, km e temperatura do baú), caixas entregues e devolvidas, ocorrências, cálculos e avisos | Fecha o ciclo do dia. |
+| **E5b. Pagamento do agregado** | Tabela de valores por operação, lançamentos gerados das rotas conferidas, no fechamento | Precisa das caixas entregues conferidas (E5). |
+| **Futuro. Baús** | Cadastro dos baús, caminhão em que está montado, manutenção preventiva com avisos | Adiado pelo dono por alguns meses. |
 | **E6. Relatórios** | Por dia, veículo, pessoa e rota: km, horas, caixas, aproveitamento, faltas; Excel e PDF | Aproveita os dados acumulados. |
 
 ## Perguntas para o dono
@@ -223,21 +255,29 @@ O id `baseId_data` do diário segue o mesmo padrão do QR do dia (`sessoes`).
     adicional calculado no servidor, sem mostrar valor ao prestador.)
 13. Caixa devolvida: quais motivos usar (cliente fechado, recusa, avaria, falta de tempo...)?
 
-**Agregados**
-14. Como o agregado é pago: por dia, por rota, por entrega, por km ou valor fechado no mês?
-    Entra no mesmo fechamento mensal dos prestadores?
-15. O motorista e o ajudante do agregado precisam fazer **check-in** no app? Precisam de
-    login, ou basta a equipe escalar pelo nome?
-16. O dono do agregado às vezes também dirige? Um agregado pode ter mais de um caminhão?
-17. Quais documentos do caminhão do agregado a empresa exige (CRLV, RNTRC/ANTT, seguro,
-    tacógrafo, outros)? Algum deve **impedir** a escala se vencer?
-18. O agregado precisa ver alguma coisa no app (as rotas dele, os valores dele)? Hoje o
-    prestador não vê valores.
+**Agregados** (respondidas em 05/11/2026; ver seção "Agregado")
+- ~~Como é pago~~ → por saída ou por caixa entregue, conforme o cliente.
+- ~~Check-in da equipe~~ → não faz; entra só pelo nome.
+- ~~Documentos do caminhão~~ → só o CRLV. Caminhões ficam dentro do cadastro do agregado.
 
-**Baús**
-19. Quantos baús são, mais ou menos? Eles mudam de caminhão com frequência?
-20. Como é a manutenção preventiva hoje: a cada quantos dias, km ou horas do aparelho de
-    frio? Quem faz (oficina fixa)?
-21. Baú com manutenção vencida pode sair (com aviso) ou fica **bloqueado** na escala?
-22. Vale anotar a **temperatura** do baú na saída e no retorno de cada rota?
-23. Agregado pode usar baú da empresa, ou só caminhões da empresa recebem baú?
+Ainda abertas:
+14. No cliente que paga por caixa, existe **também um valor fixo** por saída? (O dono vai
+    confirmar.)
+15. O pagamento do agregado entra no **mesmo fechamento mensal** dos prestadores, ou tem
+    ciclo próprio (semanal, quinzenal)?
+16. O prestador nosso que vai no caminhão do agregado recebe a **diária normal**? O agregado
+    tem algum desconto por isso?
+17. O dono do agregado às vezes também dirige? Quantos caminhões um agregado costuma ter?
+18. O agregado precisa ver alguma coisa no app (as rotas dele, as caixas, os valores)?
+19. Quem confere as **caixas entregues** antes de virar pagamento (o ADM na volta, com o
+    canhoto/comprovante do cliente)?
+
+**CNH**
+20. CNH vencida **bloqueia** a pessoa de ser escalada como motorista, ou só avisa?
+21. Onde estão as CNHs hoje (Google Drive, outro)? O app guarda só a validade e o **link**, ou
+    passa a guardar o arquivo?
+22. O motorista do **agregado** também precisa ter a CNH acompanhada?
+
+**Temperatura do baú** (baús em si adiados)
+23. Qual temperatura é aceitável na saída e na chegada? Acima de quanto o app deve avisar?
+24. É uma leitura só (o visor do baú) ou várias durante a rota?
