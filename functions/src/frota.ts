@@ -56,7 +56,7 @@ export const salvarVeiculo = onCall(async (req) => {
 export const salvarCnh = onCall(async (req) => {
   const autor = exigirPerfil(req, ['adm', 'coordenacao'])
   const uid = texto(req.data?.uid, 'a pessoa')
-  const numero = texto(req.data?.numero, 'o número da CNH', { min: 11, max: 14 }).replace(/\D/g, '')
+  const numero = texto(req.data?.numero, 'o número da CNH', { max: 20 }).replace(/\D/g, '')
   if (!numeroCnhValido(numero)) throw falha('Número da CNH inválido: são 11 dígitos.')
   const categoria = String(req.data?.categoria ?? '').toUpperCase() as CategoriaCnh
   if (!CATEGORIAS_CNH.includes(categoria)) throw falha('Escolha a categoria da CNH.')

@@ -80,7 +80,7 @@ describe('agregados (etapa E1 do Diário de Campo)', () => {
 
   it('a equipe inclui caminhão, coloca em manutenção e cadastra a equipe do agregado', async () => {
     await gestao.chamar('salvarCaminhao', { uid: agregado.uid, placa: 'AGR9B87', tipo: 'toco', situacao: 'disponivel', frota: '508', rastreador: 'FROTA508' })
-    await gestao.chamar('salvarCaminhao', { uid: agregado.uid, placa: 'AGR4567', tipo: 'hr', situacao: 'manutencao' })
+    await gestao.chamar('salvarCaminhao', { uid: agregado.uid, placa: 'AGR4567', tipo: 'hr', situacao: 'manutencao', motivo: 'Revisão do freio' })
     expect((await db.collection('veiculos').doc('AGR9B87').get()).data()).toMatchObject({ dono: agregado.uid, frota: '508', situacao: 'disponivel' })
     expect((await db.collection('veiculos').doc('AGR4567').get()).get('situacao')).toBe('manutencao')
     await gestao.chamar('salvarEquipeAgregado', { uid: agregado.uid, nome: 'Moacir Motorista', funcao: 'motorista' })
