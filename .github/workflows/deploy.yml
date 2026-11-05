@@ -82,6 +82,12 @@ jobs:
           CLICKSIGN_TOKEN: ${{ secrets.CLICKSIGN_TOKEN }}
           CLICKSIGN_AMBIENTE: ${{ vars.CLICKSIGN_AMBIENTE }}
         run: |
+          # Diagnóstico sem revelar o valor: só se o token chegou e o tamanho.
+          if [ -n "$CLICKSIGN_TOKEN" ]; then
+            echo "::notice title=Clicksign::Token encontrado (${#CLICKSIGN_TOKEN} caracteres); ambiente: ${CLICKSIGN_AMBIENTE:-sandbox (padrão)}."
+          else
+            echo "::warning title=Clicksign::Secret CLICKSIGN_TOKEN vazio ou ausente no ambiente $AMBIENTE (Firebase-$AMBIENTE); ambiente: ${CLICKSIGN_AMBIENTE:-sandbox (padrão)}."
+          fi
           {
             echo "COORDENADOR_INICIAL_EMAIL=$COORDENADOR_INICIAL_EMAIL"
             echo "CLICKSIGN_TOKEN=$CLICKSIGN_TOKEN"
