@@ -2,7 +2,7 @@
 
 > Rascunho em construção com o dono do projeto. **Ainda não implementado.**
 > Quando for implementado, as decisões passam para `docs/CONTEXTO.md`.
-> Última atualização: 05/11/2026. Versão consolidada, depois de cinco rodadas de perguntas e
+> Última atualização: 05/11/2026. **Plano fechado com o dono** (seis rodadas de perguntas) e
 > da análise dos dois diários reais (operação de sorvete, setembro/2026; operação de carga
 > seca, outubro/2026).
 > **Atenção:** o repositório é público. Este documento traz só a estrutura: **nenhum** nome de
@@ -30,7 +30,9 @@ estava anotada como pendência.
 
 | Decisão | Motivo |
 | --- | --- |
-| **Uma espinha dorsal única** para o diário de todas as operações. Todos os campos existem em todas; cada operação marca quais são **obrigatórios** e pode ter **cor própria** | Pedido do dono: tratar os dados de todas as operações da mesma forma |
+| **Uma espinha dorsal única** para o diário de todas as operações. **Todos os campos são opcionais**: a **coordenação** escolhe, para cada operação, **quais campos aparecem** no diário dela (e, entre eles, quais são obrigatórios). Cada operação pode ter **cor própria** | Pedido do dono: tratar os dados de todas as operações da mesma forma, mostrando só o que cada uma usa |
+| O nome continua **"Diário de Campo"** | Pedido do dono |
+| **A equipe lança tudo** (horários, km, temperaturas, caixas). O motorista **não anota nada** no app | Pedido do dono |
 | **Hora e km são da rota e do veículo**, não da pessoa. A diária continua por presença, sem horas extras | Mantém a decisão "o app não é relógio de ponto" |
 | **CPF nunca aparece no diário** nem em nada exportado dele (Excel, PDF) ou que pareça documento oficial. Fica só no cadastro da pessoa | Pedido do dono |
 | A regra (conferências, cálculos, valores) roda **no servidor**, pura e testada | Regra de ouro do projeto |
@@ -98,16 +100,16 @@ Hoje a operação agrupa funções. Passa a guardar também:
 | Configuração | Exemplo |
 | --- | --- |
 | Cor do diário | sorvete em azul, carga seca em laranja |
-| Campos obrigatórios | temperatura no sorvete; km e rastreador na carga seca |
+| **Campos que aparecem** no diário (e quais são obrigatórios) | sorvete: temperatura e caixas; carga seca: km, rastreador e perfil cobrado |
 | Tipos de serviço usados | entrega, reentrega, viagem, porta de loja, cancelada |
 | **Horário de largada** previsto e **tolerância** | 06:00, tolerância de 10 min |
 | **Limites de temperatura** | saída: ideal −40 °C, aceitável até −30 °C; chegada: até −10 °C |
-| **Roteiros/setores** com **km esperado** | "ABC: cerca de 100 km" (avisa se passar muito) |
+| **Roteiros/setores** | "ABC", "Zona Sul", cidades do interior |
 | **Modalidades** contratadas | "HR com ajudante", "VAN elétrica sem ajudante", projetos especiais |
 | **Perfis cobrados** | van, VUC, Saveiro... (o que o cliente paga) |
 | **Brokers** | nome, região, contato do vendedor |
 | **Desconto do agregado** | por motorista nosso e por ajudante nosso no caminhão dele |
-| **Adicional de viagem** | por duração: 2 dias = X, 3 dias = Y, e assim por diante |
+| **Adicional de viagem** | **valor por dia** de viagem (ex.: R$ 70 por dia: 2 dias = R$ 140, 3 dias = R$ 210) |
 
 Os valores (desconto, adicional) só aparecem para quem vê valores.
 
@@ -123,9 +125,14 @@ na chegada de cada rota. No futuro: cadastro do baú, troca de caminhão, manute
 ## 4. O diário de campo: estrutura
 
 ### 4.1 Diário do dia
-Uma folha por **dia** e por **operação** (como as planilhas de hoje), na cor da operação, com
+Um diário por **dia** e por **operação** (como as planilhas de hoje), na cor da operação, com
 um painel no topo: saídas previstas, saíram, voltaram, canceladas, faltas, caixas.
 Situação: **em preparo** (véspera) → **em andamento** → **encerrado**.
+
+**Visão (decidido):** a tela abre sempre no **dia completo**, em forma de tabela, como a
+planilha. Tem **filtros como os do Excel**: por **data** (um dia ou vários dias anteriores, para
+comparar), placa, motorista, roteiro, tipo de serviço. Só aparecem as colunas que a operação
+escolheu.
 
 ### 4.2 Rota: a linha do diário (uma saída de um veículo)
 
@@ -152,7 +159,6 @@ Situação: **em preparo** (véspera) → **em andamento** → **encerrado**.
 | **Km** | Km rodado **anotado** (chegada − saída) | calculado |
 | | Km do **rastreador** | digitado (futuro: puxado do rastreador) |
 | | **Diferença** anotado × rastreador | calculado |
-| | Km **esperado** do roteiro e aviso se passar muito | da operação |
 | **Caixas** | Carregadas (conferente) | equipe lança |
 | | Reentrega e devolução (contadas no armazém com o motorista); se confirmado, separadas em **varejo** e **mercado** | equipe lança |
 | | **Entregues** = carregadas − reentrega − devolução | calculado |
@@ -171,7 +177,7 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
 | **Reentrega** | Volta a um cliente que não recebeu antes, para faturar as caixas que voltaram. Deve ser rara | As caixas de reentrega de uma rota ficam **pendentes** e aparecem para escalar no dia seguinte, ligadas à rota de origem |
 | **Viagem** | Destino longe, de **2 ou mais dias** | A rota tem **data de volta**; motorista e ajudante ganham **presença automática** em cada dia até a volta e o **adicional de viagem** (ver 5.2) |
 | **Porta de loja** | Caminhão parado em frente a um supermercado, vendendo (mais comum no verão). Existe em **qualquer operação** | Sem roteiro de entregas. Cobrança do cliente é diferente; **para o motorista o pagamento é igual** (diária) |
-| **Cancelada** | A saída foi interrompida por algum motivo | **Motivo obrigatório**; efeito no pagamento do agregado a confirmar |
+| **Cancelada** | A saída foi interrompida por algum motivo | **Motivo obrigatório**. Motorista e ajudante recebem o **dia normal**. Para o agregado, **caso a caso**: aparece um **aviso no fechamento quinzenal** e a coordenação decide (pagar o fixo inteiro, um valor menor ou nada, com justificativa) |
 
 ### 4.4 Cargas e roteiro
 - O roteiro chega do cliente como hoje (clientes, tipo do cliente, endereço, bairro, cidade,
@@ -180,7 +186,8 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
 - O formato da importação é ajustado na prática.
 
 ### 4.5 Cálculos e avisos (todos no servidor)
-- Km rodado, diferença anotado × rastreador, km acima do esperado do roteiro.
+- Km rodado e diferença anotado × rastreador (**sem aviso de km por enquanto**; o dono vai
+  definir depois como avisar).
 - Caixas entregues; mais entregues que carregadas (erro).
 - Largada fora da tolerância; temperatura de saída acima de −30 °C e de chegada acima de
   −10 °C (**só avisam, nunca bloqueiam**: o diário registra o valor verdadeiro).
@@ -202,21 +209,27 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
   auditoria. A equipe pode retirar como qualquer presença.
 
 ### 5.2 Financeiro
-- **Prestadores:** diária por presença, como hoje, mais o **adicional de viagem** (valor da
-  operação conforme a duração: 2 dias, 3 dias...) lançado sozinho quando a viagem volta.
+- **Prestadores:** diária por presença, como hoje, mais o **adicional de viagem** = valor por
+  dia da operação × dias de viagem, lançado sozinho quando a viagem volta.
   Fechamento **mensal**.
 - **Agregados:** cada rota encerrada e conferida gera os lançamentos dele: fixo por saída (se
   houver) + caixas entregues × valor por caixa (se houver) − desconto por prestador nosso que
-  saiu com ele. Fechamento **quinzenal** (1 a 15; 16 ao fim do mês).
+  saiu com ele. Fechamento **quinzenal** (1 a 15; 16 ao fim do mês), processado pelo
+  sistema. **Saídas canceladas** aparecem como aviso no fechamento, para a coordenação
+  decidir caso a caso antes de fechar.
 - **Cobrança do cliente** (perfil cobrado, valor por caixa por região, porta de loja): o
   diário **guarda os dados** que servirão para faturar o cliente, mas **o faturamento ao
   cliente fica fora** por enquanto.
 
 ## 6. Como o dia funciona
 
-1. **Véspera:** abre o diário do dia seguinte da operação; importa o roteiro; cria as rotas
+1. **Véspera (tarde/noite):** o roteiro do cliente chega no começo da tarde; a escala é
+   montada do meio para o fim da tarde ou no começo da noite, conforme a operação. A equipe
+   abre o diário do dia seguinte da operação; importa o roteiro; cria as rotas
    (tipo de serviço, carro, cargas); arrasta motorista e ajudantes para cada carro; carros em
-   manutenção e CNHs vencidas ficam bloqueados; quem sobra vira NE.
+   manutenção e CNHs vencidas ficam bloqueados; quem sobra vira NE. O **aviso às pessoas
+   continua pelos grupos de WhatsApp** (motoristas e ajudantes; agregados). Ideia: um botão
+   "copiar escala" que gera o texto pronto para colar no grupo (sem CPF).
 2. **Manhã:** check-in ao vivo dentro de cada carro; "não veio" → falta e troca.
 3. **Carregamento:** caixas carregadas, conferidas pelo conferente e lançadas pela equipe.
 4. **Largada:** horário real, km do painel, temperatura do baú.
@@ -259,17 +272,17 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
 | `usuarios/{uid}` (já existe) | ganha `categoria` (prestador ou agregado) |
 | `funcoes/{id}` (já existe) | ganha `exigeCnh` |
 | `cnhs/{uid}` | número, categoria, validade; só a equipe lê |
-| `operacoes/{id}` (já existe) | ganha cor, campos obrigatórios, tipos de serviço, largada e tolerância, limites de temperatura, modalidades, perfis cobrados |
-| `operacoes/{id}/roteiros/{id}` | nome, setor, km esperado |
+| `operacoes/{id}` (já existe) | ganha cor, campos visíveis e obrigatórios do diário, tipos de serviço, largada e tolerância, limites de temperatura, modalidades, perfis cobrados |
+| `operacoes/{id}/roteiros/{id}` | nome, setor |
 | `operacoes/{id}/brokers/{id}` | nome, região, contato |
-| `valoresOperacao/{id}` | desconto do agregado (motorista, ajudante) e adicional de viagem por duração, em centavos, com início; só quem vê valores |
+| `valoresOperacao/{id}` | desconto do agregado (motorista, ajudante) e adicional de viagem por dia, em centavos, com início; só quem vê valores |
 | `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome e função |
 | `veiculos/{id}` | placa, frota, tipo, capacidade, base, dono (`casa` ou uid do agregado), rastreador, situação, CRLV e validade |
 | `veiculos/{id}/manutencoes/{id}` | início, fim, motivo, oficina, custo (só quem vê valores) |
 | `valoresAgregado/{id}` | agregado, fixo por saída, por caixa entregue (centavos; vazio = 0), início |
 | `fechamentosAgregado/{AAAA-MM-Q}` | quinzena, status, totais por agregado, reabertura |
 | `diarios/{operacaoId_data}` | operação, data, situação, quem encerrou |
-| `rotas/{id}` | todos os campos da seção 4.2; data de volta (viagem); rota de origem (reentrega); motivo (cancelada) |
+| `rotas/{id}` | todos os campos da seção 4.2; data de volta (viagem); rota de origem (reentrega); motivo (cancelada); decisão de pagamento do agregado (se cancelada) |
 | `cargas/{id}` | número, broker, clientes do roteiro (nome, tipo, endereço, bairro, cidade, caixas, peso), totais, rota |
 | `ocorrencias/{id}` | rota, horário, tipo, texto, quem anotou |
 | `presencas/{uid_data}` (já existe) | nova origem `viagem`, com o id da rota |
@@ -286,32 +299,22 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
 | --- | --- | --- |
 | **E1. Agregados** | Link de cadastro de agregado com caminhões e CRLV, categoria, equipe do agregado, valores fixo/caixa no contrato, distrato tirando tudo da escala | Reaproveita quase todo o onboarding pronto |
 | **E2. Veículos e CNH** | Frota da casa (frota, tipo, rastreador, situação, manutenção), marca "exige CNH" na função, CNH com validade e bloqueio | Base da escala |
-| **E3. Regras da operação** | Cor, campos obrigatórios, roteiros com km esperado, modalidades, perfis cobrados, brokers, largada, temperatura, desconto do agregado, adicional de viagem | O diário depende delas |
-| **E4. Escala por carro** | Diário do dia, rotas, tipo de serviço, pessoas nos carros, NE automático, check-in ao vivo, falta e troca | Substitui a aba "Escala" e a planilha da véspera |
+| **E3. Regras da operação** | Cor, campos que aparecem no diário, roteiros, modalidades, perfis cobrados, brokers, largada, temperatura, desconto do agregado, adicional de viagem | O diário depende delas |
+| **E4. Escala por carro** | Diário do dia (tabela com filtros por data), rotas, tipo de serviço, pessoas nos carros, NE automático, check-in ao vivo, falta e troca | Substitui a aba "Escala" e a planilha da véspera |
 | **E5. Jornada da rota** | Largada, chegada, km, rastreador, temperatura, caixas, ocorrências, cancelamento, avisos | Substitui o diário de campo |
-| **E6. Viagem e reentrega** | Presença automática por viagem, adicional por duração, reentregas pendentes para o dia seguinte | Depende de E4 e E5 |
+| **E6. Viagem e reentrega** | Presença automática por viagem, adicional por dia de viagem, reentregas pendentes para o dia seguinte | Depende de E4 e E5 |
 | **E7. Cargas** | Importação do roteiro do cliente e emplacamento | Ajustado na prática |
-| **E8. Dinheiro do agregado** | Lançamentos por saída/caixa com desconto, fechamento quinzenal | Precisa das caixas conferidas (E5) |
+| **E8. Dinheiro do agregado** | Lançamentos por saída/caixa com desconto, fechamento quinzenal com aviso das saídas canceladas | Precisa das caixas conferidas (E5) |
 | **E9. Relatórios** | Por dia, veículo, pessoa, rota, operação: km, diferenças, horários, caixas, temperaturas; Excel e PDF (sem CPF) | Aproveita os dados acumulados |
-| **Futuro** | Baús, leitura da CNH, km puxado do rastreador, faturamento ao cliente, CNH do motorista do agregado | Adiados pelo dono |
+| **Futuro** | Baús, leitura da CNH, km puxado do rastreador, aviso de km fora do normal, faturamento ao cliente, CNH do motorista do agregado | Adiados pelo dono |
 
-## 11. Perguntas ainda abertas
-
-1. **V e M** no retorno do modelo de sorvete: confirmar se é **varejo** e **mercado**.
-2. **Saída cancelada:** o agregado recebe o fixo daquela saída (inteiro, parte ou nada)? E as
-   caixas que já tinham sido entregues antes da interrupção?
-3. **Adicional de viagem:** o valor é por **duração total** (2 dias = X, 3 dias = Y) ou um
-   valor **por dia** de viagem? Vale igual para motorista e ajudante?
-4. **Diário por operação ou por base?** Proposta: um diário por **dia e operação** (como as
-   planilhas). Uma base pode ter várias operações no mesmo dia?
-5. **Escala:** é feita na **véspera**? Até que horas pode mudar? Existe **reserva** (gente na
-   base sem carro, para cobrir falta)? A pessoa precisa ser **avisada** no celular de que foi
-   escalada?
-6. **Quem lança** os km, horários e temperaturas: a equipe na base, a partir do que o motorista
-   anota, ou o próprio motorista no celular?
-7. **Devolução:** quais motivos usar (cliente fechado, recusa, avaria, falta de tempo...)?
-8. **Km esperado por roteiro:** a partir de quanto acima do esperado o app deve avisar (ex.:
-   50% a mais)?
+## 11. Pontos para confirmar durante a construção
+O dono considera o plano fechado. Ficam só detalhes, a confirmar quando a etapa chegar:
+1. **V e M** no retorno do modelo de sorvete: provavelmente **varejo** e **mercado**.
+2. **KM UNB** do modelo de carga seca: entendido como o **km do rastreador**.
+3. **Reserva** (gente na base sem carro para cobrir falta): existe?
+4. **Motivos de devolução** e de **cancelamento**: lista a montar com a equipe.
+5. **Aviso de km** fora do normal: o dono define depois.
 
 ## 12. Histórico das decisões (05/11/2026)
 - Rodada 1: rascunho geral (escala, carros, cargas, rotas).
@@ -327,3 +330,7 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
   check-in; CPF fora do diário; km anotado × rastreador (controle gerencial); presença e
   adicional de viagem; perfil cobrado automático e editável; largada real; tipos de serviço
   (entrega, reentrega, viagem, porta de loja, cancelada).
+- Rodada 6: saída cancelada (prestadores recebem o dia; agregado caso a caso, com aviso no
+  fechamento quinzenal); adicional de viagem por dia; diário em tabela com filtro por data;
+  escala montada na véspera, aviso pelo WhatsApp; a equipe lança tudo; sem aviso de km por
+  enquanto; nome "Diário de Campo"; a coordenação escolhe os campos de cada operação.
