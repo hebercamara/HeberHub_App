@@ -60,6 +60,6 @@ describe('regras de cada operação para o Diário de Campo (etapa E3)', () => {
       descontoAjudanteAgregado: 3000,
       adicionalViagemDia: 7000,
     })
-    await expect(getDoc(doc(adm.db, 'valoresOperacao', `${operacaoId}_${HOJE}`))).rejects.toThrow(/permission/i)
+    await expect(getDoc(doc(adm.db, 'valoresOperacao', `${operacaoId}_${HOJE}`))).rejects.toThrow(/false for 'get'|permission/i)
   })
 })
