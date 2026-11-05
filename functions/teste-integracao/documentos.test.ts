@@ -58,6 +58,22 @@ describe('modelos e emissão de documentos (onboarding C e D)', () => {
     expect((await modelo.ref.get()).get('versaoAtual')).toBe(1)
   })
 
+  it('guarda quem assina pela contratante e testa o Clicksign sem token', async () => {
+    const base = {
+      razaoSocial: 'Transportadora Exemplo Ltda',
+      cnpj: '34.028.316/0001-03',
+      endereco: 'Av. Exemplo, 100, Centro, Porto Alegre/RS',
+      representante: 'Fulano Exemplo, brasileiro, casado, empresário, CPF 529.982.247-25',
+      cidade: 'Porto Alegre',
+    }
+    await expect(gestao.chamar('salvarContratante', { ...base, assinante: { nome: 'Fulano Exemplo', email: 'fulano@exemplo.com', cpf: '123' } })).rejects.toThrow(/CPF/)
+    await gestao.chamar('salvarContratante', { ...base, assinante: { nome: 'Fulano Exemplo', email: 'Fulano@Exemplo.com', cpf: '529.982.247-25' } })
+    expect((await db.collection('configuracoes').doc('contratante').get()).get('assinante')).toEqual({ nome: 'Fulano Exemplo', email: 'fulano@exemplo.com', cpf: '52998224725' })
+    // Nos emuladores não há token: o teste avisa, sem quebrar.
+    expect(await gestao.chamar('testarClicksign')).toEqual({ ok: false, ambiente: 'sandbox', motivo: 'sem-token' })
+    await expect(adm.chamar('testarClicksign')).rejects.toThrow(/permissão/)
+  })
+
   it('prepara a emissão com sugestões e mostra a prévia preenchida', async () => {
     const p = await adm.chamar<{ campos: string[]; sugestoes: Record<string, unknown> }>('prepararEmissao', { uid: ze.uid, modeloId: contratoId })
     expect(p.campos).toEqual(['FUNCAO_PRESTADA', 'VALOR_DIARIA', 'DATA_INICIO_CONTRATO', 'TESTEMUNHAS'])

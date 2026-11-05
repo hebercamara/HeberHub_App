@@ -454,6 +454,13 @@ módulo importa antes de criar funções. Colocá-lo no `index.ts` fez as funç�
 - GitHub › Settings › Environments › **`Firebase-dev`**: secret `FIREBASE_SERVICE_ACCOUNT` e as
   variáveis `VITE_FIREBASE_*` e `COORDENADOR_INICIAL_EMAIL`. O workflow procura o ambiente
   `Firebase-<alias>`.
+- **Clicksign:** secret `CLICKSIGN_TOKEN` (token da API) e variável `CLICKSIGN_AMBIENTE`
+  (`sandbox` para testes, `producao` para a conta real). O deploy os grava no `.env` das
+  funções. Jurídico › Contratos › Contratante e testemunhas tem o botão **"Testar conexão com o
+  Clicksign"** e os dados de **quem assina pela contratante** (nome, e-mail e CPF; ficam no banco,
+  não no código). Integração em construção: envio do PDF para assinatura (todas as partes ao
+  mesmo tempo, quando o ADM pedir), testemunhas informadas em cada emissão, aviso de assinado e
+  cópia no Google Drive.
 - A conta de serviço tem os papéis Editor, Cloud Functions Admin, Cloud Run Admin e Service
   Account User.
 - App publicado: https://heberhub-app.web.app

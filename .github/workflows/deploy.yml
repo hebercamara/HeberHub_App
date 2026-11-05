@@ -25,6 +25,8 @@ jobs:
     #   secret   FIREBASE_SERVICE_ACCOUNT  -> JSON da conta de serviço
     #   variáveis VITE_FIREBASE_*          -> configuração do app Web
     #   variável COORDENADOR_INICIAL_EMAIL -> e-mail da primeira coordenação
+    #   secret   CLICKSIGN_TOKEN            -> token da API do Clicksign
+    #   variável CLICKSIGN_AMBIENTE         -> sandbox (testes) ou producao
     environment: Firebase-${{ inputs.ambiente || 'dev' }}
     env:
       AMBIENTE: ${{ inputs.ambiente || 'dev' }}
@@ -77,7 +79,14 @@ jobs:
         env:
           PROJETO: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
           COORDENADOR_INICIAL_EMAIL: ${{ vars.COORDENADOR_INICIAL_EMAIL }}
-        run: echo "COORDENADOR_INICIAL_EMAIL=$COORDENADOR_INICIAL_EMAIL" > "functions/.env.$PROJETO"
+          CLICKSIGN_TOKEN: ${{ secrets.CLICKSIGN_TOKEN }}
+          CLICKSIGN_AMBIENTE: ${{ vars.CLICKSIGN_AMBIENTE }}
+        run: |
+          {
+            echo "COORDENADOR_INICIAL_EMAIL=$COORDENADOR_INICIAL_EMAIL"
+            echo "CLICKSIGN_TOKEN=$CLICKSIGN_TOKEN"
+            echo "CLICKSIGN_AMBIENTE=${CLICKSIGN_AMBIENTE:-sandbox}"
+          } > "functions/.env.$PROJETO"
 
       - uses: google-github-actions/auth@v3
         if: steps.credencial.outputs.ok == 'true'

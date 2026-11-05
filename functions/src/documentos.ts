@@ -41,6 +41,16 @@ const JURIDICO = ['coordenacao', 'juridico'] as const
 
 // ---------- Contratante e testemunhas ----------
 
+function lerAssinante(valor: unknown): { nome: string; email: string; cpf: string } | null {
+  const a = (valor ?? {}) as Record<string, unknown>
+  if (!a.nome && !a.email && !a.cpf) return null
+  const email = texto(a.email, 'o e-mail de quem assina', { min: 5, max: 160 }).toLowerCase()
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw falha('E-mail de quem assina pela contratante inválido.')
+  const cpf = soDigitos(texto(a.cpf, 'o CPF de quem assina', { min: 11, max: 14 }))
+  if (!cpfValido(cpf)) throw falha('CPF de quem assina pela contratante inválido.')
+  return { nome: texto(a.nome, 'o nome de quem assina', { min: 5 }), email, cpf }
+}
+
 export const salvarContratante = onCall(async (req) => {
   const autor = exigirPerfil(req, [...JURIDICO])
   const d = req.data ?? {}
@@ -52,6 +62,8 @@ export const salvarContratante = onCall(async (req) => {
     endereco: texto(d.endereco, 'o endereço da contratante', { min: 10, max: 300 }),
     representante: texto(d.representante, 'quem assina pela contratante (nome e qualificação)', { min: 10, max: 500 }),
     cidade: texto(d.cidade, 'a cidade de emissão', { min: 2, max: 80 }),
+    // Quem assina pela contratante no Clicksign.
+    assinante: lerAssinante(d.assinante),
   }
   const lote = db.batch()
   lote.set(db.collection('configuracoes').doc('contratante'), { ...contratante, atualizadoPor: autor, atualizadoEm: agoraServidor() })

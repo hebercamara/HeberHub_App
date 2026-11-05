@@ -262,4 +262,5 @@ export type DocumentoEmitido = {
 export const NOMES_STATUS_DOCUMENTO: Record<DocumentoEmitido['status'], string> = { emitido: 'Aguardando assinatura', assinado: 'Assinado', cancelado: 'Cancelado' }
 
 export type Testemunha = { id: string; nome: string; cpf: string; ativa: boolean }
-export type Contratante = { razaoSocial: string; cnpj: string; endereco: string; representante: string; cidade: string }
+export type Assinante = { nome: string; email: string; cpf: string }
+export type Contratante = { razaoSocial: string; cnpj: string; endereco: string; representante: string; cidade: string; assinante?: Assinante | null }

@@ -13,6 +13,7 @@ export function Ajustes() {
   return (
     <div className="pilha">
       {contratante !== undefined && <FormContratante inicial={contratante} />}
+      <TesteClicksign />
       <Testemunhas />
     </div>
   )
@@ -20,6 +21,7 @@ export function Ajustes() {
 
 function FormContratante({ inicial }: { inicial: Contratante | null }) {
   const [dados, setDados] = useState<Contratante>(inicial ?? { razaoSocial: '', cnpj: '', endereco: '', representante: '', cidade: '' })
+  const [assinante, setAssinante] = useState(inicial?.assinante ?? { nome: '', email: '', cpf: '' })
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
   const mudar = (campo: keyof Contratante, valor: string) => setDados((d) => ({ ...d, [campo]: valor }))
@@ -29,7 +31,7 @@ function FormContratante({ inicial }: { inicial: Contratante | null }) {
     setErro('')
     setInfo('')
     try {
-      await api.salvarContratante(dados)
+      await api.salvarContratante({ ...dados, assinante: assinante.nome || assinante.email || assinante.cpf ? assinante : null })
       setInfo('Dados da contratante salvos.')
     } catch (err) {
       setErro(mensagemDeErro(err))
@@ -68,6 +70,24 @@ function FormContratante({ inicial }: { inicial: Contratante | null }) {
           required
         />
       </label>
+      <fieldset>
+        <legend>Quem assina no Clicksign</legend>
+        <p className="suave">Recebe o pedido de assinatura de todos os documentos enviados ao Clicksign.</p>
+        <label>
+          Nome completo
+          <input value={assinante.nome} onChange={(e) => setAssinante({ ...assinante, nome: e.target.value })} />
+        </label>
+        <div className="linha">
+          <label>
+            E-mail
+            <input type="email" value={assinante.email} onChange={(e) => setAssinante({ ...assinante, email: e.target.value })} />
+          </label>
+          <label>
+            CPF
+            <input inputMode="numeric" value={mascararCpf(assinante.cpf)} onChange={(e) => setAssinante({ ...assinante, cpf: e.target.value })} />
+          </label>
+        </div>
+      </fieldset>
       <Aviso tipo="ok">{info}</Aviso>
       <Aviso>{erro}</Aviso>
       <div className="acoes">
@@ -119,6 +139,45 @@ function Testemunhas() {
         <button type="submit">Adicionar</button>
       </form>
       <Aviso>{erro}</Aviso>
+    </section>
+  )
+}
+
+const MOTIVOS = {
+  'sem-token': 'O token do Clicksign não chegou ao sistema. Confira o secret CLICKSIGN_TOKEN no ambiente Firebase-dev do GitHub e publique de novo.',
+  'token-recusado': 'O Clicksign recusou o token. Gere um novo no painel do Clicksign (no mesmo ambiente: sandbox ou produção) e atualize o secret.',
+  erro: 'O Clicksign respondeu com erro. Tente de novo em alguns minutos.',
+  'sem-resposta': 'O Clicksign não respondeu. Tente de novo em alguns minutos.',
+}
+
+/** Confere se o token cadastrado no GitHub funciona. */
+function TesteClicksign() {
+  const [resultado, setResultado] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
+  const [testando, setTestando] = useState(false)
+
+  async function testar() {
+    setTestando(true)
+    setResultado(null)
+    try {
+      const r = await api.testarClicksign()
+      const onde = r.ambiente === 'producao' ? 'conta de produção' : 'área de testes (sandbox)'
+      setResultado(r.ok ? { tipo: 'ok', texto: `Conectado ao Clicksign (${onde}).` } : { tipo: 'erro', texto: `${MOTIVOS[r.motivo ?? 'erro']} (${onde})` })
+    } catch (e) {
+      setResultado({ tipo: 'erro', texto: mensagemDeErro(e) })
+    }
+    setTestando(false)
+  }
+
+  return (
+    <section className="cartao formulario">
+      <h2>Clicksign</h2>
+      <p className="suave">Confere se a chave de acesso (token) cadastrada no GitHub é aceita pelo Clicksign. Não envia nada para assinatura.</p>
+      {resultado && <Aviso tipo={resultado.tipo}>{resultado.texto}</Aviso>}
+      <div className="acoes">
+        <button className="secundario" disabled={testando} onClick={() => void testar()}>
+          {testando ? 'Testando…' : 'Testar conexão com o Clicksign'}
+        </button>
+      </div>
     </section>
   )
 }
