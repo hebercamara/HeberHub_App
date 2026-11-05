@@ -21,6 +21,7 @@ export function Configuracoes() {
             <NavLink to="/configuracoes/operacoes">Operações</NavLink>
             <NavLink to="/configuracoes/funcoes">Funções e diárias</NavLink>
             <NavLink to="/configuracoes/bases">Bases</NavLink>
+            <NavLink to="/configuracoes/regioes">Regiões de entrega</NavLink>
             <NavLink to="/configuracoes/aparencia">Aparência</NavLink>
           </>
         )}

@@ -3,7 +3,8 @@
 // de cada um), a equipe dele (só o nome) e os valores (fixo por saída e por caixa entregue).
 import type { DocumentSnapshot, Transaction, WriteBatch } from 'firebase-admin/firestore'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
-import { agoraServidor, auditar, balde, centavos, dataValida, db, exigirFinanceiro, exigirLogin, exigirPerfil, falha, perfilDe, texto } from './infra.js'
+import { dataEmSaoPaulo } from './regras/tempo.js'
+import { agora, agoraServidor, auditar, balde, centavos, dataValida, db, exigirFinanceiro, exigirLogin, exigirPerfil, falha, perfilDe, texto } from './infra.js'
 import { normalizarPlaca, placaFormatada, placasRepetidas, placaValida, TIPOS_VEICULO, valorAgregadoVigente, type SituacaoVeiculo, type TipoVeiculo, type ValorAgregado } from './regras/veiculos.js'
 
 const veiculos = db.collection('veiculos')
@@ -175,6 +176,64 @@ export async function retirarCaminhoes(uid: string, autor: string, motivo: strin
   return ativos.length
 }
 
+/** Dados do veículo que a equipe edita (caminhão do agregado ou veículo da casa). */
+export function lerDadosVeiculo(d: Record<string, unknown>) {
+  const validade = d.crlvValidade
+  return {
+    tipo: lerTipo(d.tipo),
+    modelo: textoOpcional(d.modelo, 60),
+    capacidadeCaixas: lerCapacidade(d.capacidadeCaixas),
+    frota: textoOpcional(d.frota, 20) || null,
+    rastreador: textoOpcional(d.rastreador, 60) || null,
+    // Validade do licenciamento (CRLV): opcional; o app avisa quando vence.
+    crlvValidade: validade === undefined || validade === null || validade === '' ? null : dataValida(validade, 'a validade do CRLV'),
+  }
+}
+
+/** Situação pedida pela equipe; manutenção e inativo pedem o motivo. */
+export function lerSituacao(d: Record<string, unknown>): { situacao: Exclude<SituacaoVeiculo, 'pendente'>; motivo: string | null; previsao: string | null } {
+  const situacao = d.situacao as SituacaoVeiculo
+  if (situacao !== 'disponivel' && situacao !== 'manutencao' && situacao !== 'inativo') throw falha('Escolha a situação do veículo.')
+  const motivo = typeof d.motivo === 'string' && d.motivo.trim() ? texto(d.motivo, 'o motivo', { min: 3, max: 200 }) : null
+  const previsao = situacao === 'manutencao' && d.previsao ? dataValida(d.previsao, 'a previsão de volta') : null
+  return { situacao, motivo, previsao }
+}
+
+/**
+ * Grava a mudança de situação. Entrar em manutenção abre um registro no histórico
+ * (veiculos/{placa}/manutencoes); sair dela fecha o registro aberto. Nada é apagado.
+ */
+export function aplicarSituacao(
+  tx: Transaction,
+  veiculo: DocumentSnapshot,
+  pedido: { situacao: Exclude<SituacaoVeiculo, 'pendente'>; motivo: string | null; previsao: string | null },
+  autor: string,
+  hoje: string,
+): Record<string, unknown> {
+  const antes = veiculo.exists ? (veiculo.get('situacao') as SituacaoVeiculo) : null
+  const aberta = veiculo.exists ? (veiculo.get('manutencaoAtual') as string | null | undefined) : null
+  const mudou = antes !== pedido.situacao
+  if (mudou && pedido.situacao !== 'disponivel' && !pedido.motivo) {
+    throw falha(pedido.situacao === 'manutencao' ? 'Informe o motivo da manutenção.' : 'Informe o motivo de inativar o veículo.')
+  }
+  const campos: Record<string, unknown> = { situacao: pedido.situacao }
+  if (aberta && pedido.situacao !== 'manutencao') {
+    tx.update(veiculo.ref.collection('manutencoes').doc(aberta), { fim: hoje, fechadoPor: autor, fechadoEm: agoraServidor() })
+    campos.manutencaoAtual = null
+  }
+  if (pedido.situacao === 'manutencao' && (antes !== 'manutencao' || !aberta)) {
+    const registro = veiculo.ref.collection('manutencoes').doc()
+    tx.set(registro, { inicio: hoje, previsao: pedido.previsao, motivo: pedido.motivo ?? 'manutenção', fim: null, abertoPor: autor, abertoEm: agoraServidor() })
+    campos.manutencaoAtual = registro.id
+  }
+  if (pedido.situacao === 'manutencao' && antes === 'manutencao' && aberta && pedido.previsao) {
+    tx.update(veiculo.ref.collection('manutencoes').doc(aberta), { previsao: pedido.previsao })
+  }
+  campos.motivoSituacao = pedido.situacao === 'disponivel' ? null : (pedido.motivo ?? (veiculo.exists ? veiculo.get('motivoSituacao') ?? null : null))
+  if (pedido.situacao !== 'inativo') campos.motivoInativo = null
+  return campos
+}
+
 /**
  * A equipe inclui ou altera um caminhão de um agregado já aprovado: dados, situação
  * (disponível, em manutenção ou inativo), número da frota e rastreador. A placa não muda.
@@ -183,36 +242,31 @@ export const salvarCaminhao = onCall(async (req) => {
   const autor = exigirPerfil(req, ['adm', 'coordenacao'])
   const uid = texto(req.data?.uid, 'o agregado')
   const placa = lerPlaca(req.data?.placa)
-  const situacao = req.data?.situacao as SituacaoVeiculo
-  if (!['disponivel', 'manutencao', 'inativo'].includes(situacao)) throw falha('Escolha a situação do caminhão.')
-  const dados = {
-    tipo: lerTipo(req.data?.tipo),
-    modelo: textoOpcional(req.data?.modelo, 60),
-    capacidadeCaixas: lerCapacidade(req.data?.capacidadeCaixas),
-    frota: textoOpcional(req.data?.frota, 20) || null,
-    rastreador: textoOpcional(req.data?.rastreador, 60) || null,
-    situacao,
-  }
+  const pedido = lerSituacao(req.data ?? {})
+  const situacao = pedido.situacao
+  const dados = lerDadosVeiculo(req.data ?? {})
+  const hoje = dataEmSaoPaulo(agora())
   await db.runTransaction(async (tx) => {
     const [agregado, atual] = [await tx.get(usuarios.doc(uid)), await tx.get(veiculos.doc(placa))]
     if (agregado.get('categoria') !== 'agregado') throw falha('Esta pessoa não é agregado.', 'failed-precondition')
     if (placaDeOutro(atual, uid)) throw falha(`A placa ${placaFormatada(placa)} já está cadastrada para outro dono.`, 'already-exists')
     if (situacao !== 'inativo' && agregado.get('status') !== 'ativo') throw falha('O agregado não está ativo: o caminhão só pode ficar inativo.', 'failed-precondition')
     const novo = !atual.exists
+    const campos = aplicarSituacao(tx, atual, pedido, autor, hoje)
     tx.set(
       veiculos.doc(placa),
       {
         ...dados,
+        ...campos,
         placa,
         ...(novo
           ? { dono: uid, donoNome: agregado.get('razaoSocial') ?? agregado.get('nome'), origem: 'agregado', baseId: agregado.get('baseId') ?? null, crlv: null, criadoPor: autor, criadoEm: agoraServidor() }
           : {}),
-        ...(situacao !== 'inativo' ? { motivoInativo: null } : {}),
         atualizadoEm: agoraServidor(),
       },
       { merge: true },
     )
-    auditar(tx, { acao: novo ? 'caminhao-incluido' : 'caminhao-alterado', autor, alvo: placa, detalhes: { dono: uid, ...dados } })
+    auditar(tx, { acao: novo ? 'caminhao-incluido' : 'caminhao-alterado', autor, alvo: placa, detalhes: { dono: uid, ...dados, situacao, motivo: pedido.motivo } })
   })
   return { ok: true, placa }
 })
@@ -238,14 +292,24 @@ export const salvarEquipeAgregado = onCall(async (req) => {
 /** Valores do agregado a partir de uma data. Vazio = zero (vai zerado no contrato). */
 export function lerValoresAgregado(dados: Record<string, unknown>) {
   const ler = (valor: unknown, campo: string) => (valor === undefined || valor === null || valor === '' ? 0 : centavos(valor, campo))
+  // Valor por caixa em cada região de entrega; região em branco usa o valor padrão.
+  const entrada = dados.porRegiao && typeof dados.porRegiao === 'object' ? (dados.porRegiao as Record<string, unknown>) : {}
+  const porRegiao: Record<string, number> = {}
+  for (const [regiaoId, valor] of Object.entries(entrada)) {
+    if (valor === undefined || valor === null || valor === '') continue
+    porRegiao[regiaoId] = centavos(valor, 'o valor por caixa da região')
+  }
   return {
     fixoSaida: ler(dados.fixoSaida, 'o valor fixo por saída'),
     porCaixa: ler(dados.porCaixa, 'o valor por caixa entregue'),
+    porRegiao,
   }
 }
 
+type Valores = { fixoSaida: number; porCaixa: number; porRegiao: Record<string, number> }
+
 /** Grava os valores do agregado vigentes a partir de `inicio` (substitui o mesmo início). */
-export function gravarValoresAgregado(escritor: Transaction | WriteBatch, uid: string, valores: { fixoSaida: number; porCaixa: number }, inicio: string, autor: string, documentoId: string | null = null) {
+export function gravarValoresAgregado(escritor: Transaction | WriteBatch, uid: string, valores: Valores, inicio: string, autor: string, documentoId: string | null = null) {
   const ref = db.collection('valoresAgregado').doc(`${uid}_${inicio}`)
   const dados = { uid, ...valores, inicio, criadoPor: autor, criadoEm: agoraServidor(), documentoId }
   if ('commit' in escritor) escritor.set(ref, dados)
@@ -260,6 +324,9 @@ export const salvarValorAgregado = onCall(async (req) => {
   const valores = lerValoresAgregado(req.data ?? {})
   const agregado = await usuarios.doc(uid).get()
   if (agregado.get('categoria') !== 'agregado') throw falha('Esta pessoa não é agregado.', 'failed-precondition')
+  const ids = Object.keys(valores.porRegiao)
+  const regioes = await Promise.all(ids.map((id) => db.collection('regioes').doc(id).get()))
+  if (regioes.some((r) => !r.exists)) throw falha('Região de entrega não encontrada.', 'not-found')
   const lote = db.batch()
   gravarValoresAgregado(lote, uid, valores, inicio, autor)
   auditar(lote, { acao: 'valor-agregado-salvo', autor, alvo: uid, detalhes: { ...valores, inicio } })
@@ -268,8 +335,20 @@ export const salvarValorAgregado = onCall(async (req) => {
 })
 
 /** Valores do agregado vigentes numa data (sugestão na emissão do contrato). */
-export async function valoresAgregadoEm(uid: string, data: string): Promise<{ fixoSaida: number; porCaixa: number } | null> {
+export async function valoresAgregadoEm(uid: string, data: string): Promise<Valores | null> {
   const lista = await db.collection('valoresAgregado').where('uid', '==', uid).get()
   const vigente = valorAgregadoVigente(lista.docs.map((d) => d.data() as ValorAgregado), data)
-  return vigente ? { fixoSaida: vigente.fixoSaida, porCaixa: vigente.porCaixa } : null
+  return vigente ? { fixoSaida: vigente.fixoSaida, porCaixa: vigente.porCaixa, porRegiao: vigente.porRegiao ?? {} } : null
+}
+
+/** "ABC: R$ 1,20 por caixa; Centro: R$ 0,90 por caixa" (para o contrato). */
+export async function textoValoresPorRegiao(porRegiao: Record<string, number>, reais: (c: number) => string): Promise<string> {
+  const ids = Object.keys(porRegiao)
+  if (!ids.length) return 'mesmo valor por caixa em todas as regiões'
+  const regioes = await Promise.all(ids.map((id) => db.collection('regioes').doc(id).get()))
+  return regioes
+    .map((r) => ({ nome: (r.get('nome') as string | undefined) ?? r.id, valor: porRegiao[r.id] }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map((r) => `${r.nome}: ${reais(r.valor)} por caixa`)
+    .join('; ')
 }

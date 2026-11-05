@@ -3,7 +3,7 @@
 > Documento de referência para quem for continuar o projeto, seja uma pessoa ou uma IA.
 > Explica o que o app faz, o que ele deliberadamente **não** faz, as regras de negócio
 > decididas com o dono do projeto (e por quê), a arquitetura técnica e como retomar o trabalho.
-> Atualizado em 05/11/2026, após a etapa E1 do Diário de Campo (cadastro de agregados).
+> Atualizado em 05/11/2026, após a etapa E2 do Diário de Campo (frota da casa, CNH e regiões de entrega).
 
 ---
 
@@ -47,7 +47,9 @@ A empresa trabalha com **prestadores de serviço PJ** (motoristas e ajudantes) q
 | --- | --- |
 | **Prestador** | Pessoa PJ (motorista ou ajudante) que faz check-in e recebe diárias. Faz o autocadastro com os dados da empresa. |
 | **Agregado** | Empresa (CNPJ) com **caminhão próprio**, que cuida do próprio motorista e ajudante. Faz o mesmo cadastro oficial pelo link `/cadastro-agregado`, com os caminhões e o CRLV de cada um. **Não faz check-in nem recebe diária**; recebe por saída e/ou por caixa entregue. Depois de aprovado, não usa o app. |
-| **Veículo / caminhão** | Em `veiculos/{placa}`: placa (sem hífen), tipo, modelo, capacidade, dono, situação (disponível, em manutenção, inativo), nº da frota, rastreador e CRLV. Hoje só os caminhões dos agregados; a frota da casa entra na etapa E2. |
+| **Veículo / caminhão** | Em `veiculos/{placa}`: placa (sem hífen), tipo, modelo, capacidade, dono (`casa` ou o uid do agregado), situação (disponível, em manutenção, inativo), nº da frota, rastreador, base, CRLV e a validade dele. Cada manutenção fica no histórico do veículo. |
+| **CNH** | Número, categoria e validade da CNH de quem dirige, preenchidos pela equipe (o arquivo fica no Drive da empresa). Vencida ou não cadastrada **bloqueia** a escala como motorista (a escala é a etapa E4). |
+| **Região de entrega** | Ex.: ABC, Centro, Zona Sul. O cliente paga por caixa conforme a região; o agregado pode ter um **valor por caixa em cada região** (região sem valor usa o valor padrão). |
 | **ADM** | Equipe administrativa. Gera o QR, vê presenças, aprova cadastros e lança presença manual. **Não vê valores.** |
 | **ADM Financeiro** | ADM que a coordenação autoriza a ver valores e a lançar adicionais, descontos e lançamentos em grupo. |
 | **Coordenação** | Perfil máximo. Tudo o que o ADM Financeiro faz, mais configurações, valores de diária, fechamento, eventos, usuários e auditoria. |
@@ -268,6 +270,29 @@ Plano completo em `docs/PLANO-DIARIO-DE-CAMPO.md`.
   caminhão não volta a ficar disponível.
 - Ainda **não** existe pagamento ao agregado nem fechamento quinzenal (etapa E8).
 
+### 6.2.4 Frota da casa, CNH e regiões (etapa E2 do Diário de Campo)
+- **Aba Frota** (toda a equipe; ADM e coordenação editam, o Jurídico só consulta):
+  - **Veículos:** todos, da casa e dos agregados, com filtros (frota da casa, agregados, em
+    manutenção, CRLV vencido ou vencendo, inativos) e busca por placa ou nº da frota. "Incluir
+    veículo da casa": placa, tipo, modelo, capacidade, nº da frota, rastreador, base, validade do
+    CRLV e situação. CRLV: ver e trocar (PDF ou foto). Caminhão de agregado só se altera em
+    Usuários › agregado.
+  - **Manutenção:** pôr em manutenção ou inativar **pede o motivo**. Entrar em manutenção abre um
+    registro no histórico (`veiculos/{placa}/manutencoes`: início, previsão, motivo); voltar a
+    "disponível" fecha o registro com a data. Nada é apagado.
+  - **CNHs:** quem tem função marcada **"Dirige veículo (exige CNH)"** (Configurações › Funções e
+    diárias), mais quem já tem CNH. Situação: válida, vence em até 30 dias, vencida, sem CNH.
+    Número (11 dígitos), categoria (A a E, AB, AC, AD, AE) e validade. A CNH vale até o dia da
+    validade. A regra de bloqueio já está pronta no servidor (`regras/cnh.ts`) e será aplicada na
+    escala (E4). Agregado e equipe do agregado não têm CNH acompanhada.
+- **Regiões de entrega** (Configurações, coordenação): nome, o que cobre e ativa.
+- **Valor por caixa por região:** em Usuários › agregado › Valores do agregado, além do fixo por
+  saída e do valor por caixa **padrão**, um valor por caixa **em cada região** (em branco = usa o
+  padrão). Variável de contrato `{{VALORES_POR_REGIAO}}` (automática, lista "ABC: R$ 1,20 por
+  caixa; …"). O contrato assinado grava o fixo e o padrão e mantém a tabela por região.
+- **Termo de privacidade versão 3:** inclui a CNH (de quem dirige) e os dados dos caminhões e da
+  equipe dos agregados. Todos aceitam de novo.
+
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
    `heberhub:<baseId>_<data>:<token>`; o token é secreto e só sai do servidor por essa tela.
@@ -359,8 +384,8 @@ Tocar em **qualquer dia** do calendário (ou em "Alterar" na lista do dia) abre 
   menu do dia (6.4.1).
 
 ### 6.8 Privacidade (LGPD)
-- O termo é versionado (`VERSAO_TERMO`, hoje **2**, no app e no servidor; a versão 2 incluiu os
-  dados do cadastro oficial e da conta). Mudou o texto?
+- O termo é versionado (`VERSAO_TERMO`, hoje **3**, no app e no servidor; a versão 2 incluiu os
+  dados do cadastro oficial e da conta; a 3, a CNH e os dados dos agregados). Mudou o texto?
   Aumente a versão nos dois lados e todos aceitam de novo.
 - O texto está em `app/src/componentes/TextoTermo.tsx`. **É uma base redigida no projeto e
   ainda precisa de revisão jurídica.** Página pública: `/privacidade`.
@@ -395,6 +420,9 @@ Tocar em **qualquer dia** do calendário (ou em "Alterar" na lista do dia) abre 
 | **Agregado** usa o mesmo cadastro oficial, com caminhões dentro do cadastro dele | Pedido do dono: o distrato tira o agregado e os caminhões da escala de uma vez. |
 | Agregado **não faz check-in** e não usa o app depois do cadastro | Pedido do dono: o agregado cuida da própria equipe e acerta com a coordenação. |
 | Valores do agregado **fixo por saída e por caixa**, os dois opcionais | Pedido do dono: depende do cliente; vazio vai zerado no contrato. |
+| Valor por caixa **por região de entrega** | O cliente paga por caixa conforme a região (ex.: ABC, Centro); o agregado acompanha. |
+| **CNH vencida bloqueia** a escala como motorista; a equipe preenche | Pedido do dono. O arquivo da CNH fica no Drive da empresa. |
+| Manutenção e inativação de veículo **com motivo** e histórico | Rastreabilidade da frota. |
 | Configurações agrupam o que é raro | Menos abas no dia a dia; os cadastros pendentes ficam lá, com contador. |
 
 ## 8. Arquitetura técnica
@@ -461,9 +489,12 @@ docs/CONTEXTO.md          este documento
 | `configuracoes/contratante` | dados da contratante e quem assina por ela | a equipe |
 | `consultasCnpj/{cnpj}` | última resposta da Receita (vale 24 h) | **ninguém** (só o servidor) |
 | `configuracoes/aparencia` | cores primária, secundária e fundo | **pública** (aparece no login) |
-| `veiculos/{placa}` | caminhão: tipo, modelo, capacidade, dono (uid do agregado), situação, frota, rastreador, CRLV (caminho no Storage) | a equipe |
+| `veiculos/{placa}` | veículo: tipo, modelo, capacidade, dono (`casa` ou uid do agregado), origem, situação e motivo, manutenção aberta, frota, rastreador, base, CRLV (caminho no Storage) e validade | a equipe |
+| `veiculos/{placa}/manutencoes/{id}` | histórico: início, previsão, motivo, fim | a equipe |
+| `cnhs/{uid}` | número, categoria e validade da CNH (preenchidos pela equipe) | a equipe |
+| `regioes/{id}` | regiões de entrega: nome, descrição, ativa | a equipe |
 | `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome, função, ativo | a equipe |
-| `valoresAgregado/{uid_inicio}` | fixo por saída e por caixa entregue (centavos), início, documento que gravou | quem vê valores |
+| `valoresAgregado/{uid_inicio}` | fixo por saída, por caixa padrão e por caixa em cada região (centavos), início, documento que gravou | quem vê valores |
 | `auditoria/{id}` | ação, autor, alvo, detalhes, data e hora | só coordenação |
 
 O perfil e o acesso financeiro ficam nos **custom claims** do login (`perfil`, `financeiro`).
@@ -474,6 +505,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | Área | Funções |
 | --- | --- |
 | Agregados | `enviarCrlv` (no cadastro ou, pela equipe, num caminhão), `verCrlv`, `salvarCaminhao`, `salvarEquipeAgregado`, `salvarValorAgregado` |
+| Frota | `salvarVeiculo` (frota da casa), `salvarCnh`, `salvarRegiao` |
 | Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
 | Contratos | `salvarContratante`, `salvarModelo`, `prepararEmissao`, `emitirDocumento` (prévia ou emissão), `marcarDocumento` (assinado ou cancelado), `inativacoesAgendadas` (00:15) |
@@ -541,7 +573,9 @@ o futuro: integração com o Clicksign e PDF gerado no servidor.
 
 **Em andamento: Diário de Campo** (`docs/PLANO-DIARIO-DE-CAMPO.md`, plano fechado com o dono):
 escala por carro, veículos, agregados, cargas e acompanhamento das rotas. **Etapa E1 (agregados)
-pronta.** Próxima: **E2** (frota da casa e CNH dos motoristas).
+pronta. Etapa E2 (frota da casa, CNH e regiões de entrega) pronta.** Próxima: **E3** (regras de
+cada operação: campos do diário, roteiros, modalidades, brokers, largada, temperatura, desconto do
+agregado e adicional de viagem).
 
 **Pendências e ideias registradas:**
 - **Escala por carro:** é a etapa E4 do Diário de Campo; até lá, só a marca NE por dia.
@@ -572,6 +606,7 @@ pronta.** Próxima: **E2** (frota da casa e CNH dos motoristas).
 | Onboarding A4 | Acareação formulário × Receita na aprovação, Cadastro Oficial em versões com histórico, alerta quando a Receita muda |
 | Depois | Falta e não escalado no calendário (retirar presença com estorno); Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |
 | Diário de Campo E1 | Cadastro de agregado (link próprio, caminhões com CRLV), caminhões aprovados como disponíveis, equipe e valores do agregado, variáveis de contrato, distrato tira os caminhões da escala, agregado sem check-in |
+| Diário de Campo E2 | Aba Frota (veículos da casa e dos agregados, manutenção com motivo e histórico, CRLV com validade), CNH de quem dirige (função "exige CNH"), regiões de entrega, valor por caixa do agregado por região, termo de privacidade v3 |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
 

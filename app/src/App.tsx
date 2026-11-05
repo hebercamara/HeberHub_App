@@ -11,6 +11,7 @@ import { Usuarios } from './paginas/coordenacao/Usuarios'
 import { Aparencia } from './paginas/configuracoes/Aparencia'
 import { Cadastros } from './paginas/configuracoes/Cadastros'
 import { Bases } from './paginas/configuracoes/Bases'
+import { Regioes } from './paginas/configuracoes/Regioes'
 import { Configuracoes } from './paginas/configuracoes/Configuracoes'
 import { Funcoes } from './paginas/configuracoes/Funcoes'
 import { Operacoes } from './paginas/configuracoes/Operacoes'
@@ -28,6 +29,7 @@ import { Entrar } from './paginas/Entrar'
 import { Eventos } from './paginas/eventos/Eventos'
 import { Financeiro } from './paginas/financeiro/Financeiro'
 import { PresencasHoje } from './paginas/equipe/PresencasHoje'
+import { Cnhs, Frota, Veiculos } from './paginas/equipe/Frota'
 import { QrDoDia } from './paginas/equipe/QrDoDia'
 import { PrimeiroAcesso } from './paginas/PrimeiroAcesso'
 import { Presenca } from './paginas/prestador/Presenca'
@@ -86,6 +88,10 @@ function App() {
           <>
             <Route path="/equipe/presencas" element={<PresencasHoje />} />
             <Route path="/equipe/qr" element={<QrDoDia />} />
+            <Route path="/equipe/frota" element={<Frota />}>
+              <Route index element={<Veiculos />} />
+              <Route path="cnhs" element={<Cnhs />} />
+            </Route>
             <Route path="/configuracoes" element={<Configuracoes />}>
               {/* O ADM só tem a seção Cadastros; a coordenação abre em Operações. */}
               <Route index element={<Navigate to={coordenacao ? '/configuracoes/operacoes' : '/configuracoes/cadastros'} replace />} />
@@ -96,6 +102,7 @@ function App() {
                   <Route path="operacoes" element={<Operacoes />} />
                   <Route path="funcoes" element={<Funcoes />} />
                   <Route path="bases" element={<Bases />} />
+                  <Route path="regioes" element={<Regioes />} />
                   <Route path="aparencia" element={<Aparencia />} />
                 </>
               )}

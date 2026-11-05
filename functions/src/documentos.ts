@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import { onCall, type CallableRequest } from 'firebase-functions/v2/https'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import sanitizeHtml from 'sanitize-html'
-import { gravarValoresAgregado, valoresAgregadoEm } from './agregados.js'
+import { gravarValoresAgregado, textoValoresPorRegiao, valoresAgregadoEm } from './agregados.js'
 import { atualizarReceita } from './cadastroOficial.js'
 import { preencherPendentes } from './cadastros.js'
 import { exigirMesAberto, valorVigente } from './financeiro.js'
@@ -181,7 +181,7 @@ function lerCampos(valor: unknown, pedidos: CampoEmissao[]): Campos {
 
 /** Todas as variáveis com valor, para preencher o modelo. */
 async function montarValores(uid: string, campos: Campos, emissor: string) {
-  const { oficial, banco } = await dadosDoPrestador(uid)
+  const { oficial, banco, usuario } = await dadosDoPrestador(uid)
   const contratante = (await db.collection('configuracoes').doc('contratante').get()).data() as Record<string, string> | undefined
   const r = oficial.representante
   const sexo: Sexo = r.sexo === 'F' ? 'F' : 'M'
@@ -221,6 +221,11 @@ async function montarValores(uid: string, campos: Campos, emissor: string) {
   if (campos.VALOR_DIARIA !== undefined) {
     v.VALOR_DIARIA = reais(campos.VALOR_DIARIA)
     v.VALOR_DIARIA_EXTENSO = reaisPorExtenso(campos.VALOR_DIARIA)
+  }
+  // Agregado: tabela de valor por caixa por região, vigente na data de início (ou hoje).
+  if (usuario.get('categoria') === 'agregado') {
+    const vigentes = await valoresAgregadoEm(uid, campos.DATA_INICIO_CONTRATO ?? hoje)
+    v.VALORES_POR_REGIAO = await textoValoresPorRegiao(vigentes?.porRegiao ?? {}, reais)
   }
   for (const c of ['VALOR_FIXO_SAIDA', 'VALOR_POR_CAIXA'] as const) {
     if (campos[c] !== undefined) {
@@ -363,6 +368,8 @@ export const marcarDocumento = onCall(async (req) => {
   }
 
   const efeitos: string[] = []
+  // O contrato define o fixo e o valor padrão por caixa; a tabela por região continua a do cadastro.
+  const regioesVigentes = campos.DATA_INICIO_CONTRATO ? ((await valoresAgregadoEm(uid, campos.DATA_INICIO_CONTRATO))?.porRegiao ?? {}) : {}
   await db.runTransaction(async (tx) => {
     const atual = await tx.get(doc.ref)
     if (atual.get('status') !== 'emitido') throw falha('Este documento não está aguardando assinatura.', 'failed-precondition')
@@ -390,7 +397,7 @@ export const marcarDocumento = onCall(async (req) => {
       efeitos.push('diaria')
     }
     if (defineAgregado) {
-      gravarValoresAgregado(tx, uid, { fixoSaida: campos.VALOR_FIXO_SAIDA ?? 0, porCaixa: campos.VALOR_POR_CAIXA ?? 0 }, campos.DATA_INICIO_CONTRATO!, autor, id)
+      gravarValoresAgregado(tx, uid, { fixoSaida: campos.VALOR_FIXO_SAIDA ?? 0, porCaixa: campos.VALOR_POR_CAIXA ?? 0, porRegiao: regioesVigentes }, campos.DATA_INICIO_CONTRATO!, autor, id)
       efeitos.push('valores-agregado')
     }
     // Distrato com data futura: inativa no dia (função agendada); com data passada ou hoje, já.

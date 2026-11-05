@@ -56,7 +56,19 @@ export function placasRepetidas(placas: string[]): string[] {
  * Valores do agregado a partir de uma data (em centavos). Valor não preenchido = zero:
  * vai zerado no contrato e não gera pagamento.
  */
-export type ValorAgregado = { fixoSaida: number; porCaixa: number; inicio: string }
+export type ValorAgregado = {
+  fixoSaida: number
+  /** Valor por caixa padrão: vale nas regiões sem valor próprio. */
+  porCaixa: number
+  /** Valor por caixa em cada região de entrega (id da região → centavos). */
+  porRegiao?: Record<string, number>
+  inicio: string
+}
+
+/** Valor por caixa numa região: o da região, se houver; senão, o padrão. */
+export function valorPorCaixaNaRegiao(valor: Pick<ValorAgregado, 'porCaixa' | 'porRegiao'>, regiaoId: string | null): number {
+  return (regiaoId ? valor.porRegiao?.[regiaoId] : undefined) ?? valor.porCaixa
+}
 
 /** Registro vigente numa data: o de maior início que não passa da data. */
 export function valorAgregadoVigente(registros: ValorAgregado[], data: string): ValorAgregado | null {

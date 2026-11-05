@@ -7,7 +7,7 @@ const TESTEMUNHAS = [
   { nome: 'Tiago Testemunha', cpf: '111.444.777-35' },
 ]
 const CONTRATO = `<p>CONTRATO DE AGREGADO com {{RAZAO_SOCIAL}}, CNPJ {{CNPJ}}. Valor fixo por saída: {{VALOR_FIXO_SAIDA}} ({{VALOR_FIXO_SAIDA_EXTENSO}}).
-Valor por caixa entregue: {{VALOR_POR_CAIXA}} ({{VALOR_POR_CAIXA_EXTENSO}}). Início em {{DATA_INICIO_CONTRATO}}.
+Valor por caixa entregue: {{VALOR_POR_CAIXA}} ({{VALOR_POR_CAIXA_EXTENSO}}); por região: {{VALORES_POR_REGIAO}}. Início em {{DATA_INICIO_CONTRATO}}.
 Testemunhas: {{NOME_TESTEMUNHA_1}} e {{NOME_TESTEMUNHA_2}}.</p>`
 const DISTRATO = '<p>DISTRATO com {{RAZAO_SOCIAL}}; serviço prestado até {{DATA_FIM_SERVICO}}.</p>'
 
@@ -107,6 +107,7 @@ describe('agregados (etapa E1 do Diário de Campo)', () => {
     expect(previa.faltando).toEqual([])
     expect(previa.html).toContain('R$ 20,00 (vinte reais)')
     expect(previa.html).toContain('R$ 0,00 (zero reais)')
+    expect(previa.html).toContain('por região: mesmo valor por caixa em todas as regiões')
     const { id } = await gestao.chamar<{ id: string }>('emitirDocumento', { uid: agregado.uid, modeloId, campos })
     const r = await gestao.chamar<{ efeitos: string[] }>('marcarDocumento', { id, acao: 'assinado' })
     expect(r.efeitos).toEqual(['valores-agregado'])

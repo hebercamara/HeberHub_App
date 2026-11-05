@@ -54,7 +54,7 @@ export type Claims = { perfil?: Perfil; financeiro?: boolean }
 export type Operacao = { nome: string; ativa: boolean }
 
 /** Documento em funcoes/{id}: função dentro de uma operação. */
-export type FuncaoOperacional = { nome: string; operacaoId: string; operacaoNome: string; ativa: boolean }
+export type FuncaoOperacional = { nome: string; operacaoId: string; operacaoNome: string; ativa: boolean; /** Dirige veículo: exige CNH válida. */ exigeCnh?: boolean }
 
 /**
  * Documento em valoresDiaria/{id}. alvoChave = "funcao:<id>" ou "prestador:<uid>".

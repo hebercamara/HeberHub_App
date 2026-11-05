@@ -25,6 +25,13 @@ export function TextoTermo() {
           <strong>Cartão CNPJ:</strong> o arquivo (PDF ou foto) que você envia no cadastro.
         </li>
         <li>
+          <strong>CNH (de quem dirige):</strong> número, categoria e validade da carteira de motorista, preenchidos pela equipe a partir da cópia entregue
+          à empresa, para não escalar motorista com CNH vencida. O arquivo da CNH não fica no app.
+        </li>
+        <li>
+          <strong>Agregados:</strong> placa, tipo e documento (CRLV) de cada caminhão, e o nome do motorista e do ajudante do agregado.
+        </li>
+        <li>
           <strong>Localização:</strong> a posição do GPS do celular <strong>somente no momento em que você lê o QR Code</strong> do check-in. O app não acompanha
           sua localização em nenhum outro momento.
         </li>
@@ -42,6 +49,7 @@ export function TextoTermo() {
         <li>Calcular as diárias e o fechamento mensal.</li>
         <li>Conferir a empresa na Receita Federal (situação do CNPJ, atividade e endereço) e preparar os contratos de prestação de serviço.</li>
         <li>Fazer os pagamentos na conta da empresa.</li>
+        <li>Montar a escala dos veículos e conferir que quem dirige tem CNH válida.</li>
         <li>Evitar fraudes e registrar quem fez cada alteração (auditoria).</li>
       </ul>
 

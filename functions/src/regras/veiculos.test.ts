@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizarPlaca, placaFormatada, placasRepetidas, placaValida, valorAgregadoVigente } from './veiculos.js'
+import { normalizarPlaca, placaFormatada, placasRepetidas, placaValida, valorAgregadoVigente, valorPorCaixaNaRegiao } from './veiculos.js'
 
 describe('placas', () => {
   it('normaliza a placa escrita de jeitos diferentes', () => {
@@ -37,5 +37,13 @@ describe('valores do agregado', () => {
     expect(valorAgregadoVigente(registros, '2026-10-31')).toBeNull()
     expect(valorAgregadoVigente(registros, '2026-11-15')?.fixoSaida).toBe(10000)
     expect(valorAgregadoVigente(registros, '2026-12-01')?.porCaixa).toBe(150)
+  })
+
+  it('valor por caixa: o da região, ou o padrão nas regiões sem valor próprio', () => {
+    const valor = { porCaixa: 100, porRegiao: { abc: 120, centro: 90 } }
+    expect(valorPorCaixaNaRegiao(valor, 'abc')).toBe(120)
+    expect(valorPorCaixaNaRegiao(valor, 'zona-sul')).toBe(100)
+    expect(valorPorCaixaNaRegiao(valor, null)).toBe(100)
+    expect(valorPorCaixaNaRegiao({ porCaixa: 0 }, 'abc')).toBe(0)
   })
 })

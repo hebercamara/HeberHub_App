@@ -43,6 +43,20 @@ export type EnvioCadastroOficial = {
   caminhoes?: Caminhao[]
 }
 
+/** Dados do veículo que a equipe edita. Manutenção e inativo pedem o motivo. */
+export type DadosVeiculo = {
+  placa: string
+  tipo: TipoVeiculo
+  modelo: string
+  capacidadeCaixas: number | null
+  frota: string
+  rastreador: string
+  crlvValidade: string | null
+  situacao: Exclude<SituacaoVeiculo, 'pendente'>
+  motivo?: string
+  previsao?: string | null
+}
+
 export type RespostaCheckin =
   | { ok: true; horario: string; data: string; baseNome: string; distanciaMetros: number; jaRegistrada: boolean }
   | { ok: false; motivo: string; mensagem: string }
@@ -56,11 +70,14 @@ export const api = {
   enviarCrlv: chamada<{ placa: string; tipo: string; base64: string; paraVeiculo?: boolean }>('enviarCrlv'),
   verCrlv: chamada<{ placa: string; uid?: string }, { tipo: string; base64: string }>('verCrlv'),
   salvarCaminhao: chamada<
-    { uid: string; placa: string; tipo: TipoVeiculo; modelo: string; capacidadeCaixas: number | null; frota: string; rastreador: string; situacao: Exclude<SituacaoVeiculo, 'pendente'> },
+    DadosVeiculo & { uid: string },
     { ok: true; placa: string }
   >('salvarCaminhao'),
+  salvarVeiculo: chamada<DadosVeiculo & { baseId: string | null }, { ok: true; placa: string; novo: boolean }>('salvarVeiculo'),
+  salvarCnh: chamada<{ uid: string; numero: string; categoria: string; validade: string }>('salvarCnh'),
+  salvarRegiao: chamada<{ id?: string; nome: string; descricao: string; ativa: boolean }, { ok: true; id: string }>('salvarRegiao'),
   salvarEquipeAgregado: chamada<{ uid: string; id?: string; nome: string; funcao: Funcao; ativo: boolean }, { ok: true; id: string }>('salvarEquipeAgregado'),
-  salvarValorAgregado: chamada<{ uid: string; fixoSaida: number; porCaixa: number; inicio: string }>('salvarValorAgregado'),
+  salvarValorAgregado: chamada<{ uid: string; fixoSaida: number; porCaixa: number; porRegiao: Record<string, number>; inicio: string }>('salvarValorAgregado'),
   importarPrestadores: chamada<{ cabecalho: string[]; linhas: string[][] }, RelatorioImportacao>('importarPrestadores'),
   excluirPreCadastro: chamada<{ cnpj: string }>('excluirPreCadastro'),
   salvarContratante: chamada<Contratante>('salvarContratante'),
@@ -105,7 +122,7 @@ export const api = {
     { ok: true; criadas: string[]; ignoradas: string[] }
   >('duplicarFuncoes'),
   salvarAparencia: chamada<{ primaria: string; secundaria: string; fundo: string }>('salvarAparencia'),
-  salvarFuncao: chamada<{ id?: string; nome: string; operacaoId: string; ativa: boolean }, { ok: true; id: string }>('salvarFuncao'),
+  salvarFuncao: chamada<{ id?: string; nome: string; operacaoId: string; ativa: boolean; exigeCnh?: boolean }, { ok: true; id: string }>('salvarFuncao'),
   salvarValorDiaria: chamada<{ alvo: 'funcao' | 'prestador'; alvoId: string; valor: number; inicio: string }, { ok: true; preenchidas: number }>('salvarValorDiaria'),
   lancarAjuste: chamada<{ uid: string; tipo: 'adicional' | 'desconto'; valor: number; data: string; justificativa: string }>('lancarAjuste'),
   lancarEvento: chamada<

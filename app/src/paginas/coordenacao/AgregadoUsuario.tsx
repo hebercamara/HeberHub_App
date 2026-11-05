@@ -1,25 +1,20 @@
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Aviso } from '../../componentes/Aviso'
-import { api } from '../../lib/api'
+import { FormularioVeiculo } from '../../componentes/FormularioVeiculo'
+import { LinhaVeiculo } from '../../componentes/LinhaVeiculo'
+import { api, type DadosVeiculo } from '../../lib/api'
+import { useRegioes } from '../../lib/cadastros'
 import { formatarData, hojeEmSaoPaulo } from '../../lib/datas'
 import { formatarReais, lerReais } from '../../lib/dinheiro'
-import { abrirArquivo, prepararArquivo } from '../../lib/documentos'
 import { mensagemDeErro } from '../../lib/erros'
 import { db } from '../../lib/firebase'
 import { useSessao } from '../../lib/sessao'
 import {
   editaCoordenacao,
   NOMES_FUNCAO,
-  NOMES_SITUACAO_VEICULO,
-  NOMES_TIPO_VEICULO,
-  normalizarPlaca,
-  placaFormatada,
-  placaValida,
   type Funcao,
   type PessoaDoAgregado,
-  type SituacaoVeiculo,
-  type TipoVeiculo,
   type Usuario,
   type ValorAgregado,
   type Veiculo,
@@ -49,192 +44,41 @@ function useVeiculos(uid: string): Veiculo[] {
   return lista
 }
 
-type Edicao = { placa: string; tipo: TipoVeiculo | ''; modelo: string; capacidade: string; frota: string; rastreador: string; situacao: Exclude<SituacaoVeiculo, 'pendente'>; novo: boolean }
-
 function Caminhoes({ usuario }: { usuario: Usuario }) {
   const { perfil } = useSessao()
   const veiculos = useVeiculos(usuario.id)
-  const [edicao, setEdicao] = useState<Edicao | null>(null)
-  const [erro, setErro] = useState('')
-  const [ocupado, setOcupado] = useState(false)
+  const [editando, setEditando] = useState<Veiculo | 'novo' | null>(null)
   const pode = editaCoordenacao(perfil)
 
-  async function acao(fazer: () => Promise<unknown>) {
-    setErro('')
-    setOcupado(true)
-    try {
-      await fazer()
-      return true
-    } catch (e) {
-      setErro(e instanceof Error && !('code' in e) ? e.message : mensagemDeErro(e))
-      return false
-    } finally {
-      setOcupado(false)
-    }
-  }
-
-  function editar(v?: Veiculo) {
-    setErro('')
-    setEdicao(
-      v
-        ? {
-            placa: v.placa,
-            tipo: v.tipo,
-            modelo: v.modelo ?? '',
-            capacidade: v.capacidadeCaixas ? String(v.capacidadeCaixas) : '',
-            frota: v.frota ?? '',
-            rastreador: v.rastreador ?? '',
-            situacao: v.situacao === 'pendente' ? 'disponivel' : v.situacao,
-            novo: false,
-          }
-        : { placa: '', tipo: '', modelo: '', capacidade: '', frota: '', rastreador: '', situacao: 'disponivel', novo: true },
-    )
-  }
-
-  async function salvar(e: FormEvent) {
-    e.preventDefault()
-    if (!edicao) return
-    if (!placaValida(edicao.placa)) return setErro('Placa inválida. Use o formato ABC-1234 ou ABC1D23.')
-    if (!edicao.tipo) return setErro('Escolha o tipo do caminhão.')
-    const tipo = edicao.tipo
-    const ok = await acao(() =>
-      api.salvarCaminhao({
-        uid: usuario.id,
-        placa: normalizarPlaca(edicao.placa),
-        tipo,
-        modelo: edicao.modelo,
-        capacidadeCaixas: edicao.capacidade ? Number(edicao.capacidade) : null,
-        frota: edicao.frota,
-        rastreador: edicao.rastreador,
-        situacao: edicao.situacao,
-      }),
-    )
-    if (ok) setEdicao(null)
-  }
-
-  async function trocarCrlv(placa: string, arquivo: File | undefined) {
-    if (!arquivo) return
-    await acao(async () => {
-      const preparado = await prepararArquivo(arquivo).catch(() => {
-        throw new Error('Envie um PDF ou uma foto do CRLV.')
-      })
-      await api.enviarCrlv({ placa, ...preparado, paraVeiculo: true })
-    })
+  async function salvar(dados: DadosVeiculo) {
+    await api.salvarCaminhao({ ...dados, uid: usuario.id })
+    setEditando(null)
   }
 
   return (
     <div className="bloco">
       <div className="cabecalho-secao">
         <h3>Caminhões do agregado</h3>
-        {pode && !edicao && (
-          <button className="secundario" onClick={() => editar()}>
+        {pode && !editando && (
+          <button className="secundario" onClick={() => setEditando('novo')}>
             Incluir caminhão
           </button>
         )}
       </div>
       <p className="suave">Quando o distrato do agregado é assinado, os caminhões dele ficam inativos e saem da escala.</p>
+      {editando === 'novo' && <FormularioVeiculo veiculo={null} comBase={false} aoSalvar={salvar} aoCancelar={() => setEditando(null)} />}
       {veiculos.length === 0 && <p className="suave">Nenhum caminhão.</p>}
       <ul className="lista">
-        {veiculos.map((v) => (
-          <li key={v.id}>
-            <span>
-              <strong>{placaFormatada(v.placa)}</strong> · {NOMES_TIPO_VEICULO[v.tipo]}
-              {v.modelo ? ` · ${v.modelo}` : ''}
-              {v.capacidadeCaixas ? ` · ${v.capacidadeCaixas} caixas` : ''}
-              {v.frota ? ` · frota ${v.frota}` : ''}
-              {v.rastreador ? ` · rastreador ${v.rastreador}` : ''}
-              {v.situacao === 'inativo' && v.motivoInativo ? <span className="suave"> ({v.motivoInativo})</span> : null}
-            </span>
-            <span className="acoes">
-              <span className={`selo ${v.situacao === 'disponivel' ? 'selo-ativo' : v.situacao === 'inativo' ? 'selo-inativo' : ''}`}>{NOMES_SITUACAO_VEICULO[v.situacao]}</span>
-              {v.crlv ? (
-                <button
-                  className="link"
-                  disabled={ocupado}
-                  onClick={() =>
-                    void acao(async () => {
-                      const a = await api.verCrlv({ placa: v.placa, uid: usuario.id })
-                      abrirArquivo(a.tipo, a.base64)
-                    })
-                  }
-                >
-                  Ver CRLV
-                </button>
-              ) : (
-                <span className="suave">Sem CRLV</span>
-              )}
-              {pode && (
-                <>
-                  <label className="link">
-                    Trocar CRLV
-                    <input type="file" accept="application/pdf,image/*" hidden onChange={(e) => void trocarCrlv(v.placa, e.target.files?.[0])} />
-                  </label>
-                  <button className="link" onClick={() => editar(v)}>
-                    Alterar
-                  </button>
-                </>
-              )}
-            </span>
-          </li>
-        ))}
+        {veiculos.map((v) =>
+          editando !== 'novo' && editando?.id === v.id ? (
+            <li key={v.id}>
+              <FormularioVeiculo veiculo={v} comBase={false} aoSalvar={salvar} aoCancelar={() => setEditando(null)} />
+            </li>
+          ) : (
+            <LinhaVeiculo key={v.id} veiculo={v} podeEditar={pode} aoAlterar={() => setEditando(v)} />
+          ),
+        )}
       </ul>
-      {edicao && (
-        <form onSubmit={salvar} className="formulario">
-          <div className="linha">
-            <label>
-              Placa
-              <input value={edicao.placa} disabled={!edicao.novo} onChange={(e) => setEdicao({ ...edicao, placa: e.target.value.toUpperCase() })} placeholder="ABC1D23" required />
-            </label>
-            <label>
-              Tipo
-              <select value={edicao.tipo} onChange={(e) => setEdicao({ ...edicao, tipo: e.target.value as TipoVeiculo })} required>
-                <option value="">Escolha…</option>
-                {Object.entries(NOMES_TIPO_VEICULO).map(([v, nome]) => (
-                  <option key={v} value={v}>
-                    {nome}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Situação
-              <select value={edicao.situacao} onChange={(e) => setEdicao({ ...edicao, situacao: e.target.value as Edicao['situacao'] })}>
-                <option value="disponivel">Disponível</option>
-                <option value="manutencao">Em manutenção</option>
-                <option value="inativo">Inativo</option>
-              </select>
-            </label>
-          </div>
-          <div className="linha">
-            <label>
-              Modelo
-              <input value={edicao.modelo} onChange={(e) => setEdicao({ ...edicao, modelo: e.target.value })} />
-            </label>
-            <label>
-              Capacidade (caixas)
-              <input type="number" min={1} value={edicao.capacidade} onChange={(e) => setEdicao({ ...edicao, capacidade: e.target.value })} />
-            </label>
-            <label>
-              Nº da frota
-              <input value={edicao.frota} onChange={(e) => setEdicao({ ...edicao, frota: e.target.value })} />
-            </label>
-            <label>
-              Rastreador
-              <input value={edicao.rastreador} onChange={(e) => setEdicao({ ...edicao, rastreador: e.target.value })} placeholder="ou deixe em branco" />
-            </label>
-          </div>
-          {edicao.novo && <p className="suave">Depois de incluir, envie o CRLV pelo botão "Trocar CRLV".</p>}
-          <div className="acoes">
-            <button type="submit" disabled={ocupado}>
-              Salvar caminhão
-            </button>
-            <button type="button" className="secundario" onClick={() => setEdicao(null)}>
-              Cancelar
-            </button>
-          </div>
-        </form>
-      )}
-      <Aviso>{erro}</Aviso>
     </div>
   )
 }
@@ -322,13 +166,16 @@ function EquipeDoAgregado({ uid }: { uid: string }) {
 
 function ValoresDoAgregado({ uid }: { uid: string }) {
   const { perfil } = useSessao()
+  const regioes = useRegioes()
   const [valores, setValores] = useState<ValorAgregado[]>([])
   const [fixo, setFixo] = useState('')
   const [caixa, setCaixa] = useState('')
+  const [porRegiao, setPorRegiao] = useState<Record<string, string>>({})
   const [inicio, setInicio] = useState(hojeEmSaoPaulo())
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
   const [ocupado, setOcupado] = useState(false)
+  const nomeRegiao = (id: string) => regioes.find((r) => r.id === id)?.nome ?? 'região removida'
 
   useEffect(
     () =>
@@ -338,6 +185,16 @@ function ValoresDoAgregado({ uid }: { uid: string }) {
     [uid],
   )
 
+  // Começa o formulário com os valores vigentes, para mudar só o que for preciso.
+  function partirDoAtual() {
+    const atual = valores.find((v) => v.inicio <= hojeEmSaoPaulo())
+    if (!atual) return
+    const texto = (c: number) => (c ? formatarReais(c).replace('R$', '').trim() : '')
+    setFixo(texto(atual.fixoSaida))
+    setCaixa(texto(atual.porCaixa))
+    setPorRegiao(Object.fromEntries(Object.entries(atual.porRegiao ?? {}).map(([id, c]) => [id, texto(c)])))
+  }
+
   async function salvar(e: FormEvent) {
     e.preventDefault()
     setErro('')
@@ -345,11 +202,19 @@ function ValoresDoAgregado({ uid }: { uid: string }) {
     const fixoSaida = fixo.trim() ? lerReais(fixo) : 0
     const porCaixa = caixa.trim() ? lerReais(caixa) : 0
     if (fixoSaida === null || porCaixa === null) return setErro('Valor inválido. Exemplo: 150,00')
+    const regiaoCentavos: Record<string, number> = {}
+    for (const [id, textoValor] of Object.entries(porRegiao)) {
+      if (!textoValor.trim()) continue
+      const c = lerReais(textoValor)
+      if (c === null) return setErro(`Valor inválido na região ${nomeRegiao(id)}. Exemplo: 1,20`)
+      regiaoCentavos[id] = c
+    }
     setOcupado(true)
     try {
-      await api.salvarValorAgregado({ uid, fixoSaida, porCaixa, inicio })
+      await api.salvarValorAgregado({ uid, fixoSaida, porCaixa, porRegiao: regiaoCentavos, inicio })
       setFixo('')
       setCaixa('')
+      setPorRegiao({})
       setInfo('Valores salvos.')
     } catch (err) {
       setErro(mensagemDeErro(err))
@@ -357,12 +222,14 @@ function ValoresDoAgregado({ uid }: { uid: string }) {
     setOcupado(false)
   }
 
+  const ativas = regioes.filter((r) => r.ativa)
+
   return (
     <div className="bloco">
       <h3>Valores do agregado</h3>
       <p className="suave">
-        Valor fixo por saída e valor por caixa entregue. O que ficar em branco vale R$ 0,00. O contrato assinado também grava estes valores a partir
-        da data de início.
+        Valor fixo por saída e valor por caixa entregue. O valor por caixa pode mudar conforme a <strong>região de entrega</strong>; região em branco usa o
+        valor padrão. O que ficar em branco vale R$ 0,00. O contrato assinado grava o fixo e o valor padrão a partir da data de início.
       </p>
       {valores.length > 0 && (
         <ul className="lista">
@@ -372,30 +239,62 @@ function ValoresDoAgregado({ uid }: { uid: string }) {
                 a partir de {formatarData(v.inicio)}
                 {v.documentoId ? <span className="suave"> (contrato)</span> : null}
               </span>
-              <strong>
-                {formatarReais(v.fixoSaida)} por saída · {formatarReais(v.porCaixa)} por caixa
-              </strong>
+              <span>
+                <strong>
+                  {formatarReais(v.fixoSaida)} por saída · {formatarReais(v.porCaixa)} por caixa
+                </strong>
+                {Object.entries(v.porRegiao ?? {}).length > 0 && (
+                  <span className="suave">
+                    {' '}
+                    ·{' '}
+                    {Object.entries(v.porRegiao ?? {})
+                      .map(([id, c]) => `${nomeRegiao(id)}: ${formatarReais(c)}`)
+                      .join(' · ')}
+                  </span>
+                )}
+              </span>
             </li>
           ))}
         </ul>
       )}
       {editaCoordenacao(perfil) || perfil === 'adm' ? (
-        <form onSubmit={salvar} className="linha">
-          <label>
-            Fixo por saída (R$)
-            <input inputMode="decimal" value={fixo} onChange={(e) => setFixo(e.target.value)} placeholder="0,00" />
-          </label>
-          <label>
-            Por caixa entregue (R$)
-            <input inputMode="decimal" value={caixa} onChange={(e) => setCaixa(e.target.value)} placeholder="0,00" />
-          </label>
-          <label>
-            A partir de
-            <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} required />
-          </label>
-          <button type="submit" disabled={ocupado}>
-            Salvar valores
-          </button>
+        <form onSubmit={salvar} className="formulario">
+          <div className="linha">
+            <label>
+              Fixo por saída (R$)
+              <input inputMode="decimal" value={fixo} onChange={(e) => setFixo(e.target.value)} placeholder="0,00" />
+            </label>
+            <label>
+              Por caixa, padrão (R$)
+              <input inputMode="decimal" value={caixa} onChange={(e) => setCaixa(e.target.value)} placeholder="0,00" />
+            </label>
+            <label>
+              A partir de
+              <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} required />
+            </label>
+          </div>
+          {ativas.length > 0 ? (
+            <div className="linha">
+              {ativas.map((r) => (
+                <label key={r.id}>
+                  Por caixa em {r.nome} (R$)
+                  <input inputMode="decimal" value={porRegiao[r.id] ?? ''} onChange={(e) => setPorRegiao((p) => ({ ...p, [r.id]: e.target.value }))} placeholder="padrão" />
+                </label>
+              ))}
+            </div>
+          ) : (
+            <p className="suave">Para ter valor por caixa por região, a coordenação cadastra as regiões em Configurações › Regiões de entrega.</p>
+          )}
+          <div className="acoes">
+            <button type="submit" disabled={ocupado}>
+              Salvar valores
+            </button>
+            {valores.length > 0 && (
+              <button type="button" className="secundario" onClick={partirDoAtual}>
+                Partir dos valores atuais
+              </button>
+            )}
+          </div>
         </form>
       ) : null}
       <Aviso tipo="ok">{info}</Aviso>

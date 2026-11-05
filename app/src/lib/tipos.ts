@@ -70,12 +70,49 @@ export type Veiculo = Caminhao & {
   frota: string | null
   rastreador: string | null
   crlv: { caminho: string; tipo: string } | null
+  /** Validade do licenciamento (CRLV), AAAA-MM-DD. */
+  crlvValidade?: string | null
+  baseId?: string | null
   motivoInativo?: string | null
+  /** Motivo da manutenção ou de estar inativo. */
+  motivoSituacao?: string | null
+  manutencaoAtual?: string | null
+}
+/** Registro em veiculos/{placa}/manutencoes: quando entrou, previsão, motivo e quando voltou. */
+export type Manutencao = { id: string; inicio: string; previsao: string | null; motivo: string; fim: string | null }
+
+/** Regiões de entrega (ex.: ABC, Centro): o valor por caixa muda conforme a região. */
+export type Regiao = { id: string; nome: string; descricao: string; ativa: boolean }
+
+// CNH (etapa E2). Espelho de functions/src/regras/cnh.ts.
+export const CATEGORIAS_CNH = ['A', 'B', 'C', 'D', 'E', 'AB', 'AC', 'AD', 'AE'] as const
+export type CategoriaCnh = (typeof CATEGORIAS_CNH)[number]
+/** Documento em cnhs/{uid}, preenchido pela equipe. */
+export type Cnh = { id: string; uid: string; nome: string; numero: string; categoria: CategoriaCnh; validade: string }
+export type SituacaoCnh = 'sem-cnh' | 'vencida' | 'vencendo' | 'valida'
+export const NOMES_SITUACAO_CNH: Record<SituacaoCnh, string> = { 'sem-cnh': 'Sem CNH', vencida: 'Vencida', vencendo: 'Vence em até 30 dias', valida: 'Válida' }
+/** Vale até o dia da validade; vencida bloqueia a escala como motorista. */
+export function situacaoCnh(validade: string | null | undefined, hoje: string): SituacaoCnh {
+  if (!validade) return 'sem-cnh'
+  if (validade < hoje) return 'vencida'
+  const limite = new Date(`${hoje}T12:00:00Z`)
+  limite.setUTCDate(limite.getUTCDate() + 30)
+  return validade <= limite.toISOString().slice(0, 10) ? 'vencendo' : 'valida'
 }
 /** Motorista ou ajudante do agregado, em agregados/{uid}/equipe/{id}: só o nome. */
 export type PessoaDoAgregado = { id: string; nome: string; funcao: Funcao; ativo: boolean }
 /** Valores do agregado a partir de uma data, em centavos (vazio = zero). */
-export type ValorAgregado = { id: string; uid: string; fixoSaida: number; porCaixa: number; inicio: string; documentoId?: string | null }
+export type ValorAgregado = {
+  id: string
+  uid: string
+  fixoSaida: number
+  /** Valor por caixa padrão (regiões sem valor próprio). */
+  porCaixa: number
+  /** Valor por caixa em cada região (id → centavos). */
+  porRegiao?: Record<string, number>
+  inicio: string
+  documentoId?: string | null
+}
 
 /** "fcb-3e52" → "FCB3E52"; "egj7262" → "EGJ-7262" (só a placa antiga leva hífen). */
 export function normalizarPlaca(valor: string): string {
@@ -122,7 +159,7 @@ export type Ausencia = { id: string; uid: string; nome: string; baseId: string |
 
 export type Operacao = { id: string; nome: string; ativa: boolean }
 
-export type FuncaoOperacional = { id: string; nome: string; operacaoId: string; operacaoNome: string; ativa: boolean }
+export type FuncaoOperacional = { id: string; nome: string; operacaoId: string; operacaoNome: string; ativa: boolean; /** Dirige veículo: exige CNH válida. */ exigeCnh?: boolean }
 
 /** Valor da diária a partir de uma data. alvoChave = "funcao:<id>" ou "prestador:<uid>". Valor em centavos. */
 export type ValorDiaria = { id: string; alvoChave: string; valor: number; inicio: string }

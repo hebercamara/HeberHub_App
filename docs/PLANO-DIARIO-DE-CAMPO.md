@@ -82,7 +82,7 @@ conta, contratos, versões), com a **categoria "Agregado"**.
 | Caminhões | **Dentro do cadastro do agregado**; **pode ter mais de um**. Placa, tipo, capacidade, número da frota, rastreador, **CRLV** (único documento exigido) |
 | Distrato | Assinado → o agregado, os **caminhões** e a **equipe** dele saem da escala na mesma data |
 | Equipe dele | Motorista e ajudante **só pelo nome**; **sem check-in**, sem diária da empresa, **sem acompanhamento de CNH** (por enquanto) |
-| Valores | No cadastro dele: **valor fixo por saída** e **valor por caixa entregue**, os dois opcionais. Vazio = zero, e vai **zerado no contrato**; preenchido vai com o valor certo. Histórico "a partir de" uma data |
+| Valores | No cadastro dele: **valor fixo por saída** e **valor por caixa entregue** (um padrão e, se for o caso, **um valor em cada região de entrega**: o cliente paga por caixa conforme a região, ex.: ABC, Centro), os dois opcionais. Vazio = zero, e vai **zerado no contrato**; preenchido vai com o valor certo. Histórico "a partir de" uma data |
 | Tipos | Por caixa (com ou sem fixo simbólico); só fixo; e o **agregado contratado de outra empresa maior** (minoria), só fixo por saída |
 | Prestador nosso no caminhão dele | O prestador recebe a **diária normal**; o agregado recebe **menos**: desconto **por motorista nosso** e **por ajudante nosso**, valores definidos **na operação** |
 | Segunda viagem | O caminhão pode sair **mais de uma vez no dia**; cada saída conta (fixo por saída) |
@@ -300,7 +300,7 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
 | Etapa | O que entra | Por que nessa ordem |
 | --- | --- | --- |
 | **E1. Agregados** ✅ | Link de cadastro de agregado com caminhões e CRLV, categoria, equipe do agregado, valores fixo/caixa no contrato, distrato tirando tudo da escala | Reaproveita quase todo o onboarding pronto. **Pronta em 05/11/2026** (ver `CONTEXTO.md` 6.2.3) |
-| **E2. Veículos e CNH** | Frota da casa (frota, tipo, rastreador, situação, manutenção), marca "exige CNH" na função, CNH com validade e bloqueio | Base da escala |
+| **E2. Veículos e CNH** ✅ | Frota da casa (frota, tipo, rastreador, situação, manutenção), marca "exige CNH" na função, CNH com validade e bloqueio, regiões de entrega e valor por caixa por região | Base da escala. **Pronta em 05/11/2026** (ver `CONTEXTO.md` 6.2.4) |
 | **E3. Regras da operação** | Cor, campos que aparecem no diário, roteiros, modalidades, perfis cobrados, brokers, largada, temperatura, desconto do agregado, adicional de viagem | O diário depende delas |
 | **E4. Escala por carro** | Diário do dia (tabela com filtros por data), rotas, tipo de serviço, pessoas nos carros, NE automático, check-in ao vivo, falta e troca | Substitui a aba "Escala" e a planilha da véspera |
 | **E5. Jornada da rota** | Largada, chegada, km, rastreador, temperatura, caixas, ocorrências, cancelamento, avisos | Substitui o diário de campo |

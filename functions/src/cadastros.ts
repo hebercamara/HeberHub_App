@@ -39,7 +39,8 @@ export const salvarFuncao = onCall(async (req) => {
     if (!operacao.exists) throw falha('Operação não encontrada.', 'not-found')
     const atual = await tx.get(ref)
     if (id && !atual.exists) throw falha('Função não encontrada.', 'not-found')
-    const funcao = { nome, operacaoId, operacaoNome: operacao.get('nome'), ativa: req.data?.ativa !== false }
+    // Dirige veículo (motorista, manobrista): o app cobra a CNH válida para escalar.
+    const funcao = { nome, operacaoId, operacaoNome: operacao.get('nome'), ativa: req.data?.ativa !== false, exigeCnh: req.data?.exigeCnh === true }
     tx.set(ref, { ...funcao, atualizadoEm: agoraServidor(), ...(atual.exists ? {} : { criadoEm: agoraServidor() }) }, { merge: true })
     auditar(tx, { acao: atual.exists ? 'funcao-alterada' : 'funcao-criada', autor, alvo: ref.id, detalhes: { antes: atual.data() ?? null, depois: funcao } })
   })
@@ -136,7 +137,7 @@ export const duplicarFuncoes = onCall(async (req) => {
       }
       nomesNoDestino.add(nome.toLowerCase())
       const nova = funcoes.doc()
-      tx.set(nova, { nome, operacaoId: destinoId, operacaoNome: destino.get('nome'), ativa: true, copiadaDe: original.id, criadoEm: agoraServidor(), atualizadoEm: agoraServidor() })
+      tx.set(nova, { nome, operacaoId: destinoId, operacaoNome: destino.get('nome'), ativa: true, exigeCnh: original.get('exigeCnh') === true, copiadaDe: original.id, criadoEm: agoraServidor(), atualizadoEm: agoraServidor() })
       const valor = inicio && valores ? escolherValorVigente(valores.docs.map((d) => d.data() as ValorDiaria), { uid: '', funcaoId: original.id, data: inicio }) : null
       if (inicio && valor) {
         const alvoChave = `funcao:${nova.id}`
