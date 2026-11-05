@@ -2,8 +2,9 @@
 
 > Rascunho em construção com o dono do projeto. **Ainda não implementado.**
 > Quando for implementado, as decisões passam para `docs/CONTEXTO.md`.
-> Última atualização: 05/11/2026 (respostas do dono sobre agregados, baús e CNH; ainda
-> antes de receber o diário de campo real).
+> Última atualização: 05/11/2026 (segunda rodada de respostas: valores e fechamento quinzenal
+> do agregado, conferência de caixas, CNH e temperatura; ainda antes de receber o diário de
+> campo real).
 > **Próximo passo:** o dono envia o modelo do diário de campo usado hoje; este plano é
 > ajustado a ele (nomes de colunas, ordem das tarefas, o que é anotado).
 
@@ -50,14 +51,17 @@ Continua igual: autocadastro, Receita, Cartão CNPJ, conta, contratos, check-in 
 cadastro atual **já aceita empresas que não são MEI** (Ltda, empresário individual): o
 Responsável Legal é conferido com o titular ou com os sócios na Receita.
 
-**Novo: validade da CNH dos motoristas** (pedido do dono). Guardar número, categoria e
-**validade** da CNH, com:
-- aviso antes de vencer (ex.: 30 dias) numa lista "CNHs vencendo";
-- aviso ao escalar como motorista alguém com CNH vencida (bloquear ou só avisar: a decidir);
-- a empresa já guarda as CNHs numa pasta na nuvem: o app pode guardar só os dados e o
-  **link** para o arquivo, ou receber o arquivo (a decidir).
-- Atenção: isso muda uma decisão do onboarding ("CNH fica fora do sistema") e é dado pessoal
-  novo, então o **termo de privacidade sobe de versão** (todos aceitam de novo).
+**Novo: CNH dos motoristas** (decidido em 05/11/2026):
+- O cadastro do **motorista** passa a ter **número**, **categoria** e **validade** da CNH.
+- **Quem preenche é a equipe**, não o motorista: a cópia da CNH já é entregue à empresa no
+  checklist de entrada.
+- **CNH vencida bloqueia** a pessoa de ser escalada como motorista. Sem exceção.
+- Lista "CNHs vencendo" com aviso antes do vencimento (ex.: 30 dias).
+- O **arquivo** da CNH continua no **Drive da empresa**; o app não guarda o arquivo.
+- **Futuro (não agora):** enviar a CNH digital, o app ler os dados sozinho, guardar o que
+  importa e mandar o arquivo para o Drive da empresa.
+- Atenção: é dado pessoal novo no app, então o **termo de privacidade sobe de versão** (todos
+  aceitam de novo).
 
 ### 2. Agregado (novo)
 Empresa (CNPJ) que trabalha com **caminhão próprio** e **cuida da própria equipe** (motorista
@@ -69,7 +73,9 @@ responsável legal, conta, contratos e versões), com a **categoria "Agregado"**
 | Quem é | uma pessoa PJ que trabalha | uma empresa que presta o serviço com o próprio caminhão |
 | Veículo | usa o da empresa | **caminhões cadastrados dentro do cadastro do agregado** |
 | Equipe | ele mesmo | **motorista e ajudante dele**, só pelo nome, **sem check-in** |
-| Pagamento | diária por presença | **depende do cliente (operação)**: por saída ou por caixa entregue (ver abaixo) |
+| Pagamento | diária por presença | **valor fixo por saída** e/ou **valor por caixa entregue**, no cadastro dele (ver abaixo) |
+| Fechamento | mensal (dia 1 ao último dia) | **quinzenal**: dia 1 ao 15 e dia 16 ao último dia |
+| Acesso ao app | "Minha presença" | **nenhum** por enquanto: acerta tudo com a coordenação da operação |
 | Documentos a mais | CNH (motoristas) | **documento do caminhão (CRLV)**; o resto não é necessário |
 | Contrato | contrato de prestação | modelo próprio de **contrato de agregado** (o editor de modelos já permite) |
 
@@ -86,20 +92,36 @@ na escala, para o diário mostrar quem foi em cada carro.
 necessidade. Esse prestador **faz check-in e recebe a diária normalmente**, como em qualquer
 outro carro (a confirmar).
 
-**Pagamento do agregado (decidido em linhas gerais):** depende do **cliente (operação)**:
-- **Por saída:** cada dia em que o caminhão sai para entregar = um valor fixo cheio. Espelha o
-  cliente que paga a empresa por dia de carro na rua.
-- **Por caixa entregue:** um valor **por caixa entregue**, possivelmente com um **valor fixo
-  pequeno** por saída (o dono vai confirmar se esse fixo existe). Espelha o cliente que paga a
-  empresa por caixa entregue.
+**Pagamento do agregado (decidido):** o **cadastro do agregado** tem dois valores, os dois
+opcionais (sistema "híbrido"):
+- **Valor fixo por saída:** cada dia em que o caminhão sai para entregar.
+- **Valor por caixa entregue.**
 
-Proposta: uma **tabela de valores do agregado por operação**, com dois campos (valor por
-saída e valor por caixa entregue; um deles pode ser zero), sempre "a partir de" uma data, como
-os valores de diária. A cada rota encerrada de um caminhão de agregado, o servidor gera os
-lançamentos (saída e/ou caixas × valor), com o valor congelado, em centavos, corrigidos só por
-estorno. **Consequência importante:** as **caixas entregues** passam a valer dinheiro, então
-precisam ser **conferidas pela equipe** antes de virar pagamento (não só digitadas pelo
-motorista).
+Exemplos: o agregado de cliente que paga por dia de carro na rua tem só o fixo; o de cliente
+que paga por caixa tem o valor por caixa e, se for o caso, um fixo simbólico. O **agregado
+contratado de outra empresa maior** (minoria) recebe só o fixo por saída.
+- **Valor não preenchido = zero**, e vai **zerado no contrato**; valor preenchido vai para o
+  contrato com o valor certo (variáveis novas no editor de modelos, ex.:
+  `{{VALOR_FIXO_SAIDA}}` e `{{VALOR_POR_CAIXA}}`).
+- Como na diária, os valores valem "a partir de" uma data, com histórico, em centavos. Mudar
+  o valor não altera o que já foi lançado; corrige-se por estorno.
+- A cada rota encerrada e **conferida** de um caminhão do agregado, o servidor gera os
+  lançamentos dele: fixo (se houver) + caixas entregues × valor por caixa (se houver).
+
+**Fechamento quinzenal do agregado (decidido):** **1ª quinzena = dia 1 ao 15**; **2ª
+quinzena = dia 16 ao último dia do mês**. Funciona como o fechamento mensal dos prestadores
+(congela os totais, trava novos lançamentos, reabrir só com justificativa), só que por
+quinzena. As **datas de pagamento** (dia 25 ou 30 e dia 10 ou 15) **não entram agora**: o app
+só fecha. (Nos prestadores, o mês continua do dia 1 ao último dia.)
+
+**Conferência das caixas (decidido):** o motorista **não** informa as caixas. Quem garante os
+números é a operação:
+- os **conferentes** registram quantas caixas **entraram** em cada caminhão;
+- na volta, o **armazém** conta as caixas **devolvidas**, com o aval do **motorista** e da
+  **equipe do armazém**;
+- **caixas entregues = carregadas − devolvidas**.
+A segurança vem do cruzamento: se faltar caixa no retorno e o cliente disser que não recebeu,
+fica fácil achar onde sumiu. O app guarda **quem conferiu** cada número e quando.
 
 ### 3. Veículos da empresa (novo)
 Placa, modelo, ano, tipo (VUC, 3/4, toco, truck...), capacidade (caixas e/ou peso), base,
@@ -111,8 +133,15 @@ histórico de manutenções. Os caminhões dos agregados ficam no cadastro de ca
 **Decisão do dono:** os baús **não serão cadastrados nos próximos meses**. Fica para o futuro
 (baú com cadastro próprio, troca de caminhão, manutenção preventiva com avisos).
 **O que entra agora:** no diário de campo, cada rota registra a **temperatura do baú na saída**
-e a **temperatura na chegada** (anotadas à mão). O app pode avisar quando a temperatura estiver
-acima de um limite (ex.: acima de −18 °C), a definir com o dono.
+e a **temperatura na chegada** (anotadas à mão, sempre o valor verdadeiro). **Nunca bloqueia**;
+só sinaliza (decidido em 05/11/2026):
+
+| Momento | Ideal | Aceitável | Aviso |
+| --- | --- | --- | --- |
+| Saída do CD | −40 °C ou mais frio | até −30 °C | acima de −30 °C: "não deveria sair assim" |
+| Chegada ao CD | — | até −10 °C | acima de −10 °C (pode acontecer, ex.: trânsito) |
+
+Os limites ficam configuráveis, caso mudem.
 
 ## Conceitos novos (rascunho)
 
@@ -167,8 +196,10 @@ acima de um limite (ex.: acima de −18 °C), a definir com o dono.
      - **aproveitamento** = entregues ÷ carregadas.
    - O app avisa números estranhos: km de retorno menor que o de saída, mais caixas
      entregues que carregadas, rota que não voltou até certa hora, temperatura acima do limite.
-   - Em caminhão de **agregado**, as caixas entregues conferidas pela equipe viram o pagamento
-     dele (ver "Pagamento do agregado").
+   - As caixas **carregadas** vêm dos **conferentes**; as **devolvidas**, da contagem do
+     **armazém** (com aval do motorista e do armazém); **entregues = carregadas − devolvidas**.
+   - Em caminhão de **agregado**, as caixas entregues conferidas viram o pagamento dele (ver
+     "Pagamento do agregado").
 7. **Encerramento do diário**
    - A equipe confere e **encerra** o dia. Depois de encerrado, correções só com justificativa
      (fica na auditoria, como no restante do app).
@@ -197,13 +228,14 @@ acima de um limite (ex.: acima de −18 °C), a definir com o dono.
 | Coleção | Conteúdo |
 | --- | --- |
 | `usuarios/{uid}` (já existe) | ganha `categoria` (prestador ou agregado) |
-| `cnhs/{uid}` | número, categoria, validade, link do arquivo (a decidir); só a equipe lê |
+| `cnhs/{uid}` | número, categoria, validade (preenchidos pela equipe; o arquivo fica no Drive da empresa); só a equipe lê |
 | `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome, função (CNH, se for exigida) |
 | `veiculos/{id}` | placa, modelo, tipo, capacidade em caixas (e peso?), baseId, dono (`empresa` ou uid do agregado), situação, CRLV e validade, observação. Na tela, os do agregado aparecem dentro do cadastro dele. |
 | `veiculos/{id}/manutencoes/{id}` | início, fim previsto, fim real, motivo, oficina, custo (centavos; só quem vê valores) |
-| `valoresAgregado/{id}` | operação, valor por saída, valor por caixa entregue (centavos), início; só quem vê valores |
+| `valoresAgregado/{id}` | agregado, valor fixo por saída, valor por caixa entregue (centavos; vazio = 0), início; só quem vê valores |
+| `fechamentosAgregado/{AAAA-MM-Q}` | quinzena (Q = 1: dia 1 ao 15; Q = 2: dia 16 ao fim), status, totais por agregado, reabertura |
 | `diarios/{baseId_data}` | base, data, situação (em preparo, em andamento, encerrado), observações do dia, quem encerrou |
-| `rotas/{id}` | diário, operação, veículo, motorista, ajudantes (prestadores e/ou equipe do agregado), saída (hora, km, temperatura), retorno (hora, km, temperatura), caixas carregadas, entregues e devolvidas, conferido por, situação |
+| `rotas/{id}` | diário, operação, veículo, motorista, ajudantes (prestadores e/ou equipe do agregado), saída (hora, km, temperatura), retorno (hora, km, temperatura), caixas carregadas (conferente), devolvidas (armazém, com aval do motorista) e entregues (calculado), quem conferiu e quando, situação |
 | `cargas/{id}` | diário, identificação (pedido, cliente, região), caixas, rota em que foi emplacada |
 | `ocorrencias/{id}` | rota ou diário, horário, tipo, texto, quem anotou |
 
@@ -214,12 +246,12 @@ O id `baseId_data` do diário segue o mesmo padrão do QR do dia (`sessoes`).
 | Etapa | O que entra | Por que nessa ordem |
 | --- | --- | --- |
 | **E0. Agregados** | Categoria "Agregado" no cadastro oficial, caminhões (com CRLV) e equipe dentro do cadastro dele, distrato tirando tudo da disponibilidade, modelo de contrato de agregado | Reaproveita quase todo o onboarding pronto. |
-| **E1. Veículos e CNH** | Frota da empresa (situação, CRLV, manutenção) e validade das CNHs dos motoristas, com avisos | Base de tudo; simples e rápido de usar. |
+| **E1. Veículos e CNH** | Frota da empresa (situação, CRLV, manutenção) e CNH dos motoristas (preenchida pela equipe; vencida bloqueia a escala) | Base de tudo; simples e rápido de usar. |
 | **E2. Escala por carro** | Diário de campo do dia, rotas, pessoas dentro dos carros, reserva, NE automático | É a "escala por carro" já pedida; substitui a planilha da véspera. |
 | **E3. Chegada ao vivo** | Check-in aparecendo dentro de cada carro, "não veio", troca de pessoa, falta confirmada | Junta a escala com o que o app já faz melhor. |
 | **E4. Cargas e emplacamento** | Cargas com caixas, colocar carga no carro, aviso de capacidade | Depende de saber como as cargas chegam hoje (lista do cliente? planilha?). |
 | **E5. Jornada da rota** | Saída e retorno (hora, km e temperatura do baú), caixas entregues e devolvidas, ocorrências, cálculos e avisos | Fecha o ciclo do dia. |
-| **E5b. Pagamento do agregado** | Tabela de valores por operação, lançamentos gerados das rotas conferidas, no fechamento | Precisa das caixas entregues conferidas (E5). |
+| **E5b. Pagamento do agregado** | Valores fixo e por caixa no cadastro do agregado (e no contrato), lançamentos gerados das rotas conferidas, **fechamento quinzenal** | Precisa das caixas entregues conferidas (E5). |
 | **Futuro. Baús** | Cadastro dos baús, caminhão em que está montado, manutenção preventiva com avisos | Adiado pelo dono por alguns meses. |
 | **E6. Relatórios** | Por dia, veículo, pessoa e rota: km, horas, caixas, aproveitamento, faltas; Excel e PDF | Aproveita os dados acumulados. |
 
@@ -255,29 +287,20 @@ O id `baseId_data` do diário segue o mesmo padrão do QR do dia (`sessoes`).
     adicional calculado no servidor, sem mostrar valor ao prestador.)
 13. Caixa devolvida: quais motivos usar (cliente fechado, recusa, avaria, falta de tempo...)?
 
-**Agregados** (respondidas em 05/11/2026; ver seção "Agregado")
-- ~~Como é pago~~ → por saída ou por caixa entregue, conforme o cliente.
-- ~~Check-in da equipe~~ → não faz; entra só pelo nome.
-- ~~Documentos do caminhão~~ → só o CRLV. Caminhões ficam dentro do cadastro do agregado.
+**Respondidas em 05/11/2026** (ver as seções acima): forma de pagamento do agregado (fixo
+e/ou por caixa, no cadastro dele e no contrato); fechamento quinzenal (1 a 15, 16 ao fim);
+equipe do agregado sem check-in; só o CRLV do caminhão; caminhões dentro do cadastro do
+agregado; o agregado não usa o app; quem confere as caixas (conferentes e armazém); CNH
+preenchida pela equipe, vencida bloqueia, arquivo no Drive; limites de temperatura; baús
+adiados.
 
-Ainda abertas:
-14. No cliente que paga por caixa, existe **também um valor fixo** por saída? (O dono vai
-    confirmar.)
-15. O pagamento do agregado entra no **mesmo fechamento mensal** dos prestadores, ou tem
-    ciclo próprio (semanal, quinzenal)?
-16. O prestador nosso que vai no caminhão do agregado recebe a **diária normal**? O agregado
-    tem algum desconto por isso?
-17. O dono do agregado às vezes também dirige? Quantos caminhões um agregado costuma ter?
-18. O agregado precisa ver alguma coisa no app (as rotas dele, as caixas, os valores)?
-19. Quem confere as **caixas entregues** antes de virar pagamento (o ADM na volta, com o
-    canhoto/comprovante do cliente)?
-
-**CNH**
-20. CNH vencida **bloqueia** a pessoa de ser escalada como motorista, ou só avisa?
-21. Onde estão as CNHs hoje (Google Drive, outro)? O app guarda só a validade e o **link**, ou
-    passa a guardar o arquivo?
-22. O motorista do **agregado** também precisa ter a CNH acompanhada?
-
-**Temperatura do baú** (baús em si adiados)
-23. Qual temperatura é aceitável na saída e na chegada? Acima de quanto o app deve avisar?
-24. É uma leitura só (o visor do baú) ou várias durante a rota?
+**Ainda abertas (agregados, conferência e CNH)**
+14. **Cadastro do agregado:** como ele não usa o app, quem preenche o cadastro (empresa,
+    Receita, Cartão CNPJ, conta, caminhões)? A **equipe** preenche tudo, ou o agregado faz
+    o autocadastro pelo link uma única vez?
+15. **Conferentes:** eles vão usar o app (um perfil novo, "Conferente", que só lança caixas),
+    ou anotam no papel e o ADM digita? E o armazém?
+16. O **prestador nosso** que vai no caminhão do agregado recebe a **diária normal**? O
+    agregado tem algum desconto por isso?
+17. O motorista do **agregado** também precisa ter a CNH acompanhada (e bloqueada se vencer)?
+18. Um agregado pode ter **mais de um caminhão**? O dono do agregado às vezes dirige?
