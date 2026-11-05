@@ -25,7 +25,7 @@ function lerTipo(valor: unknown): TipoVeiculo {
 }
 
 export function lerPlaca(valor: unknown): string {
-  const placa = normalizarPlaca(texto(valor, 'a placa', { min: 7, max: 10 }))
+  const placa = normalizarPlaca(texto(valor, 'a placa', { max: 20 }))
   if (!placaValida(placa)) throw falha(`Placa ${placa} inválida. Use o formato ABC-1234 ou ABC1D23.`)
   return placa
 }
