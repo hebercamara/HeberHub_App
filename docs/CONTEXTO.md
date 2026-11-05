@@ -508,6 +508,8 @@ o futuro: integração com o Clicksign e PDF gerado no servidor.
 
 **Pendências e ideias registradas:**
 - **Escala por carro** (planejada pelo dono, "com calma"): hoje existe só a marca NE por dia.
+  Rascunho em `docs/PLANO-DIARIO-DE-CAMPO.md` (diário de campo: veículos, escala por carro,
+  cargas e acompanhamento das rotas), aguardando o modelo do diário usado hoje.
 - Dias marcados como NE contam como ausência nas regras de eventos ("todos os dias"). Confirmar
   com o dono se o NE deve ser desconsiderado nos eventos.
 - Revisão jurídica do termo de privacidade.
