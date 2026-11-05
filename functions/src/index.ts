@@ -7,6 +7,7 @@ export const saude = onCall(() => montarSaude())
 
 export { enviarCrlv, salvarCaminhao, salvarEquipeAgregado, salvarValorAgregado, verCrlv } from './agregados.js'
 export { salvarCnh, salvarRegiao, salvarVeiculo } from './frota.js'
+export { salvarConfigDiario, salvarItemOperacao, salvarValoresOperacao } from './operacoesDiario.js'
 export { salvarAparencia } from './aparencia.js'
 export { marcarAusencia } from './ausencias.js'
 export { salvarBase } from './bases.js'

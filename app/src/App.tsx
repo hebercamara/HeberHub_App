@@ -12,6 +12,7 @@ import { Aparencia } from './paginas/configuracoes/Aparencia'
 import { Cadastros } from './paginas/configuracoes/Cadastros'
 import { Bases } from './paginas/configuracoes/Bases'
 import { Regioes } from './paginas/configuracoes/Regioes'
+import { OperacaoDiario } from './paginas/configuracoes/OperacaoDiario'
 import { Configuracoes } from './paginas/configuracoes/Configuracoes'
 import { Funcoes } from './paginas/configuracoes/Funcoes'
 import { Operacoes } from './paginas/configuracoes/Operacoes'
@@ -100,6 +101,7 @@ function App() {
                 <>
                   <Route path="planilha" element={<Navigate to="/juridico/planilha" replace />} />
                   <Route path="operacoes" element={<Operacoes />} />
+                  <Route path="operacoes/:id" element={<OperacaoDiario />} />
                   <Route path="funcoes" element={<Funcoes />} />
                   <Route path="bases" element={<Bases />} />
                   <Route path="regioes" element={<Regioes />} />

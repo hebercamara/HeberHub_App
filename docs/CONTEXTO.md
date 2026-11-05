@@ -3,7 +3,7 @@
 > Documento de referência para quem for continuar o projeto, seja uma pessoa ou uma IA.
 > Explica o que o app faz, o que ele deliberadamente **não** faz, as regras de negócio
 > decididas com o dono do projeto (e por quê), a arquitetura técnica e como retomar o trabalho.
-> Atualizado em 05/11/2026, após a etapa E2 do Diário de Campo (frota da casa, CNH e regiões de entrega).
+> Atualizado em 05/11/2026, após a etapa E3 do Diário de Campo (regras de cada operação).
 
 ---
 
@@ -293,6 +293,26 @@ Plano completo em `docs/PLANO-DIARIO-DE-CAMPO.md`.
 - **Termo de privacidade versão 3:** inclui a CNH (de quem dirige) e os dados dos caminhões e da
   equipe dos agregados. Todos aceitam de novo.
 
+### 6.2.5 Regras de cada operação para o diário (etapa E3 do Diário de Campo)
+Em Configurações › Operações › **Diário de campo** (coordenação edita; o Jurídico consulta):
+- **Como o diário aparece** (`operacoes/{id}.diario`): cor; para cada campo da saída (carga,
+  broker, roteiro, modalidade, perfil cobrado, ajudante, horário/km/temperatura de saída e de
+  chegada, KM UNB, caixas carregadas, reentrega e devolução, quem conferiu no armazém,
+  observação), **não aparece, opcional ou obrigatório**. Data, veículo, motorista e tipo de
+  serviço aparecem sempre. Sem configuração, tudo é opcional.
+- **Tipos de serviço:** entrega e cancelada sempre; reentrega, viagem e porta de loja à escolha.
+  Opção de **separar reentrega e devolução em varejo e mercado**.
+- **Largada:** horário previsto e tolerância (ex.: 06:00 + 10 min) para avisar atraso.
+- **Temperatura do baú:** saída ideal, saída aceitável e chegada esperada (ex.: −40, −30, −10 °C);
+  **só avisa**, nunca bloqueia.
+- **Listas:** roteiros (cada um ligado a uma **região de entrega**, que define o valor por caixa),
+  modalidades e brokers (região, contato e telefone do vendedor).
+- **Valores da operação** (`valoresOperacao`, só quem vê valores): desconto do agregado por
+  motorista nosso e por ajudante nosso, e **adicional de viagem por dia**, "a partir de" uma data.
+- As regras puras (catálogo, avisos de largada e temperatura, adicional de viagem) ficam em
+  `functions/src/regras/diario.ts`, com cópia do catálogo em `app/src/lib/diario.ts`. Os avisos
+  passam a aparecer no diário na etapa E5.
+
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
    `heberhub:<baseId>_<data>:<token>`; o token é secreto e só sai do servidor por essa tela.
@@ -471,7 +491,7 @@ docs/CONTEXTO.md          este documento
 | `bases/{id}` | nome, lat, lng, raioMetros, precisaoMaxMetros, janelaInicio, janelaFim, ativa | qualquer pessoa logada |
 | `sessoes/{baseId_data}` | token do QR do dia | **ninguém** (só o servidor) |
 | `presencas/{uid_data}` | uid, nome, baseId, data, horário, origem (qrcode, localizacao, manual), distância, lat/lng/precisão (até 90 dias), justificativa, cancelada | a própria pessoa; ADM e coordenação |
-| `operacoes/{id}` | nome, ativa | ADM e coordenação |
+| `operacoes/{id}` | nome, ativa, `diario` (configuração do Diário de Campo) | ADM e coordenação |
 | `funcoes/{id}` | nome, operacaoId, operacaoNome, ativa | ADM e coordenação |
 | `valoresDiaria/{id}` | alvoChave (`funcao:<id>` ou `prestador:<uid>`), valor (centavos), início | coordenação e ADM Financeiro |
 | `lancamentos/{id}` | uid, competência, data, tipo (diária, adicional, desconto), valor com sinal, pendente, justificativa, estornoDe, estornadoPor | coordenação e ADM Financeiro |
@@ -493,6 +513,8 @@ docs/CONTEXTO.md          este documento
 | `veiculos/{placa}/manutencoes/{id}` | histórico: início, previsão, motivo, fim | a equipe |
 | `cnhs/{uid}` | número, categoria e validade da CNH (preenchidos pela equipe) | a equipe |
 | `regioes/{id}` | regiões de entrega: nome, descrição, ativa | a equipe |
+| `operacoes/{id}/roteiros`, `/modalidades`, `/brokers` | listas da operação para o diário (roteiro com `regiaoId`; broker com contato) | a equipe |
+| `valoresOperacao/{operacaoId_inicio}` | desconto do agregado (motorista, ajudante) e adicional de viagem por dia, em centavos | quem vê valores |
 | `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome, função, ativo | a equipe |
 | `valoresAgregado/{uid_inicio}` | fixo por saída, por caixa padrão e por caixa em cada região (centavos), início, documento que gravou | quem vê valores |
 | `auditoria/{id}` | ação, autor, alvo, detalhes, data e hora | só coordenação |
@@ -506,6 +528,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | --- | --- |
 | Agregados | `enviarCrlv` (no cadastro ou, pela equipe, num caminhão), `verCrlv`, `salvarCaminhao`, `salvarEquipeAgregado`, `salvarValorAgregado` |
 | Frota | `salvarVeiculo` (frota da casa), `salvarCnh`, `salvarRegiao` |
+| Diário (operação) | `salvarConfigDiario`, `salvarItemOperacao` (roteiros, modalidades, brokers), `salvarValoresOperacao` |
 | Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
 | Contratos | `salvarContratante`, `salvarModelo`, `prepararEmissao`, `emitirDocumento` (prévia ou emissão), `marcarDocumento` (assinado ou cancelado), `inativacoesAgendadas` (00:15) |
@@ -573,9 +596,9 @@ o futuro: integração com o Clicksign e PDF gerado no servidor.
 
 **Em andamento: Diário de Campo** (`docs/PLANO-DIARIO-DE-CAMPO.md`, plano fechado com o dono):
 escala por carro, veículos, agregados, cargas e acompanhamento das rotas. **Etapa E1 (agregados)
-pronta. Etapa E2 (frota da casa, CNH e regiões de entrega) pronta.** Próxima: **E3** (regras de
-cada operação: campos do diário, roteiros, modalidades, brokers, largada, temperatura, desconto do
-agregado e adicional de viagem).
+pronta. Etapas E2 (frota da casa, CNH e regiões de entrega) e E3 (regras de cada operação)
+prontas.** Próxima: **E4** (escala por carro: o diário do dia, rotas, pessoas nos carros, reserva,
+NE automático, check-in ao vivo, falta e troca).
 
 **Pendências e ideias registradas:**
 - **Escala por carro:** é a etapa E4 do Diário de Campo; até lá, só a marca NE por dia.
@@ -607,6 +630,7 @@ agregado e adicional de viagem).
 | Depois | Falta e não escalado no calendário (retirar presença com estorno); Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |
 | Diário de Campo E1 | Cadastro de agregado (link próprio, caminhões com CRLV), caminhões aprovados como disponíveis, equipe e valores do agregado, variáveis de contrato, distrato tira os caminhões da escala, agregado sem check-in |
 | Diário de Campo E2 | Aba Frota (veículos da casa e dos agregados, manutenção com motivo e histórico, CRLV com validade), CNH de quem dirige (função "exige CNH"), regiões de entrega, valor por caixa do agregado por região, termo de privacidade v3 |
+| Diário de Campo E3 | Diário de campo de cada operação: cor, campos (não aparece, opcional, obrigatório), tipos de serviço, varejo e mercado, largada com tolerância, limites de temperatura, roteiros ligados à região, modalidades, brokers, desconto do agregado e adicional de viagem por dia |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
 

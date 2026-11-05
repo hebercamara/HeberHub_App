@@ -64,6 +64,10 @@ service cloud.firestore {
     // Cadastros operacionais: nomes, sem valores.
     match /operacoes/{id} {
       allow read: if equipe();
+      // Roteiros, modalidades e brokers da operação (Diário de Campo).
+      match /{lista}/{item} {
+        allow read: if equipe() && lista in ['roteiros', 'modalidades', 'brokers'];
+      }
     }
     match /funcoes/{id} {
       allow read: if equipe();
@@ -89,6 +93,10 @@ service cloud.firestore {
 
     // Tudo que tem dinheiro.
     match /valoresAgregado/{id} {
+      allow read: if financeiro();
+    }
+    // Desconto do agregado e adicional de viagem de cada operação.
+    match /valoresOperacao/{id} {
       allow read: if financeiro();
     }
     match /valoresDiaria/{id} {

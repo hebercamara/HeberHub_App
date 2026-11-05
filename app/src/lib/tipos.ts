@@ -157,7 +157,14 @@ export type Presenca = {
 /** Falta registrada ou não escalado, em ausencias/{uid_data}. */
 export type Ausencia = { id: string; uid: string; nome: string; baseId: string | null; data: string; tipo: 'falta' | 'nao-escalado'; justificativa: string | null }
 
-export type Operacao = { id: string; nome: string; ativa: boolean }
+export type Operacao = { id: string; nome: string; ativa: boolean; /** Como o Diário de Campo da operação aparece. */ diario?: import('./diario').ConfigDiario }
+/** Roteiro da operação, ligado a uma região de entrega. */
+export type Roteiro = { id: string; nome: string; regiaoId: string | null; ativo: boolean }
+export type Modalidade = { id: string; nome: string; ativo: boolean }
+/** Distribuidor/vendedor do fabricante numa região: contato para quando a entrega dá problema. */
+export type Broker = { id: string; nome: string; regiao: string; contato: string; telefone: string; ativo: boolean }
+/** Valores da operação a partir de uma data, em centavos. */
+export type ValoresOperacao = { id: string; operacaoId: string; descontoMotoristaAgregado: number; descontoAjudanteAgregado: number; adicionalViagemDia: number; inicio: string }
 
 export type FuncaoOperacional = { id: string; nome: string; operacaoId: string; operacaoNome: string; ativa: boolean; /** Dirige veículo: exige CNH válida. */ exigeCnh?: boolean }
 

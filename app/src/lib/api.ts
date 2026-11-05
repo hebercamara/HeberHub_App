@@ -1,5 +1,6 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
+import type { ConfigDiario } from './diario'
 import type { Faixa, Publico } from './eventos'
 import type { Alerta, Caminhao, CampoEmissao, Funcao, SituacaoVeiculo, TipoVeiculo, CamposEmissao, Contratante, DadosBancarios, DadosEmpresa, ModeloDocumento, Perfil, RelatorioImportacao, Representante } from './tipos'
 import type { CampoEmpresa, Escolha } from './acareacao'
@@ -116,6 +117,14 @@ export const api = {
     'salvarBase',
   ),
   gerarQrDoDia: chamada<{ baseId: string; dia: 'hoje' | 'amanha' }, { conteudo: string; data: string; baseNome: string }>('gerarQrDoDia'),
+  salvarConfigDiario: chamada<{ operacaoId: string; config: ConfigDiario }>('salvarConfigDiario'),
+  salvarItemOperacao: chamada<
+    { operacaoId: string; lista: 'roteiros' | 'modalidades' | 'brokers'; id?: string; nome: string; ativo: boolean; regiaoId?: string | null; regiao?: string; contato?: string; telefone?: string },
+    { ok: true; id: string }
+  >('salvarItemOperacao'),
+  salvarValoresOperacao: chamada<{ operacaoId: string; descontoMotoristaAgregado: number; descontoAjudanteAgregado: number; adicionalViagemDia: number; inicio: string }>(
+    'salvarValoresOperacao',
+  ),
   salvarOperacao: chamada<{ id?: string; nome: string; ativa: boolean }, { ok: true; id: string }>('salvarOperacao'),
   duplicarFuncoes: chamada<
     { funcaoIds: string[]; destinoOperacaoId: string; copiarValores: boolean; inicio: string },

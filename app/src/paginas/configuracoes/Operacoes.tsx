@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { Aviso } from '../../componentes/Aviso'
 import { api } from '../../lib/api'
 import { useFuncoes, useOperacoes } from '../../lib/cadastros'
@@ -35,9 +36,14 @@ export function Operacoes() {
                     <strong>{op.nome}</strong> <span className="suave">· {funcoes.filter((f) => f.operacaoId === op.id).length} funções</span>{' '}
                     {!op.ativa && <span className="selo selo-inativo">Inativa</span>}
                   </span>
-                  <button className="link" onClick={() => setEditando(op.id)}>
-                    Editar
-                  </button>
+                  <span className="acoes" style={{ marginTop: 0 }}>
+                    <Link className="link" to={`/configuracoes/operacoes/${op.id}`}>
+                      Diário de campo
+                    </Link>
+                    <button className="link" onClick={() => setEditando(op.id)}>
+                      Editar
+                    </button>
+                  </span>
                 </div>
               )}
             </li>
