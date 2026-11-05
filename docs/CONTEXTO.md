@@ -219,7 +219,12 @@ Documentos) e só emite os modelos liberados para ele.
   empresa que contrata (aparecem nas variáveis CONTRATANTE_*) e testemunhas frequentes.
 - **Emitir:** escolhe o prestador (só quem tem Cadastro Oficial) e o modelo. Antes, o servidor
   **consulta a Receita de novo**: CNPJ fora de ATIVA ou mudança desde o Cadastro Oficial
-  **bloqueiam** (resolve-se em Prestadores). Campos da emissão com sugestão: função (a da pessoa),
+  **bloqueiam** (resolve-se em Prestadores); a mensagem diz o que mudou (campos da empresa ou
+  responsável fora do quadro de sócios, com a lista de sócios). Em Prestadores, o responsável
+  pode ser trocado pelo **nome completo de um sócio da Receita** (só se o CPF confere) ou mantido
+  com **conferência à mão**, que vale enquanto o quadro de sócios não mudar. Nome abreviado
+  ("Héber Câmara" × "HEBER RODRIGUES CAMARA") é aceito quando o CPF que a Receita mostra confere.
+  A conferência do responsável usa o do Cadastro Oficial (não o enviado no cadastro). Campos da emissão com sugestão: função (a da pessoa),
   valor da diária (o vigente), início (hoje), último dia de serviço (última presença), contrato
   original (último contrato emitido), rescisão (hoje) e duas testemunhas. **Prévia** antes de
   emitir; dado que falta aparece marcado em amarelo e impede a emissão. Valores por extenso

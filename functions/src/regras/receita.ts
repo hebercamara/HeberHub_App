@@ -140,20 +140,55 @@ export function responsaveis(receita: DadosReceita): Socio[] {
 }
 
 /**
- * O responsável informado é titular ou sócio da empresa na Receita? Compara o nome (sem
- * acento) e o CPF: inteiro, ou só os dígitos que a Receita mostra (***456789**).
- * 'sem-dados': a Receita não mostra quem é o dono; a equipe confere pelo Cartão CNPJ.
+ * Nomes da mesma pessoa? Iguais (sem acento) ou um abreviado do outro: mesmo primeiro e
+ * último nome, e todas as palavras do mais curto aparecem no mais completo
+ * ("Héber Câmara" e "HEBER RODRIGUES CAMARA").
  */
-export function conferirResponsavel(receita: DadosReceita, nome: string, cpf: string): 'confere' | 'diferente' | 'sem-dados' {
-  const lista = responsaveis(receita)
-  if (!lista.length) return 'sem-dados'
-  const socio = lista.find((s) => normalizar(s.nome) === normalizar(nome))
-  if (!socio) return 'diferente'
+export function nomesCompativeis(a: string, b: string): boolean {
+  const x = normalizar(a).split(' ').filter(Boolean)
+  const y = normalizar(b).split(' ').filter(Boolean)
+  if (x.join(' ') === y.join(' ')) return true
+  if (x.length < 2 || y.length < 2 || x[0] !== y[0] || x[x.length - 1] !== y[y.length - 1]) return false
+  const [curto, longo] = x.length <= y.length ? [x, y] : [y, x]
+  return curto.every((p) => longo.includes(p))
+}
+
+/** O CPF informado bate com o que a Receita mostra do sócio? null quando ela não mostra. */
+function cpfDoSocioConfere(socio: Socio, cpf: string): boolean | null {
   const visivel = soDigitos(socio.cpfParcial)
   const digitos = soDigitos(cpf)
-  if (visivel.length === 11) return visivel === digitos ? 'confere' : 'diferente'
-  if (visivel.length === 6 && /^\*{3}\d{6}\*{2}$/.test(socio.cpfParcial.trim())) return digitos.slice(3, 9) === visivel ? 'confere' : 'diferente'
-  return 'confere'
+  if (visivel.length === 11) return visivel === digitos
+  if (visivel.length === 6 && /^\*{3}\d{6}\*{2}$/.test(socio.cpfParcial.trim())) return digitos.slice(3, 9) === visivel
+  return null
+}
+
+/**
+ * O sócio (ou titular) da Receita que corresponde ao responsável informado: mesmo nome e
+ * CPF conferindo; ou nome abreviado, desde que o CPF que a Receita mostra confira.
+ */
+export function socioCorrespondente(receita: DadosReceita, nome: string, cpf: string): Socio | null {
+  const lista = responsaveis(receita)
+  const igual = lista.find((s) => normalizar(s.nome) === normalizar(nome))
+  if (igual) return cpfDoSocioConfere(igual, cpf) === false ? null : igual
+  return lista.find((s) => nomesCompativeis(s.nome, nome) && cpfDoSocioConfere(s, cpf) === true) ?? null
+}
+
+/**
+ * O responsável informado é titular ou sócio da empresa na Receita? Compara o nome (sem
+ * acento; abreviado vale se o CPF confirmar) e o CPF (inteiro no MEI; os 6 dígitos que a
+ * Receita mostra nos sócios). 'sem-dados': a Receita não mostra quem é o dono.
+ */
+export function conferirResponsavel(receita: DadosReceita, nome: string, cpf: string): 'confere' | 'diferente' | 'sem-dados' {
+  if (!responsaveis(receita).length) return 'sem-dados'
+  return socioCorrespondente(receita, nome, cpf) ? 'confere' : 'diferente'
+}
+
+/** "Assinatura" do quadro de sócios, para saber se ele mudou desde uma conferência. */
+export function assinaturaSocios(receita: DadosReceita): string {
+  return responsaveis(receita)
+    .map((s) => normalizar(s.nome))
+    .sort()
+    .join('|')
 }
 
 export type Alerta = {

@@ -20,6 +20,8 @@ export function CadastroOficialUsuario({ uid, usuarios }: { uid: string; usuario
   const [historico, setHistorico] = useState(false)
   const [escolhas, setEscolhas] = useState<Partial<Record<CampoEmpresa, Escolha>>>({})
   const [conferencia, setConferencia] = useState('')
+  // Responsável que não bate com a Receita: escolher o nome completo de um sócio (ou conferir à mão).
+  const [nomeReceita, setNomeReceita] = useState('')
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
 
@@ -33,16 +35,20 @@ export function CadastroOficialUsuario({ uid, usuarios }: { uid: string; usuario
   const { oficial } = cadastro
   const divs = cadastro.divergenciasPendentes && cadastro.receita ? divergencias(oficial.empresa, cadastro.receita, oficial.receitaReferencia ?? undefined) : []
   // O responsável deixou de aparecer como sócio numa consulta nova: confere pelo Cartão CNPJ.
-  const precisaConferir = cadastro.alertas.some((a) => ALERTAS_DE_CONFERENCIA.includes(a.codigo))
+  const alertaResponsavel = cadastro.alertas.some((a) => a.codigo === 'responsavel-nao-conferido')
+  const socios = alertaResponsavel ? (cadastro.receita?.socios ?? []) : []
+  const temPendencia = cadastro.alertas.some((a) => ALERTAS_DE_CONFERENCIA.includes(a.codigo))
+  const precisaConferir = temPendencia && !nomeReceita
   const nome = (id: string) => usuarios.find((u) => u.id === id)?.nome ?? 'sistema'
 
   async function salvar() {
     setErro('')
     setEnviando(true)
     try {
-      await api.consolidarCadastro({ uid, escolhas, conferenciaManual: precisaConferir ? conferencia : undefined })
+      await api.consolidarCadastro({ uid, escolhas, conferenciaManual: precisaConferir ? conferencia : undefined, nomeResponsavel: nomeReceita || undefined })
       setEscolhas({})
       setConferencia('')
+      setNomeReceita('')
     } catch (e) {
       setErro(mensagemDeErro(e))
     }
@@ -58,7 +64,7 @@ export function CadastroOficialUsuario({ uid, usuarios }: { uid: string; usuario
         <dt>Endereço</dt>
         <dd>{enderecoEmLinha(oficial.empresa.endereco)}</dd>
       </dl>
-      {(divs.length > 0 || precisaConferir) && (
+      {(divs.length > 0 || temPendencia) && (
         <>
           {divs.length > 0 && <Aviso tipo="info">A Receita mudou depois da aprovação. Escolha os valores que passam a valer.</Aviso>}
           {cadastro.alertas
@@ -69,6 +75,20 @@ export function CadastroOficialUsuario({ uid, usuarios }: { uid: string; usuario
               </Aviso>
             ))}
           {divs.length > 0 && <Acareacao divergencias={divs} escolhas={escolhas} aoMudar={setEscolhas} rotuloCadastro="Oficial atual" />}
+          {socios.length > 0 && (
+            <label>
+              Responsável conforme a Receita
+              <select value={nomeReceita} onChange={(e) => setNomeReceita(e.target.value)}>
+                <option value="">Manter "{oficial.representante.nome}" (descrever a conferência)</option>
+                {socios.map((s) => (
+                  <option key={s.nome} value={s.nome}>
+                    Usar {s.nome} ({s.qualificacao})
+                  </option>
+                ))}
+              </select>
+              <span className="suave">Usar o nome da Receita só é aceito se o CPF do responsável for o desse sócio.</span>
+            </label>
+          )}
           {precisaConferir && (
             <label>
               Conferência pelo Cartão CNPJ

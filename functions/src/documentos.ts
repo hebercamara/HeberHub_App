@@ -253,7 +253,14 @@ export const prepararEmissao = onCall(async (req) => {
   else if (receita.dados && !cnpjApto(receita.dados.situacao)) {
     throw falha(`O CNPJ está com situação ${receita.dados.situacao} na Receita. Não é possível emitir.`, 'failed-precondition')
   } else if (receita.mudou || receita.responsavelDiferente) {
-    throw falha('A Receita mudou desde o Cadastro Oficial. Resolva em Jurídico › Prestadores (nova versão) e emita de novo.', 'failed-precondition')
+    // Diz exatamente o que bloqueou, para quem for resolver em Prestadores.
+    const motivos = [
+      ...(receita.mudou ? [`dados da empresa diferentes na Receita (${receita.camposMudados.join(', ').toLowerCase()})`] : []),
+      ...(receita.responsavelDiferente
+        ? [`o responsável "${receita.responsavel}" não aparece entre os sócios da Receita (${receita.socios.join(', ') || 'nenhum sócio informado'})`]
+        : []),
+    ]
+    throw falha(`Antes de emitir, resolva em Jurídico › Prestadores: ${motivos.join('; ')}.`, 'failed-precondition')
   }
   if (variaveisDoModelo(modelo.conteudo).some((v) => v.startsWith('CONTRATANTE_') || v === 'CIDADE_EMISSAO')) {
     const contratante = await db.collection('configuracoes').doc('contratante').get()

@@ -143,6 +143,7 @@ export type DadosReceita = {
   mei: boolean
   cnae: { codigo: string; descricao: string }
   endereco: Endereco
+  socios?: { nome: string; qualificacao: string; cpfParcial: string }[]
   fonte: string
 }
 

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { aplicarInativacoes } from '../src/documentos.js'
 import { adminAuth, db } from '../src/infra.js'
-import { coordenacaoInicial, fecharApps, HOJE, novoUsuario, prestadorAprovado, type Celular } from './apoio.js'
+import { coordenacaoInicial, dadosCadastro, enviarCadastro, fecharApps, HOJE, novoUsuario, prestadorAprovado, type Celular } from './apoio.js'
 
 const CONTRATO = `<p><strong>CONTRATO</strong> entre {{CONTRATANTE_RAZAO_SOCIAL}} e {{RAZAO_SOCIAL}}, CNPJ {{CNPJ}}, neste ato representada por
 {{NOME_REPRESENTANTE}}, {{NACIONALIDADE_REPRESENTANTE}}, {{ESTADO_CIVIL_REPRESENTANTE}}, {{G:portador|portadora}} do CPF {{CPF_REPRESENTANTE}}.
@@ -135,9 +135,38 @@ describe('modelos e emissão de documentos (onboarding C e D)', () => {
     expect((await db.collection('usuarios').doc(ze.uid).get()).get('status')).toBe('inativo')
   })
 
-  it('não emite se a Receita mudou desde o Cadastro Oficial', async () => {
-    const outra = await prestadorAprovado(gestao, 'rita-documentos@teste.local', 'Rita Documento', (await db.collection('bases').where('nome', '==', 'Base Documentos').get()).docs[0].id)
+  it('não emite se a Receita mudou desde o Cadastro Oficial, e diz o que mudou', async () => {
+    const baseId = (await db.collection('bases').where('nome', '==', 'Base Documentos').get()).docs[0].id
+    const outra = await prestadorAprovado(gestao, 'rita-documentos@teste.local', 'Rita Documento', baseId)
     await db.collection('cadastrosOficiais').doc(outra.uid).update({ 'oficial.receitaReferencia.endereco.municipio': 'OUTRA CIDADE', 'oficial.empresa.endereco.municipio': 'Outra Cidade' })
-    await expect(gestao.chamar('prepararEmissao', { uid: outra.uid, modeloId: contratoId })).rejects.toThrow(/Receita mudou/)
+    await expect(gestao.chamar('prepararEmissao', { uid: outra.uid, modeloId: contratoId })).rejects.toThrow(/Prestadores: dados da empresa diferentes na Receita \(cidade\)/)
+  })
+
+  it('responsável com nome curto: o bloqueio explica e some ao usar o nome da Receita ou ao conferir à mão', async () => {
+    const baseId = (await db.collection('bases').where('nome', '==', 'Base Documentos').get()).docs[0].id
+    const rita = await novoUsuario('rita-socia@teste.local')
+    // Na Receita simulada, a sócia é RITA DOCUMENTO SOUZA (CPF ***982247**).
+    await enviarCadastro(rita, dadosCadastro('Rita Documento Souza', '66778899000186', { razaoSocial: 'Rita Transportes Ltda' }))
+    await gestao.chamar('aprovarCadastro', { uid: rita.uid, aprovar: true, baseId })
+    const ref = db.collection('cadastrosOficiais').doc(rita.uid)
+    // Como se o nome tivesse sido digitado curto e a Receita não tivesse respondido no cadastro.
+    await ref.update({ 'oficial.representante.nome': 'Rita Lima' })
+    await expect(gestao.chamar('prepararEmissao', { uid: rita.uid, modeloId: contratoId })).rejects.toThrow(
+      /o responsável "Rita Lima" não aparece entre os sócios da Receita \(RITA DOCUMENTO SOUZA\)/,
+    )
+    // Caminho 1: usar o nome completo da Receita (o CPF confere).
+    await gestao.chamar('consolidarCadastro', { uid: rita.uid, escolhas: {}, nomeResponsavel: 'RITA DOCUMENTO SOUZA' })
+    expect((await ref.get()).get('oficial.representante.nome')).toBe('RITA DOCUMENTO SOUZA')
+    await gestao.chamar('prepararEmissao', { uid: rita.uid, modeloId: contratoId })
+    // Nome abreviado com CPF conferindo também passa.
+    await ref.update({ 'oficial.representante.nome': 'Rita Souza' })
+    await gestao.chamar('prepararEmissao', { uid: rita.uid, modeloId: contratoId })
+    // Caminho 2: manter um nome diferente com conferência à mão; não volta a bloquear.
+    await ref.update({ 'oficial.representante.nome': 'Rita Lima' })
+    await expect(gestao.chamar('prepararEmissao', { uid: rita.uid, modeloId: contratoId })).rejects.toThrow(/sócios/)
+    await expect(gestao.chamar('consolidarCadastro', { uid: rita.uid, escolhas: {} })).rejects.toThrow(/Cartão CNPJ/)
+    await gestao.chamar('consolidarCadastro', { uid: rita.uid, escolhas: {}, conferenciaManual: 'Contrato social confere: Rita Lima é sócia (nome de casada).' })
+    await gestao.chamar('prepararEmissao', { uid: rita.uid, modeloId: contratoId })
+    await gestao.chamar('prepararEmissao', { uid: rita.uid, modeloId: contratoId })
   })
 })

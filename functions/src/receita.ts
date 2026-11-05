@@ -37,6 +37,9 @@ function receitaSimulada(cnpj: string): ResultadoReceita {
   // Ltda com sócia administradora (CPF parcial como a Receita mostra).
   if (cnpj === '12345678000195')
     return { encontrado: true, dados: { ...base, razaoSocial: 'PAULA TRANSPORTES LTDA', socios: [{ nome: 'PAULA SOUZA', qualificacao: 'Sócio-Administrador', cpfParcial: '***982247**' }] } }
+  // Ltda com a sócia RITA DOCUMENTO SOUZA (nome completo; CPF parcial como a Receita mostra).
+  if (cnpj === '66778899000186')
+    return { encontrado: true, dados: { ...base, razaoSocial: 'RITA TRANSPORTES LTDA', socios: [{ nome: 'RITA DOCUMENTO SOUZA', qualificacao: 'Sócio-Administrador', cpfParcial: '***982247**' }] } }
   if (cnpj === '34028316000103') return { encontrado: true, dados: { ...base, razaoSocial: 'MERCADINHO TESTE LTDA', cnae: { codigo: '4711-3/02', descricao: 'Comércio varejista de mercadorias' } } }
   return { encontrado: true, dados: base }
 }

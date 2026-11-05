@@ -66,7 +66,7 @@ export const api = {
   reivindicarCoordenacao: chamada<{ nome: string }>('reivindicarCoordenacao'),
   assumirGestao: chamada<void>('assumirGestao'),
   aprovarCadastro: chamada<{ uid: string; aprovar: boolean; baseId?: string; funcaoId?: string | null; escolhas?: Escolhas; conferenciaManual?: string }>('aprovarCadastro'),
-  consolidarCadastro: chamada<{ uid: string; escolhas: Escolhas; conferenciaManual?: string }>('consolidarCadastro'),
+  consolidarCadastro: chamada<{ uid: string; escolhas: Escolhas; conferenciaManual?: string; nomeResponsavel?: string }>('consolidarCadastro'),
   criarUsuarioInterno: chamada<{ nome: string; email: string; perfil: Perfil; baseId?: string | null; funcaoId?: string | null }, { ok: true; uid: string }>(
     'criarUsuarioInterno',
   ),

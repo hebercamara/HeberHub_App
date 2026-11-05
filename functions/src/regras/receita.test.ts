@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { cpfValido } from './cpf.js'
-import { alertasDoCadastro, cnpjApto, conferirResponsavel, cpfNaRazaoSocial, lerBrasilApi, lerReceitaWs, normalizar, responsaveis } from './receita.js'
+import { alertasDoCadastro, cnpjApto, conferirResponsavel, cpfNaRazaoSocial, lerBrasilApi, lerReceitaWs, nomesCompativeis, normalizar, responsaveis, socioCorrespondente } from './receita.js'
 
 const brasilApi = {
   cnpj: '11222333000181',
@@ -81,6 +81,22 @@ describe('receita', () => {
     expect(conferirResponsavel(ltda, 'Paula Souza', '529.982.247-25')).toBe('confere')
     expect(conferirResponsavel(ltda, 'Paula Souza', '111.444.777-35')).toBe('diferente')
     expect(conferirResponsavel({ ...ltda, socios: [], razaoSocial: 'EMPRESA X LTDA' }, 'Paula Souza', '529.982.247-25')).toBe('sem-dados')
+  })
+
+  it('nome abreviado vale quando o CPF que a Receita mostra confere', () => {
+    expect(nomesCompativeis('Héber Câmara', 'HEBER RODRIGUES CAMARA')).toBe(true)
+    expect(nomesCompativeis('Héber Silva', 'HEBER RODRIGUES CAMARA')).toBe(false)
+    expect(nomesCompativeis('Câmara', 'HEBER RODRIGUES CAMARA')).toBe(false)
+    const ltda = lerBrasilApi({
+      ...brasilApi,
+      razao_social: 'I9 EXEMPLO LTDA',
+      opcao_pelo_mei: false,
+      qsa: [{ nome_socio: 'HEBER RODRIGUES CAMARA', qualificacao_socio: 'Sócio-Administrador', cnpj_cpf_do_socio: '***982247**' }],
+    })
+    expect(socioCorrespondente(ltda, 'Héber Câmara', '529.982.247-25')?.nome).toBe('HEBER RODRIGUES CAMARA')
+    expect(conferirResponsavel(ltda, 'Héber Câmara', '111.444.777-35')).toBe('diferente')
+    // Sem CPF visível na Receita, nome abreviado não basta.
+    expect(conferirResponsavel({ ...ltda, socios: [{ nome: 'HEBER RODRIGUES CAMARA', qualificacao: 'Sócio', cpfParcial: '' }] }, 'Héber Câmara', '529.982.247-25')).toBe('diferente')
   })
 
   it('alertas', () => {
