@@ -1411,3 +1411,10 @@ a.botao {
     padding: 0;
   }
 }
+
+/* Bloco dentro de um cartão (ex.: cada caminhão no cadastro do agregado). */
+.cartao-interno {
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+  padding: 12px;
+}

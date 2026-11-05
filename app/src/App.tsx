@@ -3,6 +3,7 @@ import { Carregando } from './componentes/Carregando'
 import { Layout } from './componentes/Layout'
 import { useSessao } from './lib/sessao'
 import { AceiteTermo } from './paginas/AceiteTermo'
+import { Agregado } from './paginas/Agregado'
 import { Aguardando } from './paginas/Aguardando'
 import { Cadastro } from './paginas/Cadastro'
 import { Auditoria } from './paginas/coordenacao/Auditoria'
@@ -44,6 +45,8 @@ function destinoInicial(sessao: ReturnType<typeof useSessao>): string {
   if (sessao.usuario.status !== 'ativo' || !sessao.perfil) return '/aguardando'
   if ((sessao.usuario.termoVersao ?? 0) < VERSAO_TERMO) return '/termo'
   if (sessao.perfil === 'juridico') return '/juridico'
+  // Agregado não faz check-in: só vê que o cadastro foi aprovado.
+  if (sessao.usuario.categoria === 'agregado' && sessao.perfil === 'prestador') return '/agregado'
   return sessao.perfil === 'prestador' ? '/presenca' : '/equipe/presencas'
 }
 
@@ -52,7 +55,7 @@ function App() {
   const { pathname } = useLocation()
   // No cadastro, o login é criado antes de enviar os dados: a tela fica montada para
   // não perder o que foi digitado nem a mensagem de erro do servidor.
-  if (sessao.carregando && !(sessao.buscandoCadastro && pathname === '/cadastro')) return <Carregando />
+  if (sessao.carregando && !(sessao.buscandoCadastro && (pathname === '/cadastro' || pathname === '/cadastro-agregado'))) return <Carregando />
 
   const inicio = destinoInicial(sessao)
   const termoAceito = (sessao.usuario?.termoVersao ?? 0) >= VERSAO_TERMO
@@ -65,6 +68,12 @@ function App() {
     <Routes>
       <Route path="/entrar" element={sessao.login ? <Navigate to={inicio} replace /> : <Entrar />} />
       <Route path="/cadastro" element={sessao.usuario && sessao.usuario.status !== 'recusado' ? <Navigate to={inicio} replace /> : <Cadastro />} />
+      {/* Link próprio para agregados (empresa com caminhão próprio): tem o passo Caminhões. */}
+      <Route
+        path="/cadastro-agregado"
+        element={sessao.usuario && sessao.usuario.status !== 'recusado' ? <Navigate to={inicio} replace /> : <Cadastro agregado />}
+      />
+      <Route path="/agregado" element={inicio === '/agregado' ? <Agregado /> : <Navigate to={inicio} replace />} />
       <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
       <Route path="/aguardando" element={inicio === '/aguardando' ? <Aguardando /> : <Navigate to={inicio} replace />} />
       <Route path="/termo" element={inicio === '/termo' ? <AceiteTermo /> : <Navigate to={inicio} replace />} />
@@ -72,7 +81,7 @@ function App() {
 
       <Route element={ativo ? <Layout /> : <Navigate to={inicio} replace />}>
         {/* Todos os perfis fazem check-in. */}
-        <Route path="/presenca" element={<Presenca />} />
+        <Route path="/presenca" element={inicio === '/agregado' ? <Navigate to="/agregado" replace /> : <Presenca />} />
         {equipe && (
           <>
             <Route path="/equipe/presencas" element={<PresencasHoje />} />

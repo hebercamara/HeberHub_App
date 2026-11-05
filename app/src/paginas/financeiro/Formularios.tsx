@@ -6,7 +6,7 @@ import { formatarData, hojeEmSaoPaulo } from '../../lib/datas'
 import { formatarReais, lerReais } from '../../lib/dinheiro'
 import { mensagemDeErro } from '../../lib/erros'
 import { db } from '../../lib/firebase'
-import type { Presenca, Usuario } from '../../lib/tipos'
+import { ehAgregado, type Presenca, type Usuario } from '../../lib/tipos'
 
 type Props = { usuarios: Usuario[]; competencia: string; aoTerminar: () => void }
 
@@ -19,7 +19,7 @@ function dataSugerida(competencia: string): string {
 }
 
 function pessoasAtivas(usuarios: Usuario[]) {
-  return usuarios.filter((u) => u.status === 'ativo')
+  return usuarios.filter((u) => u.status === 'ativo' && !ehAgregado(u))
 }
 
 function Moldura({ titulo, children }: { titulo: string; children: ReactNode }) {

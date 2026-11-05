@@ -5,6 +5,7 @@ import { montarSaude } from './saude.js'
 // Verificação de saúde usada pela tela da Fase 0.
 export const saude = onCall(() => montarSaude())
 
+export { enviarCrlv, salvarCaminhao, salvarEquipeAgregado, salvarValorAgregado, verCrlv } from './agregados.js'
 export { salvarAparencia } from './aparencia.js'
 export { marcarAusencia } from './ausencias.js'
 export { salvarBase } from './bases.js'

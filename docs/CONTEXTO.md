@@ -3,7 +3,7 @@
 > Documento de referência para quem for continuar o projeto, seja uma pessoa ou uma IA.
 > Explica o que o app faz, o que ele deliberadamente **não** faz, as regras de negócio
 > decididas com o dono do projeto (e por quê), a arquitetura técnica e como retomar o trabalho.
-> Atualizado em 30/10/2026, após a entrega de falta e não escalado no calendário.
+> Atualizado em 05/11/2026, após a etapa E1 do Diário de Campo (cadastro de agregados).
 
 ---
 
@@ -46,6 +46,8 @@ A empresa trabalha com **prestadores de serviço PJ** (motoristas e ajudantes) q
 | Termo | Significado |
 | --- | --- |
 | **Prestador** | Pessoa PJ (motorista ou ajudante) que faz check-in e recebe diárias. Faz o autocadastro com os dados da empresa. |
+| **Agregado** | Empresa (CNPJ) com **caminhão próprio**, que cuida do próprio motorista e ajudante. Faz o mesmo cadastro oficial pelo link `/cadastro-agregado`, com os caminhões e o CRLV de cada um. **Não faz check-in nem recebe diária**; recebe por saída e/ou por caixa entregue. Depois de aprovado, não usa o app. |
+| **Veículo / caminhão** | Em `veiculos/{placa}`: placa (sem hífen), tipo, modelo, capacidade, dono, situação (disponível, em manutenção, inativo), nº da frota, rastreador e CRLV. Hoje só os caminhões dos agregados; a frota da casa entra na etapa E2. |
 | **ADM** | Equipe administrativa. Gera o QR, vê presenças, aprova cadastros e lança presença manual. **Não vê valores.** |
 | **ADM Financeiro** | ADM que a coordenação autoriza a ver valores e a lançar adicionais, descontos e lançamentos em grupo. |
 | **Coordenação** | Perfil máximo. Tudo o que o ADM Financeiro faz, mais configurações, valores de diária, fechamento, eventos, usuários e auditoria. |
@@ -242,6 +244,30 @@ Documentos) e só emite os modelos liberados para ele.
   **inativa** depois do último dia de serviço (na hora, se o dia já passou; senão, pela função
   agendada `inativacoesAgendadas`, 00:15).
 
+### 6.2.3 Agregados (etapa E1 do Diário de Campo)
+Plano completo em `docs/PLANO-DIARIO-DE-CAMPO.md`.
+- **Cadastro:** link próprio `/cadastro-agregado` (também na tela de entrada). Os mesmos passos do
+  prestador, mais o passo **Caminhões**: placa (antiga ou Mercosul; guardada sem hífen nem espaço),
+  tipo, modelo e capacidade (opcionais) e o **CRLV** de cada um (PDF ou foto, até 5 MB, guardado no
+  Storage em `crlvs/`, sem prazo de apagar). Pelo menos um caminhão; até 20. Placa repetida ou que já
+  é de outro dono é recusada.
+- **Aprovação** (Configurações › Cadastros): mostra o selo "Agregado" e os caminhões com "Ver CRLV".
+  Não tem função (o servidor ignora). Aprovado, cada caminhão vira `veiculos/{placa}` **disponível**.
+- **Depois de aprovado:** o agregado vê só a tela "Cadastro aprovado" (`/agregado`). **Check-in e
+  presença manual são recusados** para agregado; ele fica fora das listas de presença e dos
+  formulários do Financeiro.
+- **Usuários › agregado** (filtro "Agregados"): **Caminhões** (incluir, alterar situação,
+  nº da frota, rastreador, ver e trocar o CRLV), **Equipe do agregado** (motorista e ajudante só
+  pelo nome, sem check-in; ficam em `agregados/{uid}/equipe`) e, para quem vê valores, **Valores
+  do agregado**: fixo por saída e por caixa entregue, "a partir de" uma data (vazio = R$ 0,00).
+- **Contrato:** variáveis `{{VALOR_FIXO_SAIDA}}` e `{{VALOR_POR_CAIXA}}` (e as `_EXTENSO`). Na
+  emissão, sugerem os valores vigentes; em branco vão como R$ 0,00. **Assinado**, o contrato ou
+  aditivo grava os valores do agregado a partir da data de início (`valoresAgregado`).
+- **Distrato assinado:** o agregado fica inativo e **todos os caminhões dele ficam inativos** (saem
+  da escala) na mesma hora. Inativar pela tela de Usuários faz o mesmo. Com o agregado inativo, o
+  caminhão não volta a ficar disponível.
+- Ainda **não** existe pagamento ao agregado nem fechamento quinzenal (etapa E8).
+
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
    `heberhub:<baseId>_<data>:<token>`; o token é secreto e só sai do servidor por essa tela.
@@ -366,6 +392,9 @@ Tocar em **qualquer dia** do calendário (ou em "Alterar" na lista do dia) abre 
 | Funções **duplicáveis** entre operações | Quase todas as funções existem em todas as operações, mudando só o valor. |
 | Equipe pode **retirar presença**, mesmo de check-in por QR | Pedido do dono ("preciso dessa autonomia"). Estorna a diária e exige justificativa; fica na auditoria. |
 | **Não escalado** como marca simples por dia | Pedido do dono. A escala por carro virá depois; por enquanto, só a marca. |
+| **Agregado** usa o mesmo cadastro oficial, com caminhões dentro do cadastro dele | Pedido do dono: o distrato tira o agregado e os caminhões da escala de uma vez. |
+| Agregado **não faz check-in** e não usa o app depois do cadastro | Pedido do dono: o agregado cuida da própria equipe e acerta com a coordenação. |
+| Valores do agregado **fixo por saída e por caixa**, os dois opcionais | Pedido do dono: depende do cliente; vazio vai zerado no contrato. |
 | Configurações agrupam o que é raro | Menos abas no dia a dia; os cadastros pendentes ficam lá, com contador. |
 
 ## 8. Arquitetura técnica
@@ -410,7 +439,7 @@ docs/CONTEXTO.md          este documento
 
 | Coleção | Conteúdo | Quem lê pelo app |
 | --- | --- | --- |
-| `usuarios/{uid}` | nome, e-mail, telefone, perfil, financeiro, status (pendente, ativo, inativo, recusado), baseId, funcaoId, deviceId, termoVersao, tipo (motorista ou ajudante), razão social, CNPJ | a própria pessoa; ADM e coordenação |
+| `usuarios/{uid}` | nome, e-mail, telefone, perfil, financeiro, status (pendente, ativo, inativo, recusado), baseId, funcaoId, deviceId, termoVersao, tipo (motorista ou ajudante), razão social, CNPJ, categoria (`agregado`; ausente = prestador) | a própria pessoa; ADM e coordenação |
 | `bases/{id}` | nome, lat, lng, raioMetros, precisaoMaxMetros, janelaInicio, janelaFim, ativa | qualquer pessoa logada |
 | `sessoes/{baseId_data}` | token do QR do dia | **ninguém** (só o servidor) |
 | `presencas/{uid_data}` | uid, nome, baseId, data, horário, origem (qrcode, localizacao, manual), distância, lat/lng/precisão (até 90 dias), justificativa, cancelada | a própria pessoa; ADM e coordenação |
@@ -422,7 +451,7 @@ docs/CONTEXTO.md          este documento
 | `fechamentos/{AAAA-MM}` | status, totais por pessoa, líquido, reabertura | coordenação e ADM Financeiro |
 | `eventosPresenca/{id}` | eventos de presença: dias, público, regras (faixas), status, resultado congelado | **só coordenação** |
 | `ausencias/{uid_data}` | falta ou não escalado: tipo, justificativa, baseId, quem marcou | ADM e coordenação |
-| `cadastrosOficiais/{uid}` | enviado (empresa, representante, contato), consulta à Receita, avisos, Cartão CNPJ (caminho no Storage até 60 dias), `oficial` (versão aprovada, com o que a Receita dizia nela), versaoAtual, divergenciasPendentes | a própria pessoa; a equipe |
+| `cadastrosOficiais/{uid}` | enviado (empresa, representante, contato), consulta à Receita, avisos, Cartão CNPJ (caminho no Storage até 60 dias), `oficial` (versão aprovada, com o que a Receita dizia nela), versaoAtual, divergenciasPendentes; do agregado, `caminhoes` e `crlvs` (por placa) | a própria pessoa; a equipe |
 | `cadastrosOficiais/{uid}/versoes/{n}` | histórico do Cadastro Oficial: fontes, descartados, motivo, autor, data | a equipe |
 | `dadosBancarios/{uid}` | banco, agência, conta, tipo, chave PIX, declaração de titularidade | a própria pessoa; quem vê valores (não o ADM comum) |
 | `preCadastros/{cnpj}` | linha da planilha: nome, CPF, telefone, e-mail, tipo, baseId, funcaoId, status (aguardando, vinculado), uid | coordenação, Gestão e Jurídico |
@@ -432,6 +461,9 @@ docs/CONTEXTO.md          este documento
 | `configuracoes/contratante` | dados da contratante e quem assina por ela | a equipe |
 | `consultasCnpj/{cnpj}` | última resposta da Receita (vale 24 h) | **ninguém** (só o servidor) |
 | `configuracoes/aparencia` | cores primária, secundária e fundo | **pública** (aparece no login) |
+| `veiculos/{placa}` | caminhão: tipo, modelo, capacidade, dono (uid do agregado), situação, frota, rastreador, CRLV (caminho no Storage) | a equipe |
+| `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome, função, ativo | a equipe |
+| `valoresAgregado/{uid_inicio}` | fixo por saída e por caixa entregue (centavos), início, documento que gravou | quem vê valores |
 | `auditoria/{id}` | ação, autor, alvo, detalhes, data e hora | só coordenação |
 
 O perfil e o acesso financeiro ficam nos **custom claims** do login (`perfil`, `financeiro`).
@@ -441,6 +473,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 
 | Área | Funções |
 | --- | --- |
+| Agregados | `enviarCrlv` (no cadastro ou, pela equipe, num caminhão), `verCrlv`, `salvarCaminhao`, `salvarEquipeAgregado`, `salvarValorAgregado` |
 | Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
 | Contratos | `salvarContratante`, `salvarModelo`, `prepararEmissao`, `emitirDocumento` (prévia ou emissão), `marcarDocumento` (assinado ou cancelado), `inativacoesAgendadas` (00:15) |
@@ -506,10 +539,12 @@ Oficial em versões), **B** (leitura do Cartão CNPJ) e **C e D** (modelos e emi
 contratos, distrato, aditivo, quitação). **O plano de onboarding está implementado.** Ficam para
 o futuro: integração com o Clicksign e PDF gerado no servidor.
 
+**Em andamento: Diário de Campo** (`docs/PLANO-DIARIO-DE-CAMPO.md`, plano fechado com o dono):
+escala por carro, veículos, agregados, cargas e acompanhamento das rotas. **Etapa E1 (agregados)
+pronta.** Próxima: **E2** (frota da casa e CNH dos motoristas).
+
 **Pendências e ideias registradas:**
-- **Escala por carro** (planejada pelo dono, "com calma"): hoje existe só a marca NE por dia.
-  Rascunho em `docs/PLANO-DIARIO-DE-CAMPO.md` (diário de campo: veículos, escala por carro,
-  cargas e acompanhamento das rotas), aguardando o modelo do diário usado hoje.
+- **Escala por carro:** é a etapa E4 do Diário de Campo; até lá, só a marca NE por dia.
 - Dias marcados como NE contam como ausência nas regras de eventos ("todos os dias"). Confirmar
   com o dono se o NE deve ser desconsiderado nos eventos.
 - Revisão jurídica do termo de privacidade.
@@ -536,6 +571,7 @@ o futuro: integração com o Clicksign e PDF gerado no servidor.
 | Ajustes do onboarding | Área Jurídica separada (seletor Operação/Jurídico); cadastro em 6 passos; CNPJ ainda fora da Receita não trava; responsável legal conferido com titular/sócios; sem "MEI" e sem escolha de função; conferência pelo Cartão CNPJ na aprovação |
 | Onboarding A4 | Acareação formulário × Receita na aprovação, Cadastro Oficial em versões com histórico, alerta quando a Receita muda |
 | Depois | Falta e não escalado no calendário (retirar presença com estorno); Configurações e Aparência; operações separadas das funções (duplicar); calendário semanal e mensal; check-in só por localização (ADM e coordenação); logo; cadastros pendentes com contador; presença manual pela visão do dia para todos os ADMs; eventos de presença comum e esporádico |
+| Diário de Campo E1 | Cadastro de agregado (link próprio, caminhões com CRLV), caminhões aprovados como disponíveis, equipe e valores do agregado, variáveis de contrato, distrato tira os caminhões da escala, agregado sem check-in |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
 

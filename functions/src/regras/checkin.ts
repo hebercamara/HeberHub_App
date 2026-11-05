@@ -14,6 +14,7 @@ export type Leitura = {
 
 export type MotivoRecusa =
   | 'usuario-inativo'
+  | 'agregado'
   | 'termo-pendente'
   | 'sem-base'
   | 'aparelho-diferente'
@@ -27,6 +28,7 @@ export type MotivoRecusa =
 
 export const MENSAGENS: Record<MotivoRecusa, string> = {
   'usuario-inativo': 'Seu cadastro não está ativo. Fale com a coordenação.',
+  agregado: 'Agregado não faz check-in: as saídas do seu caminhão são registradas pela equipe.',
   'termo-pendente': 'Leia e aceite o termo de privacidade antes do primeiro check-in.',
   'sem-base': 'Seu cadastro ainda não tem uma base. Fale com o ADM.',
   'aparelho-diferente': 'Este não é o celular cadastrado. Peça à coordenação para liberar o novo aparelho.',
@@ -60,6 +62,8 @@ export function validarCheckin(args: {
 
   // Todos os perfis podem fazer check-in; basta o cadastro estar ativo.
   if (usuario.status !== 'ativo') return { ok: false, motivo: 'usuario-inativo' }
+  // O agregado é uma empresa com caminhão próprio: as saídas vêm do Diário de Campo.
+  if (usuario.categoria === 'agregado') return { ok: false, motivo: 'agregado' }
   // A localização só é coletada de quem aceitou o termo de privacidade.
   if ((usuario.termoVersao ?? 0) < VERSAO_TERMO) return { ok: false, motivo: 'termo-pendente' }
   if (!usuario.baseId) return { ok: false, motivo: 'sem-base' }

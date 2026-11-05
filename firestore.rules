@@ -69,7 +69,18 @@ service cloud.firestore {
       allow read: if equipe();
     }
 
+    // Veículos (da casa e dos agregados) e a equipe de cada agregado: a equipe.
+    match /veiculos/{placa} {
+      allow read: if equipe();
+    }
+    match /agregados/{uid}/equipe/{id} {
+      allow read: if equipe();
+    }
+
     // Tudo que tem dinheiro.
+    match /valoresAgregado/{id} {
+      allow read: if financeiro();
+    }
     match /valoresDiaria/{id} {
       allow read: if financeiro();
     }

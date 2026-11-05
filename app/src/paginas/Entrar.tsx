@@ -63,6 +63,9 @@ export function Entrar() {
       <p className="rodape-cartao">
         Prestador sem cadastro? <Link to="/cadastro">Cadastre-se</Link>
       </p>
+      <p className="rodape-cartao">
+        Agregado (empresa com caminhão próprio)? <Link to="/cadastro-agregado">Cadastro de agregado</Link>
+      </p>
       <p className="rodape-cartao suave">
         <Link to="/privacidade">Termo de privacidade</Link>
       </p>

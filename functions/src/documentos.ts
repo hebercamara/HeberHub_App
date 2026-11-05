@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 import { onCall, type CallableRequest } from 'firebase-functions/v2/https'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import sanitizeHtml from 'sanitize-html'
+import { gravarValoresAgregado, valoresAgregadoEm } from './agregados.js'
 import { atualizarReceita } from './cadastroOficial.js'
 import { preencherPendentes } from './cadastros.js'
 import { exigirMesAberto, valorVigente } from './financeiro.js'
@@ -149,7 +150,9 @@ async function dadosDoPrestador(uid: string) {
   return { usuario, oficial, banco: banco.data() as Record<string, string> | undefined, cadastro }
 }
 
-type Campos = Partial<Record<Exclude<CampoEmissao, 'TESTEMUNHAS' | 'VALOR_DIARIA'>, string>> & { VALOR_DIARIA?: number; TESTEMUNHAS?: { nome: string; cpf: string }[] }
+type CampoValor = 'VALOR_DIARIA' | 'VALOR_FIXO_SAIDA' | 'VALOR_POR_CAIXA'
+type Campos = Partial<Record<Exclude<CampoEmissao, 'TESTEMUNHAS' | CampoValor>, string>> &
+  Partial<Record<CampoValor, number>> & { TESTEMUNHAS?: { nome: string; cpf: string }[] }
 
 /** Lê e confere os campos da emissão que o modelo pede. */
 function lerCampos(valor: unknown, pedidos: CampoEmissao[]): Campos {
@@ -157,6 +160,11 @@ function lerCampos(valor: unknown, pedidos: CampoEmissao[]): Campos {
   const campos: Campos = {}
   for (const campo of pedidos) {
     if (campo === 'VALOR_DIARIA') campos.VALOR_DIARIA = centavos(d.VALOR_DIARIA, 'o valor da diária')
+    // Agregado: valor não preenchido vai zerado no contrato.
+    else if (campo === 'VALOR_FIXO_SAIDA' || campo === 'VALOR_POR_CAIXA') {
+      const valor = d[campo]
+      campos[campo] = valor === undefined || valor === null || valor === '' ? 0 : centavos(valor, campo === 'VALOR_FIXO_SAIDA' ? 'o valor fixo por saída' : 'o valor por caixa entregue')
+    }
     else if (campo === 'FUNCAO_PRESTADA') campos.FUNCAO_PRESTADA = texto(d.FUNCAO_PRESTADA, 'a função prestada', { min: 3, max: 120 })
     else if (campo === 'TESTEMUNHAS') {
       const lista = Array.isArray(d.TESTEMUNHAS) ? (d.TESTEMUNHAS as { nome?: unknown; cpf?: unknown }[]) : []
@@ -214,6 +222,12 @@ async function montarValores(uid: string, campos: Campos, emissor: string) {
     v.VALOR_DIARIA = reais(campos.VALOR_DIARIA)
     v.VALOR_DIARIA_EXTENSO = reaisPorExtenso(campos.VALOR_DIARIA)
   }
+  for (const c of ['VALOR_FIXO_SAIDA', 'VALOR_POR_CAIXA'] as const) {
+    if (campos[c] !== undefined) {
+      v[c] = reais(campos[c]!)
+      v[`${c}_EXTENSO`] = reaisPorExtenso(campos[c]!)
+    }
+  }
   for (const c of ['DATA_INICIO_CONTRATO', 'DATA_FIM_SERVICO', 'DATA_CONTRATO_ORIGINAL', 'DATA_RESCISAO'] as const) {
     if (campos[c]) v[c] = dataCurta(campos[c]!)
   }
@@ -262,6 +276,11 @@ export const prepararEmissao = onCall(async (req) => {
     sugestoes.FUNCAO_PRESTADA = (funcao?.get('nome') as string | undefined) ?? (usuario.get('funcao') === 'ajudante' ? 'Ajudante' : 'Motorista')
   }
   if (campos.includes('VALOR_DIARIA')) sugestoes.VALOR_DIARIA = await db.runTransaction((tx) => valorVigente(tx, uid, funcaoId, hoje))
+  if (campos.includes('VALOR_FIXO_SAIDA') || campos.includes('VALOR_POR_CAIXA')) {
+    const vigentes = await valoresAgregadoEm(uid, hoje)
+    if (campos.includes('VALOR_FIXO_SAIDA')) sugestoes.VALOR_FIXO_SAIDA = vigentes?.fixoSaida ?? 0
+    if (campos.includes('VALOR_POR_CAIXA')) sugestoes.VALOR_POR_CAIXA = vigentes?.porCaixa ?? 0
+  }
   if (campos.includes('DATA_INICIO_CONTRATO')) sugestoes.DATA_INICIO_CONTRATO = hoje
   if (campos.includes('DATA_RESCISAO')) sugestoes.DATA_RESCISAO = hoje
   if (campos.includes('DATA_FIM_SERVICO')) {
@@ -349,6 +368,12 @@ export const marcarDocumento = onCall(async (req) => {
     if (atual.get('status') !== 'emitido') throw falha('Este documento não está aguardando assinatura.', 'failed-precondition')
     const usuario = await tx.get(db.collection('usuarios').doc(uid))
     const defineDiaria = (tipo === 'contrato' || tipo === 'aditivo') && campos.VALOR_DIARIA !== undefined && campos.DATA_INICIO_CONTRATO
+    // Agregado: o contrato (ou aditivo) assinado define o fixo por saída e o valor por caixa.
+    const defineAgregado =
+      (tipo === 'contrato' || tipo === 'aditivo') &&
+      usuario.get('categoria') === 'agregado' &&
+      (campos.VALOR_FIXO_SAIDA !== undefined || campos.VALOR_POR_CAIXA !== undefined) &&
+      campos.DATA_INICIO_CONTRATO
     if (defineDiaria) await exigirMesAberto(tx, campos.DATA_INICIO_CONTRATO!)
     tx.update(doc.ref, { status: 'assinado', assinadoPor: autor, assinadoEm: agoraServidor() })
     if (defineDiaria) {
@@ -363,6 +388,10 @@ export const marcarDocumento = onCall(async (req) => {
         documentoId: id,
       })
       efeitos.push('diaria')
+    }
+    if (defineAgregado) {
+      gravarValoresAgregado(tx, uid, { fixoSaida: campos.VALOR_FIXO_SAIDA ?? 0, porCaixa: campos.VALOR_POR_CAIXA ?? 0 }, campos.DATA_INICIO_CONTRATO!, autor, id)
+      efeitos.push('valores-agregado')
     }
     // Distrato com data futura: inativa no dia (função agendada); com data passada ou hoje, já.
     if (tipo === 'distrato' && campos.DATA_FIM_SERVICO && usuario.get('status') === 'ativo') {

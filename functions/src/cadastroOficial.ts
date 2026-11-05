@@ -3,6 +3,7 @@
 import { FieldValue, Timestamp, type DocumentSnapshot, type Transaction } from 'firebase-admin/firestore'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
+import { lerCaminhoes, placaDeOutro } from './agregados.js'
 import { agora, agoraServidor, auditar, balde, db, exigirLogin, exigirPerfil, falha, perfilDe, texto } from './infra.js'
 import { lerArquivoDoCartao, type Leitura } from './leituraCartao.js'
 import { consultarReceita, type ResultadoReceita } from './receita.js'
@@ -14,7 +15,8 @@ import { VERSAO_TERMO } from './regras/privacidade.js'
 import { CAMPOS_EMPRESA, consolidar, divergencias, empresaDaReceita, type CampoEmpresa, type Empresa, type Escolha } from './regras/acareacao.js'
 import { conferirVinculo, type LinhaImportada } from './regras/importacao.js'
 import { ALERTAS_DE_CONFERENCIA, alertasDoCadastro, assinaturaSocios, cnpjApto, conferirResponsavel, responsaveis, socioCorrespondente, type DadosReceita, type Endereco } from './regras/receita.js'
-import type { Funcao, Status } from './tipos.js'
+import { placaFormatada } from './regras/veiculos.js'
+import type { Categoria, Funcao, Status } from './tipos.js'
 
 const usuarios = db.collection('usuarios')
 const cadastros = db.collection('cadastrosOficiais')
@@ -148,8 +150,11 @@ export const enviarCadastroOficial = onCall(async (req) => {
   const d = (req.data ?? {}) as Record<string, Record<string, unknown> & { endereco?: unknown }>
   if ((req.data?.aceiteTermo as unknown) !== VERSAO_TERMO) throw falha('Para se cadastrar, leia e aceite o termo de privacidade.')
 
+  // Agregado: empresa com caminhão próprio (link de cadastro de agregado), com a lista de caminhões.
+  const categoria: Categoria = req.data?.categoria === 'agregado' ? 'agregado' : 'prestador'
+  const caminhoes = categoria === 'agregado' ? lerCaminhoes(req.data?.caminhoes) : null
   // A função não é escolhida por quem se cadastra (a equipe define); fica como veio da planilha, se houver.
-  const funcao: Funcao | null = req.data?.funcao === 'motorista' || req.data?.funcao === 'ajudante' ? req.data.funcao : null
+  const funcao: Funcao | null = categoria === 'prestador' && (req.data?.funcao === 'motorista' || req.data?.funcao === 'ajudante') ? req.data.funcao : null
   const telefone = texto(req.data?.telefone, 'o telefone', { min: 10, max: 20 })
   if (soDigitos(telefone).length < 10) throw falha('Telefone inválido.')
 
@@ -216,6 +221,12 @@ export const enviarCadastroOficial = onCall(async (req) => {
     const refCadastro = cadastros.doc(uid)
     const refPre = db.collection('preCadastros').doc(cnpj)
     const [atual, cadastro, pre] = [await tx.get(refUsuario), await tx.get(refCadastro), await tx.get(refPre)]
+    // Cada caminhão precisa do CRLV enviado e de uma placa que não seja de outro dono.
+    const veiculosAtuais = caminhoes ? await Promise.all(caminhoes.map((c) => tx.get(db.collection('veiculos').doc(c.placa)))) : []
+    const ocupadas = veiculosAtuais.filter((v) => placaDeOutro(v, uid)).map((v) => placaFormatada(v.id))
+    if (ocupadas.length) throw falha(`Placa já cadastrada no HeberHub: ${ocupadas.join(', ')}. Fale com a equipe.`, 'already-exists')
+    const semCrlv = (caminhoes ?? []).filter((c) => !cadastro.get(`crlvs.${c.placa}.caminho`)).map((c) => placaFormatada(c.placa))
+    if (semCrlv.length) throw falha(`Envie o CRLV do caminhão ${semCrlv.join(', ')}.`)
     const status = atual.get('status') as Status | undefined
     if (atual.exists && status !== 'pendente' && status !== 'recusado') throw falha('Seu cadastro já foi aprovado.', 'already-exists')
     if (!cadastro.get('cartao.caminho')) throw falha('Envie o Cartão CNPJ (PDF ou foto).')
@@ -248,6 +259,7 @@ export const enviarCadastroOficial = onCall(async (req) => {
       razaoSocial: dadosEmpresa.razaoSocial,
       cnpj,
       perfil: 'prestador',
+      categoria,
       financeiro: false,
       status: 'pendente',
       baseId: null,
@@ -269,12 +281,13 @@ export const enviarCadastroOficial = onCall(async (req) => {
         receita: dadosReceita,
         receitaConsultadaEm: dadosReceita ? agoraServidor() : null,
         alertas,
+        caminhoes,
         enviadoEm: agoraServidor(),
       },
       { merge: true },
     )
     tx.set(bancarios.doc(uid), { ...banco, declaracaoTitular: true, atualizadoEm: agoraServidor() })
-    auditar(tx, { acao: 'cadastro-oficial-enviado', autor: uid, alvo: uid, detalhes: { alertas: alertas.map((a) => a.codigo) } })
+    auditar(tx, { acao: 'cadastro-oficial-enviado', autor: uid, alvo: uid, detalhes: { categoria, alertas: alertas.map((a) => a.codigo), caminhoes: caminhoes?.map((c) => c.placa) ?? [] } })
     return alertas
   })
   return { ok: true, alertas }

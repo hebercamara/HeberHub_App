@@ -157,7 +157,7 @@ escolheu.
 | | Km do painel na chegada | digitado |
 | | Temperatura do baú na chegada | digitado; aviso acima de −10 °C |
 | **Km** | Km rodado **anotado** (chegada − saída) | calculado |
-| | Km do **rastreador** | digitado (futuro: puxado do rastreador) |
+| | **KM UNB** (km do rastreador) | digitado (futuro: puxado do rastreador) |
 | | **Diferença** anotado × rastreador | calculado |
 | **Caixas** | Carregadas (conferente) | equipe lança |
 | | Reentrega e devolução (contadas no armazém com o motorista); se confirmado, separadas em **varejo** e **mercado** | equipe lança |
@@ -202,7 +202,9 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
   manobrista e prestador nosso no caminhão do agregado).
 - **Escalado e não veio:** depois da janela de check-in aparece "não veio"; a equipe confirma a
   **Falta** (com justificativa) e troca a pessoa.
-- **Não escalado:** quem fica fora de todas as rotas recebe **NE** automático.
+- **Reserva:** pessoas escaladas para ficar na base sem carro, para cobrir faltas. Fazem
+  check-in e recebem a diária normalmente.
+- **Não escalado:** quem fica fora de todas as rotas **e da reserva** recebe **NE** automático.
 - **Viagem:** motorista e ajudante escalados na rota de viagem recebem **presença automática**
   em **cada dia** desde a saída **até o dia da volta** registrado no diário, mesmo sem check-in.
   É uma **nova origem de presença** ("viagem"), marcada no calendário com letra própria e na
@@ -297,7 +299,7 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
 
 | Etapa | O que entra | Por que nessa ordem |
 | --- | --- | --- |
-| **E1. Agregados** | Link de cadastro de agregado com caminhões e CRLV, categoria, equipe do agregado, valores fixo/caixa no contrato, distrato tirando tudo da escala | Reaproveita quase todo o onboarding pronto |
+| **E1. Agregados** ✅ | Link de cadastro de agregado com caminhões e CRLV, categoria, equipe do agregado, valores fixo/caixa no contrato, distrato tirando tudo da escala | Reaproveita quase todo o onboarding pronto. **Pronta em 05/11/2026** (ver `CONTEXTO.md` 6.2.3) |
 | **E2. Veículos e CNH** | Frota da casa (frota, tipo, rastreador, situação, manutenção), marca "exige CNH" na função, CNH com validade e bloqueio | Base da escala |
 | **E3. Regras da operação** | Cor, campos que aparecem no diário, roteiros, modalidades, perfis cobrados, brokers, largada, temperatura, desconto do agregado, adicional de viagem | O diário depende delas |
 | **E4. Escala por carro** | Diário do dia (tabela com filtros por data), rotas, tipo de serviço, pessoas nos carros, NE automático, check-in ao vivo, falta e troca | Substitui a aba "Escala" e a planilha da véspera |
@@ -308,13 +310,14 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
 | **E9. Relatórios** | Por dia, veículo, pessoa, rota, operação: km, diferenças, horários, caixas, temperaturas; Excel e PDF (sem CPF) | Aproveita os dados acumulados |
 | **Futuro** | Baús, leitura da CNH, km puxado do rastreador, aviso de km fora do normal, faturamento ao cliente, CNH do motorista do agregado | Adiados pelo dono |
 
-## 11. Pontos para confirmar durante a construção
-O dono considera o plano fechado. Ficam só detalhes, a confirmar quando a etapa chegar:
-1. **V e M** no retorno do modelo de sorvete: provavelmente **varejo** e **mercado**.
-2. **KM UNB** do modelo de carga seca: entendido como o **km do rastreador**.
-3. **Reserva** (gente na base sem carro para cobrir falta): existe?
-4. **Motivos de devolução** e de **cancelamento**: lista a montar com a equipe.
-5. **Aviso de km** fora do normal: o dono define depois.
+## 11. Pontos confirmados no fim
+- **V e M** no retorno = **varejo** e **mercado** (as caixas de reentrega e devolução são
+  separadas por esses dois tipos de cliente).
+- **KM UNB** mantém **esse nome** no diário (é o km do rastreador).
+- **Reserva existe:** a escala do dia tem uma lista de **pessoas na reserva** (na base, sem
+  carro), que cobrem faltas. Quem está na reserva **não** recebe NE.
+- Ainda a montar com a equipe: motivos de devolução e de cancelamento; aviso de km fora do
+  normal (o dono define depois).
 
 ## 12. Histórico das decisões (05/11/2026)
 - Rodada 1: rascunho geral (escala, carros, cargas, rotas).
@@ -334,3 +337,5 @@ O dono considera o plano fechado. Ficam só detalhes, a confirmar quando a etapa
   fechamento quinzenal); adicional de viagem por dia; diário em tabela com filtro por data;
   escala montada na véspera, aviso pelo WhatsApp; a equipe lança tudo; sem aviso de km por
   enquanto; nome "Diário de Campo"; a coordenação escolhe os campos de cada operação.
+- Rodada 7: V e M = varejo e mercado; "KM UNB" mantém o nome; existe reserva. Início da
+  construção pela etapa E1 (agregados).

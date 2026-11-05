@@ -1,7 +1,7 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
 import type { Faixa, Publico } from './eventos'
-import type { Alerta, CampoEmissao, CamposEmissao, Contratante, DadosBancarios, DadosEmpresa, ModeloDocumento, Perfil, RelatorioImportacao, Representante } from './tipos'
+import type { Alerta, Caminhao, CampoEmissao, Funcao, SituacaoVeiculo, TipoVeiculo, CamposEmissao, Contratante, DadosBancarios, DadosEmpresa, ModeloDocumento, Perfil, RelatorioImportacao, Representante } from './tipos'
 import type { CampoEmpresa, Escolha } from './acareacao'
 import type { Endereco } from './documentos'
 
@@ -38,6 +38,9 @@ export type EnvioCadastroOficial = {
   empresa: DadosEmpresa
   representante: Representante
   banco: Omit<DadosBancarios, 'declaracaoTitular'> & { declaracaoTitular: boolean }
+  /** Só no cadastro de agregado. */
+  categoria?: 'agregado'
+  caminhoes?: Caminhao[]
 }
 
 export type RespostaCheckin =
@@ -49,6 +52,15 @@ export const api = {
   enviarCartaoCnpj: chamada<{ tipo: string; base64: string; cnpj?: string }, LeituraDoCartao>('enviarCartaoCnpj'),
   enviarCadastroOficial: chamada<EnvioCadastroOficial, { ok: true; alertas: Alerta[] }>('enviarCadastroOficial'),
   verCartaoCnpj: chamada<{ uid?: string }, { tipo: string; base64: string }>('verCartaoCnpj'),
+  /** paraVeiculo: a equipe troca o CRLV de um caminhão já aprovado. */
+  enviarCrlv: chamada<{ placa: string; tipo: string; base64: string; paraVeiculo?: boolean }>('enviarCrlv'),
+  verCrlv: chamada<{ placa: string; uid?: string }, { tipo: string; base64: string }>('verCrlv'),
+  salvarCaminhao: chamada<
+    { uid: string; placa: string; tipo: TipoVeiculo; modelo: string; capacidadeCaixas: number | null; frota: string; rastreador: string; situacao: Exclude<SituacaoVeiculo, 'pendente'> },
+    { ok: true; placa: string }
+  >('salvarCaminhao'),
+  salvarEquipeAgregado: chamada<{ uid: string; id?: string; nome: string; funcao: Funcao; ativo: boolean }, { ok: true; id: string }>('salvarEquipeAgregado'),
+  salvarValorAgregado: chamada<{ uid: string; fixoSaida: number; porCaixa: number; inicio: string }>('salvarValorAgregado'),
   importarPrestadores: chamada<{ cabecalho: string[]; linhas: string[][] }, RelatorioImportacao>('importarPrestadores'),
   excluirPreCadastro: chamada<{ cnpj: string }>('excluirPreCadastro'),
   salvarContratante: chamada<Contratante>('salvarContratante'),

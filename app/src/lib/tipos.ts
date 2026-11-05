@@ -4,6 +4,8 @@ import type { Endereco } from './documentos'
 export type Perfil = 'prestador' | 'adm' | 'coordenacao' | 'gestao' | 'juridico'
 export type Status = 'pendente' | 'ativo' | 'inativo' | 'recusado'
 export type Funcao = 'motorista' | 'ajudante'
+/** Prestador: pessoa PJ que recebe diária. Agregado: empresa com caminhão próprio (não faz check-in). */
+export type Categoria = 'prestador' | 'agregado'
 
 export type Usuario = {
   id: string
@@ -24,6 +26,67 @@ export type Usuario = {
   cnpj?: string
   /** Enviou o cadastro oficial completo (onboarding). */
   cadastroOficial?: boolean
+  /** Ausente = prestador. */
+  categoria?: Categoria
+}
+
+/** Agregado não faz check-in nem recebe diária: fica fora das listas de presença. */
+export function ehAgregado(u: Pick<Usuario, 'categoria'> | null | undefined): boolean {
+  return u?.categoria === 'agregado'
+}
+
+// Veículos e agregados (etapa E1 do Diário de Campo). Espelho de functions/src/regras/veiculos.ts.
+export type TipoVeiculo = 'vuc' | 'vuc-eletrico' | 'hr' | 'van' | 'van-eletrica' | 'saveiro' | 'fs' | 'rabeco' | 'toco' | 'truck' | 'outro'
+export const NOMES_TIPO_VEICULO: Record<TipoVeiculo, string> = {
+  vuc: 'VUC',
+  'vuc-eletrico': 'VUC elétrico',
+  hr: 'HR',
+  van: 'Van',
+  'van-eletrica': 'Van elétrica',
+  saveiro: 'Saveiro',
+  fs: 'F.S',
+  rabeco: 'Rabeco',
+  toco: 'Toco',
+  truck: 'Truck',
+  outro: 'Outro',
+}
+export type SituacaoVeiculo = 'pendente' | 'disponivel' | 'manutencao' | 'inativo'
+export const NOMES_SITUACAO_VEICULO: Record<SituacaoVeiculo, string> = {
+  pendente: 'Aguardando aprovação',
+  disponivel: 'Disponível',
+  manutencao: 'Em manutenção',
+  inativo: 'Inativo',
+}
+/** Caminhão informado no cadastro do agregado. */
+export type Caminhao = { placa: string; tipo: TipoVeiculo | ''; modelo: string; capacidadeCaixas: number | null }
+/** Documento em veiculos/{placa}. */
+export type Veiculo = Caminhao & {
+  id: string
+  tipo: TipoVeiculo
+  dono: string
+  donoNome: string
+  origem: 'agregado' | 'casa'
+  situacao: SituacaoVeiculo
+  frota: string | null
+  rastreador: string | null
+  crlv: { caminho: string; tipo: string } | null
+  motivoInativo?: string | null
+}
+/** Motorista ou ajudante do agregado, em agregados/{uid}/equipe/{id}: só o nome. */
+export type PessoaDoAgregado = { id: string; nome: string; funcao: Funcao; ativo: boolean }
+/** Valores do agregado a partir de uma data, em centavos (vazio = zero). */
+export type ValorAgregado = { id: string; uid: string; fixoSaida: number; porCaixa: number; inicio: string; documentoId?: string | null }
+
+/** "fcb-3e52" → "FCB3E52"; "egj7262" → "EGJ-7262" (só a placa antiga leva hífen). */
+export function normalizarPlaca(valor: string): string {
+  return valor.toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+export function placaValida(valor: string): boolean {
+  return /^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(normalizarPlaca(valor))
+}
+export function placaFormatada(valor: string): string {
+  const p = normalizarPlaca(valor)
+  return /^[A-Z]{3}\d{4}$/.test(p) ? `${p.slice(0, 3)}-${p.slice(3)}` : p
 }
 
 export type Base = {
@@ -188,6 +251,9 @@ export type CadastroOficial = {
     /** O que foi lido do arquivo (PDF pelo texto; foto pelo OCR). */
     leitura?: { dados: { cnpj: string; situacao: string; razaoSocial: string; emitidoEm: string | null } | null; metodo: 'pdf' | 'ocr'; erro: string | null }
   }
+  /** Agregado: caminhões informados no cadastro e o CRLV enviado de cada um (por placa). */
+  caminhoes?: Caminhao[] | null
+  crlvs?: Record<string, { caminho: string; tipo: string }>
   /** Versão aprovada (a que vale nos contratos). */
   oficial?: { empresa: DadosEmpresa; representante: Representante; contato: { telefone: string; email: string }; receitaReferencia?: DadosEmpresa | null }
   versaoAtual?: number
@@ -229,11 +295,13 @@ export type ModeloDocumento = {
   ativo: boolean
 }
 
-export type CampoEmissao = 'FUNCAO_PRESTADA' | 'VALOR_DIARIA' | 'DATA_INICIO_CONTRATO' | 'DATA_FIM_SERVICO' | 'DATA_CONTRATO_ORIGINAL' | 'DATA_RESCISAO' | 'TESTEMUNHAS'
+export type CampoEmissao = 'FUNCAO_PRESTADA' | 'VALOR_DIARIA' | 'VALOR_FIXO_SAIDA' | 'VALOR_POR_CAIXA' | 'DATA_INICIO_CONTRATO' | 'DATA_FIM_SERVICO' | 'DATA_CONTRATO_ORIGINAL' | 'DATA_RESCISAO' | 'TESTEMUNHAS'
 
 export type CamposEmissao = {
   FUNCAO_PRESTADA?: string
   VALOR_DIARIA?: number
+  VALOR_FIXO_SAIDA?: number
+  VALOR_POR_CAIXA?: number
   DATA_INICIO_CONTRATO?: string
   DATA_FIM_SERVICO?: string
   DATA_CONTRATO_ORIGINAL?: string

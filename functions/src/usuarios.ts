@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { defineString } from 'firebase-functions/params'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { adminAuth, agoraServidor, auditar, db, emEmulador, exigirLogin, exigirPerfil, falha, perfilDe, texto } from './infra.js'
+import { prepararCaminhoes, retirarCaminhoes } from './agregados.js'
 import { preencherPendentes } from './cadastros.js'
 import { lerConferencia, lerEscolhas, registrarVersao } from './cadastroOficial.js'
 import { PERFIS, recusaDePerfil, veValores } from './regras/perfis.js'
@@ -35,6 +36,8 @@ export async function inativarUsuario(uid: string, autor: string, motivo: string
     return { ...(atual.data() as Usuario), status: 'inativo' as const }
   })
   if (usuario) await aplicarClaims(uid, usuario)
+  // Agregado: os caminhões dele saem da escala junto.
+  if (usuario?.categoria === 'agregado') await retirarCaminhoes(uid, autor, motivo)
 }
 
 async function baseAtiva(baseId: unknown): Promise<string> {
@@ -58,17 +61,21 @@ export const aprovarCadastro = onCall(async (req) => {
   const uid = texto(req.data?.uid, 'o usuário')
   const aprovar = req.data?.aprovar === true
   const baseId = aprovar ? await baseAtiva(req.data?.baseId) : null
-  const funcaoId = aprovar ? await funcaoAtiva(req.data?.funcaoId) : null
+  const funcaoIdPedida = aprovar ? await funcaoAtiva(req.data?.funcaoId) : null
 
   const usuario = await db.runTransaction(async (tx) => {
     const ref = usuarios.doc(uid)
     const atual = await tx.get(ref)
     if (!atual.exists) throw falha('Cadastro não encontrado.', 'not-found')
     if (atual.get('status') !== 'pendente') throw falha('Este cadastro não está pendente.', 'failed-precondition')
+    // Agregado não tem função nem diária: o pagamento é por saída e por caixa.
+    const agregado = atual.get('categoria') === 'agregado'
+    const funcaoId = agregado ? null : funcaoIdPedida
     // Leituras antes das escritas (regra das transações).
     const oficial = aprovar && atual.get('cadastroOficial') === true ? await tx.get(db.collection('cadastrosOficiais').doc(uid)) : null
     const refPre = db.collection('preCadastros').doc(String(atual.get('cnpj')))
     const pre = aprovar && atual.get('vinculo') === true ? await tx.get(refPre) : null
+    const gravarCaminhoes = aprovar && agregado && oficial ? await prepararCaminhoes(tx, uid, oficial) : null
     // Cadastro oficial: só aprova com a Receita consultada, o CNPJ ATIVO e as divergências resolvidas.
     let razaoSocialOficial: string | null = null
     if (oficial) {
@@ -82,7 +89,8 @@ export const aprovarCadastro = onCall(async (req) => {
       ? { status: 'ativo' as const, baseId, funcaoId, aprovadoPor: autor, aprovadoEm: agoraServidor(), ...(razaoSocialOficial ? { razaoSocial: razaoSocialOficial } : {}) }
       : { status: 'recusado' as const }
     tx.update(ref, { ...mudancas, atualizadoEm: agoraServidor() })
-    auditar(tx, { acao: aprovar ? 'cadastro-aprovado' : 'cadastro-recusado', autor, alvo: uid, detalhes: { baseId, funcaoId } })
+    const caminhoes = gravarCaminhoes?.({ nome: atual.get('nome'), razaoSocial: razaoSocialOficial ?? atual.get('razaoSocial') ?? '', baseId, autor }) ?? 0
+    auditar(tx, { acao: aprovar ? 'cadastro-aprovado' : 'cadastro-recusado', autor, alvo: uid, detalhes: { baseId, funcaoId, ...(agregado ? { categoria: 'agregado', caminhoes } : {}) } })
     return { ...(atual.data() as Usuario), ...mudancas }
   })
 
@@ -165,6 +173,7 @@ export const atualizarUsuario = onCall(async (req) => {
   })
 
   await aplicarClaims(uid, usuario)
+  if (mudancas.status === 'inativo' && usuario.categoria === 'agregado') await retirarCaminhoes(uid, autor, 'agregado inativado')
   // Diárias lançadas antes de a pessoa ter função passam a usar o valor dela.
   if (mudancas.funcaoId) await preencherPendentes(autor, uid)
   return { ok: true }
