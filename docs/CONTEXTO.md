@@ -215,8 +215,10 @@ Documentos) e só emite os modelos liberados para ele.
   limpa o HTML (sem scripts) e recusa variável que não existe. **Texto novo = versão nova**
   (`versoes/{n}`); cada documento guarda a versão usada. Os textos dos contratos **não ficam no
   código** (o repositório é público): moram só no banco.
-- **Contratante e testemunhas** (`configuracoes/contratante`, `testemunhas`): dados da
-  empresa que contrata (aparecem nas variáveis CONTRATANTE_*) e testemunhas frequentes.
+- **Contratante e Clicksign** (`configuracoes/contratante`): dados da empresa que contrata
+  (aparecem nas variáveis CONTRATANTE_*), quem assina por ela e o teste do Clicksign.
+  **Testemunhas não são cadastradas:** em cada emissão, quem emite digita nome e CPF das duas
+  (decisão do dono: cada contrato pode ter testemunhas diferentes).
 - **Emitir:** escolhe o prestador (só quem tem Cadastro Oficial) e o modelo. Antes, o servidor
   **consulta a Receita de novo**: CNPJ fora de ATIVA ou mudança desde o Cadastro Oficial
   **bloqueiam** (resolve-se em Prestadores); a mensagem diz o que mudou (campos da empresa ou
@@ -226,7 +228,8 @@ Documentos) e só emite os modelos liberados para ele.
   ("Héber Câmara" × "HEBER RODRIGUES CAMARA") é aceito quando o CPF que a Receita mostra confere.
   A conferência do responsável usa o do Cadastro Oficial (não o enviado no cadastro). Campos da emissão com sugestão: função (a da pessoa),
   valor da diária (o vigente), início (hoje), último dia de serviço (última presença), contrato
-  original (último contrato emitido), rescisão (hoje) e duas testemunhas. **Prévia** antes de
+  original (último contrato emitido), rescisão (hoje) e as duas testemunhas (nome e CPF
+  digitados na hora, CPF conferido, pessoas diferentes). **Prévia** antes de
   emitir; dado que falta aparece marcado em amarelo e impede a emissão. Valores por extenso
   ("cento e trinta e cinco reais e cinquenta centavos"), datas por extenso, estado civil e
   nacionalidade concordando com o sexo.
@@ -426,7 +429,7 @@ docs/CONTEXTO.md          este documento
 | `importacoes/{id}` | relatório de cada importação (novas, atualizadas, recusadas, avisos) | coordenação, Gestão e Jurídico |
 | `modelosDocumento/{id}` (+ `versoes/{n}`) | modelos: nome, tipo, quem emite, texto (HTML), versão atual, ativo | a equipe (versões: coordenação) |
 | `documentos/{id}` | documento emitido: prestador, modelo e versão, campos, texto final, hash e código, status (emitido, assinado, cancelado) | a equipe |
-| `testemunhas/{id}` e `configuracoes/contratante` | testemunhas frequentes e dados da contratante | a equipe |
+| `configuracoes/contratante` | dados da contratante e quem assina por ela | a equipe |
 | `consultasCnpj/{cnpj}` | última resposta da Receita (vale 24 h) | **ninguém** (só o servidor) |
 | `configuracoes/aparencia` | cores primária, secundária e fundo | **pública** (aparece no login) |
 | `auditoria/{id}` | ação, autor, alvo, detalhes, data e hora | só coordenação |
@@ -440,7 +443,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | --- | --- |
 | Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
-| Contratos | `salvarContratante`, `salvarTestemunha`, `salvarModelo`, `prepararEmissao`, `emitirDocumento` (prévia ou emissão), `marcarDocumento` (assinado ou cancelado), `inativacoesAgendadas` (00:15) |
+| Contratos | `salvarContratante`, `salvarModelo`, `prepararEmissao`, `emitirDocumento` (prévia ou emissão), `marcarDocumento` (assinado ou cancelado), `inativacoesAgendadas` (00:15) |
 | Usuários | `aprovarCadastro`, `criarUsuarioInterno`, `atualizarUsuario`, `reivindicarCoordenacao` (cria a Gestão), `assumirGestao` |
 | Presença | `registrarPresenca` (QR ou localização), `registrarPresencaManual`, `marcarAusencia` (falta, não escalado ou limpar; retira presença e estorna a diária), `gerarQrDoDia` |
 | Cadastros | `salvarBase`, `salvarOperacao`, `salvarFuncao`, `duplicarFuncoes`, `salvarValorDiaria`, `salvarAparencia` |
@@ -461,7 +464,7 @@ módulo importa antes de criar funções. Colocá-lo no `index.ts` fez as funç�
   `Firebase-<alias>`.
 - **Clicksign:** secret `CLICKSIGN_TOKEN` (token da API) e variável `CLICKSIGN_AMBIENTE`
   (`sandbox` para testes, `producao` para a conta real). O deploy os grava no `.env` das
-  funções. Jurídico › Contratos › Contratante e testemunhas tem o botão **"Testar conexão com o
+  funções. Jurídico › Contratos › Contratante e Clicksign tem o botão **"Testar conexão com o
   Clicksign"** e os dados de **quem assina pela contratante** (nome, e-mail e CPF; ficam no banco,
   não no código). Integração em construção: envio do PDF para assinatura (todas as partes ao
   mesmo tempo, quando o ADM pedir), testemunhas informadas em cada emissão, aviso de assinado e

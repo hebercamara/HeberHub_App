@@ -2,19 +2,18 @@ import { useState, type FormEvent } from 'react'
 import { Aviso } from '../../../componentes/Aviso'
 import { api } from '../../../lib/api'
 import { mascararCnpj } from '../../../lib/cnpj'
-import { useContratante, useTestemunhas } from '../../../lib/contratos'
-import { cpfValido, mascararCpf } from '../../../lib/documentos'
+import { useContratante } from '../../../lib/contratos'
+import { mascararCpf } from '../../../lib/documentos'
 import { mensagemDeErro } from '../../../lib/erros'
 import type { Contratante } from '../../../lib/tipos'
 
-/** Dados da contratante (iguais em todos os modelos) e testemunhas frequentes. */
+/** Dados da contratante (iguais em todos os modelos) e teste do Clicksign. */
 export function Ajustes() {
   const contratante = useContratante()
   return (
     <div className="pilha">
       {contratante !== undefined && <FormContratante inicial={contratante} />}
       <TesteClicksign />
-      <Testemunhas />
     </div>
   )
 }
@@ -94,52 +93,6 @@ function FormContratante({ inicial }: { inicial: Contratante | null }) {
         <button type="submit">Salvar contratante</button>
       </div>
     </form>
-  )
-}
-
-function Testemunhas() {
-  const testemunhas = useTestemunhas()
-  const [nome, setNome] = useState('')
-  const [cpf, setCpf] = useState('')
-  const [erro, setErro] = useState('')
-
-  async function adicionar(e: FormEvent) {
-    e.preventDefault()
-    setErro('')
-    if (!cpfValido(cpf)) return setErro('CPF inválido.')
-    try {
-      await api.salvarTestemunha({ nome, cpf, ativa: true })
-      setNome('')
-      setCpf('')
-    } catch (err) {
-      setErro(mensagemDeErro(err))
-    }
-  }
-
-  return (
-    <section className="cartao formulario">
-      <h2>Testemunhas</h2>
-      <p className="suave">Pessoas da empresa que costumam assinar como testemunha. Na emissão, você escolhe duas.</p>
-      <ul className="lista">
-        {testemunhas.map((t) => (
-          <li key={t.id} className="linha-usuario">
-            <span className={t.ativa ? '' : 'suave'}>
-              {t.nome} · CPF {mascararCpf(t.cpf)}
-              {!t.ativa && ' (desativada)'}
-            </span>
-            <button className="link" onClick={() => void api.salvarTestemunha({ id: t.id, nome: t.nome, cpf: t.cpf, ativa: !t.ativa }).catch((e) => setErro(mensagemDeErro(e)))}>
-              {t.ativa ? 'Desativar' : 'Reativar'}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <form onSubmit={adicionar} className="linha">
-        <input aria-label="Nome da testemunha" placeholder="Nome" value={nome} onChange={(e) => setNome(e.target.value)} minLength={3} required />
-        <input aria-label="CPF da testemunha" placeholder="CPF" inputMode="numeric" value={cpf} onChange={(e) => setCpf(mascararCpf(e.target.value))} required />
-        <button type="submit">Adicionar</button>
-      </form>
-      <Aviso>{erro}</Aviso>
-    </section>
   )
 }
 

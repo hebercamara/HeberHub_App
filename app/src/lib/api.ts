@@ -53,7 +53,6 @@ export const api = {
   excluirPreCadastro: chamada<{ cnpj: string }>('excluirPreCadastro'),
   salvarContratante: chamada<Contratante>('salvarContratante'),
   testarClicksign: chamada<void, { ok: boolean; ambiente: 'sandbox' | 'producao'; motivo?: 'sem-token' | 'token-recusado' | 'erro' | 'sem-resposta'; status?: number }>('testarClicksign'),
-  salvarTestemunha: chamada<{ id?: string; nome: string; cpf: string; ativa: boolean }, { ok: true; id: string }>('salvarTestemunha'),
   salvarModelo: chamada<Omit<ModeloDocumento, 'id' | 'versaoAtual'> & { id?: string }, { ok: true; id: string }>('salvarModelo'),
   prepararEmissao: chamada<{ uid: string; modeloId: string }, { campos: CampoEmissao[]; sugestoes: CamposEmissao; avisos: string[]; modeloNome: string }>('prepararEmissao'),
   emitirDocumento: chamada<

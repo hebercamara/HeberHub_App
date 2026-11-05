@@ -12,7 +12,7 @@ export { consolidarCadastro, consultarCnpj, enviarCadastroOficial, enviarCartaoC
 export { duplicarFuncoes, salvarFuncao, salvarOperacao, salvarValorDiaria } from './cadastros.js'
 export { encerrarEvento, meuEventoHoje, mudarStatusEvento, reabrirEvento, salvarEvento } from './eventosPresenca.js'
 export { testarClicksign } from './clicksign.js'
-export { emitirDocumento, inativacoesAgendadas, marcarDocumento, prepararEmissao, salvarContratante, salvarModelo, salvarTestemunha } from './documentos.js'
+export { emitirDocumento, inativacoesAgendadas, marcarDocumento, prepararEmissao, salvarContratante, salvarModelo } from './documentos.js'
 export { fecharMes, reabrirMes } from './fechamentos.js'
 export { excluirPreCadastro, importarPrestadores } from './importacao.js'
 export { estornarLancamento, lancarAjuste, lancarEvento, registrarPresencaManual } from './lancamentos.js'

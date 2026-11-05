@@ -1,4 +1,4 @@
-// Modelos de documento e emissão (onboarding C e D): contratante, testemunhas, modelos
+// Modelos de documento e emissão (onboarding C e D): contratante, modelos
 // versionados, emissão com os dados do Cadastro Oficial, e os efeitos ao marcar como assinado
 // (diária individual do contrato; inativação pelo distrato). Nada é apagado: cancela-se.
 import { createHash } from 'node:crypto'
@@ -31,7 +31,6 @@ import { inativarUsuario } from './usuarios.js'
 
 const modelos = db.collection('modelosDocumento')
 const documentos = db.collection('documentos')
-const testemunhas = db.collection('testemunhas')
 
 export const TIPOS_DOCUMENTO = ['contrato', 'aditivo', 'distrato', 'quitacao', 'comunicacao', 'outro'] as const
 type TipoDocumento = (typeof TIPOS_DOCUMENTO)[number]
@@ -39,7 +38,7 @@ type TipoDocumento = (typeof TIPOS_DOCUMENTO)[number]
 /** Quem trabalha na parte de contratos: Gestão (sempre), coordenação e Jurídico. */
 const JURIDICO = ['coordenacao', 'juridico'] as const
 
-// ---------- Contratante e testemunhas ----------
+// ---------- Contratante ----------
 
 function lerAssinante(valor: unknown): { nome: string; email: string; cpf: string } | null {
   const a = (valor ?? {}) as Record<string, unknown>
@@ -70,19 +69,6 @@ export const salvarContratante = onCall(async (req) => {
   auditar(lote, { acao: 'contratante-salva', autor, alvo: 'contratante' })
   await lote.commit()
   return { ok: true }
-})
-
-export const salvarTestemunha = onCall(async (req) => {
-  const autor = exigirPerfil(req, [...JURIDICO])
-  const cpf = soDigitos(texto(req.data?.cpf, 'o CPF da testemunha', { min: 11, max: 14 }))
-  if (!cpfValido(cpf)) throw falha('CPF da testemunha inválido.')
-  const dados = { nome: texto(req.data?.nome, 'o nome da testemunha', { min: 3 }), cpf, ativa: req.data?.ativa !== false }
-  const ref = typeof req.data?.id === 'string' && req.data.id ? testemunhas.doc(req.data.id) : testemunhas.doc()
-  const lote = db.batch()
-  lote.set(ref, { ...dados, atualizadoEm: agoraServidor() }, { merge: true })
-  auditar(lote, { acao: 'testemunha-salva', autor, alvo: ref.id, detalhes: { nome: dados.nome, ativa: dados.ativa } })
-  await lote.commit()
-  return { ok: true, id: ref.id }
 })
 
 // ---------- Modelos ----------
@@ -174,7 +160,7 @@ function lerCampos(valor: unknown, pedidos: CampoEmissao[]): Campos {
     else if (campo === 'FUNCAO_PRESTADA') campos.FUNCAO_PRESTADA = texto(d.FUNCAO_PRESTADA, 'a função prestada', { min: 3, max: 120 })
     else if (campo === 'TESTEMUNHAS') {
       const lista = Array.isArray(d.TESTEMUNHAS) ? (d.TESTEMUNHAS as { nome?: unknown; cpf?: unknown }[]) : []
-      if (lista.length !== 2) throw falha('Escolha as duas testemunhas.')
+      if (lista.length !== 2) throw falha('Informe as duas testemunhas.')
       campos.TESTEMUNHAS = lista.map((t, i) => {
         const cpf = soDigitos(texto(t.cpf, `o CPF da testemunha ${i + 1}`, { min: 11, max: 14 }))
         if (!cpfValido(cpf)) throw falha(`CPF da testemunha ${i + 1} inválido.`)

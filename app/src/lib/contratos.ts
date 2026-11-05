@@ -1,7 +1,7 @@
 import { collection, doc, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { db } from './firebase'
-import type { Contratante, DocumentoEmitido, ModeloDocumento, Testemunha } from './tipos'
+import type { Contratante, DocumentoEmitido, ModeloDocumento } from './tipos'
 
 function useLista<T>(nome: string, campo: string, direcao: 'asc' | 'desc' = 'asc', maximo = 500): T[] {
   const [itens, setItens] = useState<T[]>([])
@@ -14,7 +14,6 @@ function useLista<T>(nome: string, campo: string, direcao: 'asc' | 'desc' = 'asc
 
 export const useModelos = () => useLista<ModeloDocumento>('modelosDocumento', 'nome')
 export const useDocumentos = () => useLista<DocumentoEmitido>('documentos', 'emitidoEm', 'desc')
-export const useTestemunhas = () => useLista<Testemunha>('testemunhas', 'nome')
 
 export function useContratante(): Contratante | null | undefined {
   const [contratante, setContratante] = useState<Contratante | null | undefined>(undefined)

@@ -83,7 +83,7 @@ service cloud.firestore {
       allow read: if financeiro();
     }
 
-    // Contratos: modelos, documentos emitidos, testemunhas e dados da contratante: a equipe
+    // Contratos: modelos, documentos emitidos e dados da contratante: a equipe
     // (o ADM emite os modelos liberados para ele). Versões antigas dos modelos: coordenação.
     match /modelosDocumento/{id} {
       allow read: if equipe();
@@ -92,9 +92,6 @@ service cloud.firestore {
       }
     }
     match /documentos/{id} {
-      allow read: if equipe();
-    }
-    match /testemunhas/{id} {
       allow read: if equipe();
     }
     match /configuracoes/contratante {

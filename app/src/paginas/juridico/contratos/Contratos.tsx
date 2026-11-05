@@ -16,7 +16,7 @@ export function Contratos() {
         {ehCoordenacao(perfil) && (
           <>
             <NavLink to="/juridico/contratos/modelos">Modelos</NavLink>
-            <NavLink to="/juridico/contratos/ajustes">Contratante e testemunhas</NavLink>
+            <NavLink to="/juridico/contratos/ajustes">Contratante e Clicksign</NavLink>
           </>
         )}
       </nav>

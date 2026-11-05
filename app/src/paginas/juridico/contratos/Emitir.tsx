@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router'
 import { Aviso } from '../../../componentes/Aviso'
 import { api } from '../../../lib/api'
 import { useCadastrosOficiais, useUsuarios } from '../../../lib/cadastros'
-import { useModelos, useTestemunhas } from '../../../lib/contratos'
+import { useModelos } from '../../../lib/contratos'
+import { cpfValido, mascararCpf } from '../../../lib/documentos'
 import { formatarReais, lerReais } from '../../../lib/dinheiro'
 import { mensagemDeErro } from '../../../lib/erros'
 import { useSessao } from '../../../lib/sessao'
@@ -27,13 +28,13 @@ export function Emitir() {
   const usuarios = useUsuarios()
   const cadastros = useCadastrosOficiais()
   const modelos = useModelos()
-  const testemunhas = useTestemunhas().filter((t) => t.ativa)
   const [busca, setBusca] = useState('')
   const [uid, setUid] = useState('')
   const [modeloId, setModeloId] = useState('')
   const [preparo, setPreparo] = useState<Preparo | null>(null)
   const [campos, setCampos] = useState<CamposEmissao & { valorTexto?: string }>({})
-  const [escolhidas, setEscolhidas] = useState(['', ''])
+  // Testemunhas: nome e CPF digitados em cada emissão (cada contrato pode ter as suas).
+  const [testemunhas, setTestemunhas] = useState([{ nome: '', cpf: '' }, { nome: '', cpf: '' }])
   const [previa, setPrevia] = useState<{ html: string; faltando: string[] } | null>(null)
   const [erro, setErro] = useState('')
   const [ocupado, setOcupado] = useState(false)
@@ -59,7 +60,7 @@ export function Emitir() {
       const r = await api.prepararEmissao({ uid, modeloId })
       setPreparo({ campos: r.campos, avisos: r.avisos })
       setCampos({ ...r.sugestoes, valorTexto: r.sugestoes.VALOR_DIARIA != null ? formatarReais(r.sugestoes.VALOR_DIARIA).replace('R$', '').trim() : '' })
-      setEscolhidas(testemunhas.slice(0, 2).map((t) => t.id).concat(['', '']).slice(0, 2))
+      setTestemunhas([{ nome: '', cpf: '' }, { nome: '', cpf: '' }])
     } catch (e) {
       setErro(mensagemDeErro(e))
     }
@@ -78,12 +79,16 @@ export function Emitir() {
       envio.VALOR_DIARIA = valor
     }
     if (preparo?.campos.includes('TESTEMUNHAS')) {
-      const lista = escolhidas.map((id) => testemunhas.find((t) => t.id === id))
-      if (lista.some((t) => !t) || escolhidas[0] === escolhidas[1]) {
-        setErro('Escolha duas testemunhas diferentes.')
+      const invalida = testemunhas.findIndex((t) => t.nome.trim().length < 3 || !cpfValido(t.cpf))
+      if (invalida >= 0) {
+        setErro(`Testemunha ${invalida + 1}: informe o nome completo e um CPF válido.`)
         return null
       }
-      envio.TESTEMUNHAS = lista.map((t) => ({ nome: t!.nome, cpf: t!.cpf }))
+      if (testemunhas[0].cpf.replace(/\D/g, '') === testemunhas[1].cpf.replace(/\D/g, '')) {
+        setErro('As duas testemunhas precisam ser pessoas diferentes.')
+        return null
+      }
+      envio.TESTEMUNHAS = testemunhas.map((t) => ({ nome: t.nome.trim(), cpf: t.cpf }))
     }
     return envio
   }
@@ -197,21 +202,31 @@ export function Emitir() {
             ))}
           {preparo.campos.includes('TESTEMUNHAS') &&
             [0, 1].map((i) => (
-              <label key={i}>
-                Testemunha {i + 1}
-                <select value={escolhidas[i]} onChange={(e) => setEscolhidas((l) => l.map((v, j) => (j === i ? e.target.value : v)))} required>
-                  <option value="">Escolha…</option>
-                  {testemunhas.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nome}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <fieldset key={i}>
+                <legend>Testemunha {i + 1}</legend>
+                <div className="linha">
+                  <label>
+                    Nome completo
+                    <input
+                      value={testemunhas[i].nome}
+                      onChange={(e) => setTestemunhas((l) => l.map((t, j) => (j === i ? { ...t, nome: e.target.value } : t)))}
+                      minLength={3}
+                      required
+                    />
+                  </label>
+                  <label>
+                    CPF
+                    <input
+                      inputMode="numeric"
+                      value={testemunhas[i].cpf}
+                      onChange={(e) => setTestemunhas((l) => l.map((t, j) => (j === i ? { ...t, cpf: mascararCpf(e.target.value) } : t)))}
+                      placeholder="000.000.000-00"
+                      required
+                    />
+                  </label>
+                </div>
+              </fieldset>
             ))}
-          {preparo.campos.includes('TESTEMUNHAS') && testemunhas.length < 2 && (
-            <Aviso tipo="info">Cadastre ao menos duas testemunhas em Contratos › Contratante e testemunhas.</Aviso>
-          )}
           <Aviso>{erro}</Aviso>
           <div className="acoes">
             <button type="submit" className="secundario" disabled={ocupado}>

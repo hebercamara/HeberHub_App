@@ -84,7 +84,7 @@ describe('modelos e emissão de documentos (onboarding C e D)', () => {
     expect(previa.html).toContain('R$ 135,50 (cento e trinta e cinco reais e cinquenta centavos)')
     expect(previa.html).toContain('brasileiro, solteiro, portador do CPF 529.982.247-25')
     expect(previa.html).toContain('Porto Alegre, 3 de novembro de 2026')
-    await expect(adm.chamar('emitirDocumento', { uid: ze.uid, modeloId: contratoId, campos: { ...campos, TESTEMUNHAS: [] } })).rejects.toThrow(/duas testemunhas/)
+    await expect(adm.chamar('emitirDocumento', { uid: ze.uid, modeloId: contratoId, campos: { ...campos, TESTEMUNHAS: [] } })).rejects.toThrow(/Informe as duas testemunhas/)
   })
 
   it('ADM emite o modelo liberado para a equipe, mas não o restrito', async () => {
