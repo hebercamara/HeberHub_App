@@ -2,11 +2,11 @@
 
 > Rascunho em construção com o dono do projeto. **Ainda não implementado.**
 > Quando for implementado, as decisões passam para `docs/CONTEXTO.md`.
-> Última atualização: 05/11/2026 (segunda rodada de respostas: valores e fechamento quinzenal
-> do agregado, conferência de caixas, CNH e temperatura; ainda antes de receber o diário de
-> campo real).
-> **Próximo passo:** o dono envia o modelo do diário de campo usado hoje; este plano é
-> ajustado a ele (nomes de colunas, ordem das tarefas, o que é anotado).
+> Última atualização: 05/11/2026 (planilha real do diário de campo de setembro/2026
+> analisada; terceira rodada de respostas: cadastro do agregado, novas funções, desconto do
+> agregado por operação).
+> **Atenção:** o repositório é público. Este documento **não** traz nomes de pessoas, placas
+> nem clientes da planilha real, só a estrutura.
 
 ## Objetivo
 
@@ -18,6 +18,55 @@ cada rota** até o retorno (quilometragem, horas rodadas, caixas carregadas e en
 A ideia é aproveitar o que já existe: o cadastro das pessoas, as bases, as operações e
 funções, o **check-in** (que diz se a pessoa veio) e as marcas **Falta** e **Não escalado**.
 O diário de campo é a "escala por carro" que já estava anotada como pendência.
+
+## O diário de campo de hoje (planilha de setembro/2026)
+
+Recebido em 05/11/2026: um arquivo Excel com **quatro abas**, de uma operação (sorvete,
+"porta de loja"). Cerca de **30 a 34 linhas por dia**, uma por **saída de caminhão**.
+
+| Aba | Para que serve hoje | Vira no app |
+| --- | --- | --- |
+| **DIARIO DE CAMPO** | Uma linha por saída: data, carga, cliente, placa, agregado ou não, temperatura de largada, tipo do veículo, motorista, ajudante, roteiro, região, caixas | A **rota** do diário de campo (a espinha dorsal) |
+| **impressao roteiro** | Lista de clientes de cada carga (endereço, bairro, cidade, caixas, peso), agrupada por placa, com subtotais | As **cargas** e o **emplacamento**: dá para **importar** essa lista |
+| **Aba de retorno por placa** (uma por veículo) | Folha de volta: data, placa, motorista, total de caixas no veículo, **entregues**, **reentrega**, **devolução**, **nome legível e RG** de quem conferiu | A **conferência do retorno** feita no armazém |
+| **controle de saida** | Tabela dinâmica: quantas saídas cada placa fez no período, filtrando **agregados** | O **fechamento quinzenal do agregado** (contado sozinho) |
+
+### Colunas da aba DIARIO DE CAMPO e onde ficam no app
+
+| Coluna na planilha | O que é | No app |
+| --- | --- | --- |
+| DATA | dia da saída | o **diário** do dia |
+| CARGA | número da carga (ano + dia do ano + sequência; o dia é o da véspera, quando a carga é montada) | **carga** emplacada na rota |
+| BROKER | cliente/distribuidor da carga (uma sigla) | **operação** |
+| PLACA | placa do caminhão (digitada à mão) | **veículo** escolhido de uma lista: acaba com placa digitada diferente a cada dia |
+| A/C | **A** = agregado, **C** = frota da casa (a confirmar) | vem **sozinho** do cadastro do veículo |
+| TEM. LARGADA | temperatura do baú na saída | **temperatura de saída** (com o aviso acima de −30 °C) |
+| TIPO | tipo do veículo (F.S, VUC, HR, rabeco, toco) | vem **sozinho** do cadastro do veículo |
+| MOTORISTA / AJUDANTE | nomes digitados | pessoas escolhidas da lista (com check-in, CNH e NE ligados) |
+| ROTEIRO | cidade ou bairro principal da rota | **roteiro** da rota |
+| SETOR/GRADE | região (ABC, Centro, Zona Sul, Zona Leste) | **setor** (lista configurável por operação) |
+| D / R sob "V" e "M" | caixas de **devolução** e **reentrega**, em dois grupos ("V" e "M": significado a confirmar) | **retorno** da rota |
+| TOTAL DE CAIXA VEICULO | caixas carregadas | **caixas carregadas** (conferente) |
+| CAIXAS REENTREGA | caixas que voltam para entregar outro dia (o topo soma "T. CX REPRO") | **reentrega** |
+| Topo: "SAÍRAM" / "RESTAM" | contadores de saídas do dia | painel do dia, calculado |
+
+### O que a planilha mostra (e o app resolve)
+- **Muita coluna vazia:** carga preenchida em ~40% das linhas, roteiro e caixas em ~25%,
+  ajudante quase nunca. Daí o pedido do dono: **todos os campos existem para todas as
+  operações** e o app cobra o que faltar.
+- **Placa digitada de jeitos diferentes** (com e sem hífen, com espaços, letra trocada): no
+  app a placa vem do cadastro.
+- **Temperaturas de saída acima de −30 °C** aparecem algumas vezes: no app viram aviso.
+- **Não existem hoje:** horário de saída e de chegada, km, temperatura de chegada. Entram como
+  campos novos.
+- **Mesma placa em mais de uma linha no dia**, às vezes com motoristas diferentes e com A e C
+  trocados: pode ser mais de uma saída do caminhão no dia ou erro de digitação (a confirmar).
+
+### Espinha dorsal única (decisão do dono)
+**Todas as operações usam a mesma estrutura de diário.** Cada operação pode ter cor própria e
+pode não precisar de algum campo (ex.: caixas), mas os campos **existem para todas** e são
+preenchidos do mesmo jeito. Proposta: em Configurações › Operações, marcar quais campos são
+**obrigatórios** naquela operação; os outros ficam disponíveis e opcionais.
 
 ## Ponto de atenção: "não é relógio de ponto"
 
@@ -63,6 +112,11 @@ Responsável Legal é conferido com o titular ou com os sócios na Receita.
 - Atenção: é dado pessoal novo no app, então o **termo de privacidade sobe de versão** (todos
   aceitam de novo).
 
+**Novo: mais funções além de motorista e ajudante** (decidido em 05/11/2026): também
+**conferente**, **manobrista** e outras. Isso **já é possível** hoje: as funções operacionais
+são livres em Configurações › Funções e diárias. O que falta é uma marca na função:
+**"dirige veículo (exige CNH)"** (motorista, manobrista), para o app saber de quem cobrar a CNH.
+
 ### 2. Agregado (novo)
 Empresa (CNPJ) que trabalha com **caminhão próprio** e **cuida da própria equipe** (motorista
 e ajudante). Proposta: **aproveitar o mesmo cadastro oficial** (empresa, Receita, Cartão CNPJ,
@@ -75,11 +129,18 @@ responsável legal, conta, contratos e versões), com a **categoria "Agregado"**
 | Equipe | ele mesmo | **motorista e ajudante dele**, só pelo nome, **sem check-in** |
 | Pagamento | diária por presença | **valor fixo por saída** e/ou **valor por caixa entregue**, no cadastro dele (ver abaixo) |
 | Fechamento | mensal (dia 1 ao último dia) | **quinzenal**: dia 1 ao 15 e dia 16 ao último dia |
-| Acesso ao app | "Minha presença" | **nenhum** por enquanto: acerta tudo com a coordenação da operação |
+| Acesso ao app | "Minha presença" | só para **fazer o próprio cadastro**; depois não vê nada, acerta tudo com a coordenação |
 | Documentos a mais | CNH (motoristas) | **documento do caminhão (CRLV)**; o resto não é necessário |
 | Contrato | contrato de prestação | modelo próprio de **contrato de agregado** (o editor de modelos já permite) |
 
-**Caminhões do agregado (decidido):** ficam **dentro do cadastro do agregado**, não na lista
+**Cadastro do agregado (decidido):** o **próprio agregado preenche**, como os prestadores
+(pelo link de cadastro). Depois disso ele não precisa ver nada no app: o ADM emite o contrato,
+ele assina, e no aditivo ou no distrato os dados dele já estão lá. Proposta: um **link próprio
+de cadastro de agregado**, com um passo a mais, **"Caminhões"** (placa, tipo, capacidade e o
+CRLV de cada um; pode ser mais de um caminhão). Depois de aprovado, se ele entrar no app, vê
+só "Cadastro aprovado".
+
+**Caminhões do agregado (decidido):** um agregado pode ter **mais de um caminhão**. ficam **dentro do cadastro do agregado**, não na lista
 de veículos da empresa. Motivo do dono: amarrar o carro ao agregado. **Quando o distrato do
 agregado é assinado, os caminhões dele saem da disponibilidade** junto (na mesma data em que o
 agregado fica inativo) e não aparecem mais na escala. Para cada caminhão: placa, modelo, tipo,
@@ -90,7 +151,12 @@ e **não recebem diária** da empresa: o agregado se vira com eles. Eles só apa
 na escala, para o diário mostrar quem foi em cada carro.
 **Equipe mista:** às vezes um **prestador nosso** vai no caminhão do agregado, conforme a
 necessidade. Esse prestador **faz check-in e recebe a diária normalmente**, como em qualquer
-outro carro (a confirmar).
+outro carro (**confirmado**).
+**Desconto do agregado (decidido):** quando um prestador nosso sai no caminhão do agregado, o
+agregado recebe **menos**. O valor do desconto fica no **cadastro da operação**: um valor de
+desconto **por motorista nosso** e outro **por ajudante nosso** que saiu com ele. O servidor
+aplica o desconto sozinho na saída, com o valor congelado.
+**CNH do motorista do agregado:** **não** é acompanhada por enquanto (talvez no futuro).
 
 **Pagamento do agregado (decidido):** o **cadastro do agregado** tem dois valores, os dois
 opcionais (sistema "híbrido"):
@@ -116,10 +182,14 @@ só fecha. (Nos prestadores, o mês continua do dia 1 ao último dia.)
 
 **Conferência das caixas (decidido):** o motorista **não** informa as caixas. Quem garante os
 números é a operação:
-- os **conferentes** registram quantas caixas **entraram** em cada caminhão;
-- na volta, o **armazém** conta as caixas **devolvidas**, com o aval do **motorista** e da
-  **equipe do armazém**;
-- **caixas entregues = carregadas − devolvidas**.
+- o armazém manda a carga e um **conferente nosso** confere se é a carga certa e quantas
+  caixas **entraram** em cada caminhão;
+- na volta, o **motorista confere junto com o armazém** as caixas que voltaram, separadas em
+  **reentrega** (vai sair de novo outro dia) e **devolução**; a folha de retorno leva nome
+  legível e RG de quem conferiu;
+- **caixas entregues = carregadas − reentrega − devolução**;
+- **conferentes e armazém não usam o app:** quem lança os números é a **equipe
+  administrativa**, a partir das folhas.
 A segurança vem do cruzamento: se faltar caixa no retorno e o cliente disser que não recebeu,
 fica fácil achar onde sumiu. O app guarda **quem conferiu** cada número e quando.
 
@@ -228,6 +298,8 @@ Os limites ficam configuráveis, caso mudem.
 | Coleção | Conteúdo |
 | --- | --- |
 | `usuarios/{uid}` (já existe) | ganha `categoria` (prestador ou agregado) |
+| `operacoes/{id}` (já existe) | ganha cor, campos obrigatórios do diário, lista de setores e o desconto do agregado por motorista e por ajudante nosso (centavos, com início) |
+| `funcoes/{id}` (já existe) | ganha `exigeCnh` (dirige veículo) |
 | `cnhs/{uid}` | número, categoria, validade (preenchidos pela equipe; o arquivo fica no Drive da empresa); só a equipe lê |
 | `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome, função (CNH, se for exigida) |
 | `veiculos/{id}` | placa, modelo, tipo, capacidade em caixas (e peso?), baseId, dono (`empresa` ou uid do agregado), situação, CRLV e validade, observação. Na tela, os do agregado aparecem dentro do cadastro dele. |
@@ -235,8 +307,8 @@ Os limites ficam configuráveis, caso mudem.
 | `valoresAgregado/{id}` | agregado, valor fixo por saída, valor por caixa entregue (centavos; vazio = 0), início; só quem vê valores |
 | `fechamentosAgregado/{AAAA-MM-Q}` | quinzena (Q = 1: dia 1 ao 15; Q = 2: dia 16 ao fim), status, totais por agregado, reabertura |
 | `diarios/{baseId_data}` | base, data, situação (em preparo, em andamento, encerrado), observações do dia, quem encerrou |
-| `rotas/{id}` | diário, operação, veículo, motorista, ajudantes (prestadores e/ou equipe do agregado), saída (hora, km, temperatura), retorno (hora, km, temperatura), caixas carregadas (conferente), devolvidas (armazém, com aval do motorista) e entregues (calculado), quem conferiu e quando, situação |
-| `cargas/{id}` | diário, identificação (pedido, cliente, região), caixas, rota em que foi emplacada |
+| `rotas/{id}` | diário, operação, número da carga, veículo, motorista, ajudantes (prestadores e/ou equipe do agregado), roteiro, setor, saída (hora, km, temperatura), retorno (hora, km, temperatura), caixas carregadas (conferente), reentrega e devolução (armazém, com aval do motorista), entregues (calculado), quem conferiu no armazém (nome), quem lançou e quando, situação |
+| `cargas/{id}` | diário, número da carga, clientes do roteiro (nome, endereço, bairro, cidade, caixas, peso), total de caixas e peso, rota em que foi emplacada |
 | `ocorrencias/{id}` | rota ou diário, horário, tipo, texto, quem anotou |
 
 O id `baseId_data` do diário segue o mesmo padrão do QR do dia (`sessoes`).
@@ -294,13 +366,21 @@ agregado; o agregado não usa o app; quem confere as caixas (conferentes e armaz
 preenchida pela equipe, vencida bloqueia, arquivo no Drive; limites de temperatura; baús
 adiados.
 
-**Ainda abertas (agregados, conferência e CNH)**
-14. **Cadastro do agregado:** como ele não usa o app, quem preenche o cadastro (empresa,
-    Receita, Cartão CNPJ, conta, caminhões)? A **equipe** preenche tudo, ou o agregado faz
-    o autocadastro pelo link uma única vez?
-15. **Conferentes:** eles vão usar o app (um perfil novo, "Conferente", que só lança caixas),
-    ou anotam no papel e o ADM digita? E o armazém?
-16. O **prestador nosso** que vai no caminhão do agregado recebe a **diária normal**? O
-    agregado tem algum desconto por isso?
-17. O motorista do **agregado** também precisa ter a CNH acompanhada (e bloqueada se vencer)?
-18. Um agregado pode ter **mais de um caminhão**? O dono do agregado às vezes dirige?
+Também respondidas: o agregado preenche o próprio cadastro; conferentes e armazém não
+usam o app (a equipe lança); prestador nosso no caminhão do agregado recebe a diária e o
+agregado tem desconto (valor por operação); CNH do motorista do agregado não é acompanhada
+agora; agregado pode ter mais de um caminhão.
+
+**Sobre a planilha real (abertas)**
+14. Na coluna **A/C**, "A" é agregado e "C" é a frota da casa? A mesma placa às vezes aparece
+    como A e como C no mesmo dia: é um erro ou faz sentido?
+15. A mesma placa aparece **mais de uma vez no mesmo dia**: é o caminhão saindo de novo
+    (segunda viagem) ou erro de digitação?
+16. Nas colunas de retorno, o que significam **"V"** e **"M"** (cada um com D e R)?
+17. **BROKER** é o cliente (a operação)? Cada operação tem um broker só?
+18. O **roteiro** (aba "impressao roteiro") vem de um sistema do cliente? Dá para receber
+    sempre nesse formato, para o app importar?
+19. O **segundo modelo** de diário de campo: só chegou um arquivo (com quatro abas). Se havia
+    outro, falta enviar.
+20. **"Porta de loja"** é o tipo dessa operação? Existem outros tipos (ex.: transferência,
+    abastecimento de CD) com jeito diferente de trabalhar?
