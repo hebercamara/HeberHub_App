@@ -303,7 +303,7 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
 | **E2. Veículos e CNH** ✅ | Frota da casa (frota, tipo, rastreador, situação, manutenção), marca "exige CNH" na função, CNH com validade e bloqueio, regiões de entrega e valor por caixa por região | Base da escala. **Pronta em 05/11/2026** (ver `CONTEXTO.md` 6.2.4) |
 | **E3. Regras da operação** ✅ | Cor, campos que aparecem no diário, roteiros, modalidades, perfis cobrados, brokers, largada, temperatura, desconto do agregado, adicional de viagem | O diário depende delas. **Pronta em 05/11/2026** (ver `CONTEXTO.md` 6.2.5) |
 | **E4. Escala por carro** ✅ | Diário do dia (tabela com filtros por data), rotas, tipo de serviço, pessoas nos carros, NE automático, check-in ao vivo, falta e troca | Substitui a aba "Escala" e a planilha da véspera. **Pronta em 06/11/2026** (ver `CONTEXTO.md` 6.2.6) |
-| **E5. Jornada da rota** | Largada, chegada, km, rastreador, temperatura, caixas, ocorrências, cancelamento, avisos | Substitui o diário de campo |
+| **E5. Jornada da rota** ✅ | Largada, chegada, km, rastreador, temperatura, caixas, ocorrências, cancelamento, avisos | Substitui o diário de campo. **Pronta em 06/11/2026** (ver `CONTEXTO.md` 6.2.7) |
 | **E6. Viagem e reentrega** | Presença automática por viagem, adicional por dia de viagem, reentregas pendentes para o dia seguinte | Depende de E4 e E5 |
 | **E7. Cargas** | Importação do roteiro do cliente e emplacamento | Ajustado na prática |
 | **E8. Dinheiro do agregado** | Lançamentos por saída/caixa com desconto, fechamento quinzenal com aviso das saídas canceladas | Precisa das caixas conferidas (E5) |

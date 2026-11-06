@@ -136,6 +136,14 @@ export const api = {
     { ok: true; id: string; sequencia: number }
   >('salvarRota'),
   removerRota: chamada<{ id: string }>('removerRota'),
+  registrarJornada: chamada<
+    { id: string; jornada: Record<string, unknown> },
+    { ok: true; avisos: { codigo: string; mensagem: string }[]; entregues: number | null; kmRodado: number | null }
+  >('registrarJornada'),
+  cancelarRota: chamada<{ id: string; motivo: string }>('cancelarRota'),
+  registrarOcorrencia: chamada<{ id: string; horario: string | null; texto: string }>('registrarOcorrencia'),
+  encerrarDiario: chamada<{ operacaoId: string; data: string }>('encerrarDiario'),
+  reabrirDiario: chamada<{ operacaoId: string; data: string; justificativa: string }>('reabrirDiario'),
   salvarReserva: chamada<{ operacaoId: string; data: string; uids: string[] }>('salvarReserva'),
   concluirEscala: chamada<{ operacaoId: string; data: string }, { ok: true; naoEscalados: number }>('concluirEscala'),
   salvarConfigDiario: chamada<{ operacaoId: string; config: ConfigDiario }>('salvarConfigDiario'),

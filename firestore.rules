@@ -79,6 +79,9 @@ service cloud.firestore {
     }
     match /rotas/{id} {
       allow read: if equipe();
+      match /ocorrencias/{ocorrencia} {
+        allow read: if equipe();
+      }
     }
 
     // Veículos (da casa e dos agregados) e a equipe de cada agregado: a equipe.

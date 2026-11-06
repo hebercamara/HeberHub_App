@@ -1428,3 +1428,7 @@ a.botao {
   display: block;
   white-space: nowrap;
 }
+.acoes-rota button {
+  display: block;
+  white-space: nowrap;
+}

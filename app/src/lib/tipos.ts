@@ -187,7 +187,31 @@ export type Rota = {
   brokerId: string | null
   perfilCobrado: TipoVeiculo
   dataVolta: string | null
+  /** Jornada (etapa E5): o que a equipe lança na largada e na chegada. */
+  jornada?: Jornada
+  kmRodado?: number | null
+  minutosRodados?: number | null
+  caixasEntregues?: number | null
+  avisos?: { codigo: string; mensagem: string }[]
+  motivoCancelamento?: string
+  ocorrencias?: number
 }
+export type CaixasRetorno = { varejo: number; mercado: number }
+export type Jornada = {
+  horarioSaida: string | null
+  kmSaida: number | null
+  temperaturaSaida: number | null
+  horarioChegada: string | null
+  kmChegada: number | null
+  temperaturaChegada: number | null
+  kmUnb: number | null
+  caixasCarregadas: number | null
+  reentrega: CaixasRetorno | null
+  devolucao: CaixasRetorno | null
+  conferenteArmazem: string | null
+  observacao: string | null
+}
+export type Ocorrencia = { id: string; horario: string | null; texto: string; autorNome: string }
 
 /** Roteiro da operação, ligado a uma região de entrega. */
 export type Roteiro = { id: string; nome: string; regiaoId: string | null; ativo: boolean }

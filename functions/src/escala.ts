@@ -38,7 +38,8 @@ async function rotasQueOcupam(tx: Transaction | null, data: string): Promise<Doc
 function ocupadosEm(lista: DocumentSnapshot[], ignorar: string | null): Record<string, string> {
   const ocupados: Record<string, string> = {}
   for (const r of lista) {
-    if (r.id === ignorar) continue
+    // Saída cancelada não prende mais ninguém (a pessoa pode ir em outro carro).
+    if (r.id === ignorar || r.get('tipoServico') === 'cancelada') continue
     for (const uid of (r.get('prestadores') ?? []) as string[]) ocupados[uid] = placaFormatada(r.get('placa'))
   }
   return ocupados
@@ -62,6 +63,8 @@ export const salvarRota = onCall(async (req) => {
   const data = dataValida(d.data, 'o dia')
   const tipoServico = d.tipoServico as TipoServico
   if (!TIPOS_SERVICO.includes(tipoServico)) throw falha('Escolha o tipo de serviço.')
+  // Cancelar tem ação própria, com motivo (e a saída cancelada não volta a ser editada).
+  if (tipoServico === 'cancelada') throw falha('Para cancelar uma saída, use "Cancelar saída" e informe o motivo.')
   const placa = lerPlaca(d.placa)
   const motorista = lerPessoa(d.motorista, 'motorista')
   const ajudantes = (Array.isArray(d.ajudantes) ? d.ajudantes : []).map((a) => lerPessoa(a, 'ajudante'))
@@ -82,6 +85,7 @@ export const salvarRota = onCall(async (req) => {
     const atual = id ? await tx.get(rotas.doc(id)) : null
     if (id && !atual?.exists) throw falha('Rota não encontrada.', 'not-found')
     if (atual && (atual.get('operacaoId') !== operacaoId || atual.get('data') !== data)) throw falha('A rota é de outro dia ou operação.', 'failed-precondition')
+    if (atual?.get('tipoServico') === 'cancelada') throw falha('Esta saída foi cancelada e não pode ser alterada.', 'failed-precondition')
     if (!veiculo.exists) throw falha(`Veículo ${placaFormatada(placa)} não cadastrado (Frota).`, 'not-found')
 
     // Roteiro, modalidade e broker precisam existir na operação.
@@ -171,6 +175,8 @@ export const removerRota = onCall(async (req) => {
     if (!rota.exists) throw falha('Rota não encontrada.', 'not-found')
     const diario = await tx.get(diarios.doc(rota.get('diarioId')))
     if (diario.get('situacao') === 'encerrado') throw falha('O diário deste dia já foi encerrado.', 'failed-precondition')
+    // Depois da largada, a saída não some: cancela-se com motivo.
+    if (rota.get('jornada.horarioSaida') || rota.get('tipoServico') === 'cancelada') throw falha('Esta saída já largou ou foi cancelada: use "Cancelar saída".', 'failed-precondition')
     tx.delete(rota.ref)
     auditar(tx, { acao: 'rota-removida', autor, alvo: id, detalhes: rota.data() ?? {} })
   })

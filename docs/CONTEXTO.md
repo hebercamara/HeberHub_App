@@ -3,7 +3,7 @@
 > Documento de referência para quem for continuar o projeto, seja uma pessoa ou uma IA.
 > Explica o que o app faz, o que ele deliberadamente **não** faz, as regras de negócio
 > decididas com o dono do projeto (e por quê), a arquitetura técnica e como retomar o trabalho.
-> Atualizado em 06/11/2026, após a etapa E4 do Diário de Campo (escala por carro).
+> Atualizado em 06/11/2026, após a etapa E5 do Diário de Campo (jornada da saída e encerramento do dia).
 
 ---
 
@@ -341,8 +341,31 @@ Aba **Diário de Campo** (`/equipe/diario`; ADM e coordenação editam, o Juríd
   "aguardando" ou, depois do fim da janela de check-in da base (ou em dia passado), **"não
   veio"** com o botão **marcar falta** (justificativa obrigatória, como no calendário). A troca é
   feita alterando a saída. A tela lista também quem **chegou sem estar na escala**.
-- Ainda não existem os horários, km, temperaturas e caixas da saída (etapa E5) nem a presença
-  automática da viagem (etapa E6).
+- Ainda não existe a presença automática da viagem nem o adicional de viagem (etapa E6).
+
+### 6.2.7 Jornada da saída e encerramento do dia (etapa E5 do Diário de Campo)
+Na tabela do Diário de Campo, cada saída ganhou **Jornada**, **Ocorrências** e **Cancelar saída**:
+- **Jornada** (a equipe lança; o motorista não anota nada no app): horário real de largada, km
+  do painel na saída, temperatura do baú na saída; horário de chegada, km na chegada, temperatura
+  na chegada; **KM UNB** (km do rastreador); caixas carregadas (conferente); **reentrega e
+  devolução** (separadas em varejo e mercado quando a operação liga essa opção); quem conferiu no
+  armazém; observação. Mostra só os campos que a operação usa (\* = obrigatório). Pode ser
+  lançada em partes (largada de manhã, chegada à tarde); só os campos enviados mudam.
+- **Calculado no servidor** (`regras/jornada.ts`): km rodado (chegada − saída), horas rodadas
+  (passa da meia-noite), **caixas entregues = carregadas − reentrega − devolução**, diferença
+  entre o KM UNB e o km anotado (na tela).
+- **Erros que impedem:** km da chegada menor que o da saída; voltaram mais caixas do que saíram;
+  reentrega ou devolução sem as caixas carregadas.
+- **Avisos que não impedem** (guardados em `avisos` da saída e mostrados com ⚠): largada depois
+  do horário com tolerância; temperatura de saída acima do aceitável; temperatura de chegada
+  acima do esperado (limites da operação).
+- **Ocorrências** (`rotas/{id}/ocorrencias`): horário, texto e quem anotou.
+- **Cancelar saída:** motivo obrigatório; o tipo passa a "cancelada" (o anterior fica guardado),
+  a saída não pode mais ser alterada e deixa de prender as pessoas (podem ir em outro carro).
+  Depois da largada, a saída não pode ser "tirada" do diário, só cancelada.
+- **Encerrar o dia** (ADM ou coordenação): confere, em cada saída não cancelada, os campos
+  **obrigatórios** da operação e lista o que falta ("saída 2 (ABC1D23): Temperatura…").
+  Encerrado, nada muda. **Reabrir o dia:** só a coordenação, com justificativa (auditoria).
 
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
@@ -546,7 +569,8 @@ docs/CONTEXTO.md          este documento
 | `regioes/{id}` | regiões de entrega: nome, descrição, ativa | a equipe |
 | `operacoes/{id}/roteiros`, `/modalidades`, `/brokers` | listas da operação para o diário (roteiro com `regiaoId`; broker com contato) | a equipe |
 | `diarios/{operacaoId_data}` | diário do dia: operação, data, situação, reserva (uids), quem concluiu | a equipe |
-| `rotas/{id}` | saída: diário, operação, data, sequência, tipo de serviço, placa, tipo e origem do veículo, agregado, motorista, ajudantes, `prestadores` (uids), cargas, roteiro, modalidade, broker, perfil cobrado, volta (viagem) | a equipe |
+| `rotas/{id}` | saída: diário, operação, data, sequência, tipo de serviço, placa, tipo e origem do veículo, agregado, motorista, ajudantes, `prestadores` (uids), cargas, roteiro, modalidade, broker, perfil cobrado, volta (viagem); `jornada` (horários, km, KM UNB, temperaturas, caixas, conferente, observação), km rodado, minutos rodados, caixas entregues, avisos, motivo do cancelamento | a equipe |
+| `rotas/{id}/ocorrencias/{id}` | horário, texto, quem anotou | a equipe |
 | `valoresOperacao/{operacaoId_inicio}` | desconto do agregado (motorista, ajudante) e adicional de viagem por dia, em centavos | quem vê valores |
 | `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome, função, ativo | a equipe |
 | `valoresAgregado/{uid_inicio}` | fixo por saída, por caixa padrão e por caixa em cada região (centavos), início, documento que gravou | quem vê valores |
@@ -562,6 +586,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | Agregados | `enviarCrlv` (no cadastro ou, pela equipe, num caminhão), `verCrlv`, `salvarCaminhao`, `salvarEquipeAgregado`, `salvarValorAgregado` |
 | Frota | `salvarVeiculo` (frota da casa), `salvarCnh`, `salvarRegiao` |
 | Escala | `salvarRota`, `removerRota`, `salvarReserva`, `concluirEscala` |
+| Jornada | `registrarJornada`, `registrarOcorrencia`, `cancelarRota`, `encerrarDiario`, `reabrirDiario` |
 | Diário (operação) | `salvarConfigDiario`, `salvarItemOperacao` (roteiros, modalidades, brokers), `salvarValoresOperacao` |
 | Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
@@ -631,8 +656,9 @@ o futuro: integração com o Clicksign e PDF gerado no servidor.
 **Em andamento: Diário de Campo** (`docs/PLANO-DIARIO-DE-CAMPO.md`, plano fechado com o dono):
 escala por carro, veículos, agregados, cargas e acompanhamento das rotas. **Etapa E1 (agregados)
 pronta. Etapas E2 (frota da casa, CNH e regiões de entrega) e E3 (regras de cada operação)
-prontas. Etapa E4 (escala por carro) pronta.** Próxima: **E5** (jornada da saída: horários, km,
-KM UNB, temperaturas, caixas, ocorrências, cancelamento, avisos e encerramento do dia).
+prontas. Etapas E4 (escala por carro) e E5 (jornada da saída e encerramento do dia) prontas.**
+Próxima: **E6** (viagem: presença automática nos dias fora e adicional por dia; reentregas
+pendentes para o dia seguinte).
 
 **Pendências e ideias registradas:**
 - **Escala por carro:** pronta (etapa E4). A marca NE manual continua existindo no calendário.
@@ -666,6 +692,7 @@ KM UNB, temperaturas, caixas, ocorrências, cancelamento, avisos e encerramento 
 | Diário de Campo E2 | Aba Frota (veículos da casa e dos agregados, manutenção com motivo e histórico, CRLV com validade), CNH de quem dirige (função "exige CNH"), regiões de entrega, valor por caixa do agregado por região, termo de privacidade v3 |
 | Diário de Campo E3 | Diário de campo de cada operação: cor, campos (não aparece, opcional, obrigatório), tipos de serviço, varejo e mercado, largada com tolerância, limites de temperatura, roteiros ligados à região, modalidades, brokers, desconto do agregado e adicional de viagem por dia |
 | Diário de Campo E4 | Aba Diário de Campo: diário por dia e operação, saídas com veículo, motorista, ajudantes e cargas, segunda viagem, viagem com volta, reserva, concluir escala com NE automático, bloqueios (CNH, veículo, pessoa em dois carros), check-in ao vivo, não veio e falta, vários dias |
+| Diário de Campo E5 | Jornada da saída (largada, chegada, km, KM UNB, temperaturas, caixas carregadas, reentrega e devolução em varejo e mercado, conferente), cálculos e avisos, ocorrências, cancelar saída com motivo, encerrar o dia com conferência dos obrigatórios e reabrir com justificativa |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
 

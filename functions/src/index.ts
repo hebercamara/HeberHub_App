@@ -9,6 +9,7 @@ export { enviarCrlv, salvarCaminhao, salvarEquipeAgregado, salvarValorAgregado, 
 export { salvarCnh, salvarRegiao, salvarVeiculo } from './frota.js'
 export { salvarConfigDiario, salvarItemOperacao, salvarValoresOperacao } from './operacoesDiario.js'
 export { concluirEscala, removerRota, salvarReserva, salvarRota } from './escala.js'
+export { cancelarRota, encerrarDiario, reabrirDiario, registrarJornada, registrarOcorrencia } from './jornada.js'
 export { salvarAparencia } from './aparencia.js'
 export { marcarAusencia } from './ausencias.js'
 export { salvarBase } from './bases.js'

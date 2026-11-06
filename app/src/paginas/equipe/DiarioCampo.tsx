@@ -19,6 +19,7 @@ import {
   type Ausencia,
   type Broker,
   type Diario,
+  type Ocorrencia,
   type Modalidade,
   type PessoaDoAgregado,
   type PessoaNaRota,
@@ -170,6 +171,8 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
   const funcoes = useFuncoes()
   const { bases } = useBases()
   const [editando, setEditando] = useState<Rota | 'nova' | null>(null)
+  const [jornadaDe, setJornadaDe] = useState<string | null>(null)
+  const [ocorrenciasDe, setOcorrenciasDe] = useState<string | null>(null)
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
   const [ocupado, setOcupado] = useState(false)
@@ -214,6 +217,23 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
     await executar(() => api.marcarAusencia({ uid: p.uid, data, tipo: 'falta', justificativa }), `Falta de ${p.nome} registrada. Troque a pessoa na rota, se precisar.`)
   }
 
+  async function encerrar() {
+    if (!confirm('Encerrar o dia? Confira antes as saídas. Depois de encerrado, só a coordenação reabre, com justificativa.')) return
+    await executar(() => api.encerrarDiario({ operacaoId, data }), 'Dia encerrado.')
+  }
+
+  async function reabrir() {
+    const justificativa = prompt('Por que reabrir este dia?')
+    if (!justificativa) return
+    await executar(() => api.reabrirDiario({ operacaoId, data, justificativa }), 'Dia reaberto.')
+  }
+
+  async function cancelar(r: Rota) {
+    const motivo = prompt(`Cancelar a saída do veículo ${placaFormatada(r.placa)}? Escreva o motivo:`)
+    if (!motivo) return
+    await executar(() => api.cancelarRota({ id: r.id, motivo }), 'Saída cancelada.')
+  }
+
   async function concluir() {
     if (!confirm('Concluir a escala do dia? Quem é desta operação e ficou fora de todas as rotas e da reserva recebe "não escalado" (NE).')) return
     await executar(async () => {
@@ -251,7 +271,22 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
             <button className="secundario" disabled={ocupado} onClick={() => void concluir()}>
               {diario?.situacao === 'escalado' ? 'Concluir de novo (atualiza NE)' : 'Concluir escala'}
             </button>
+            {rotas.length > 0 && (
+              <button className="secundario" disabled={ocupado} onClick={() => void encerrar()}>
+                Encerrar o dia
+              </button>
+            )}
           </div>
+        )}
+        {encerrado && (
+          <p className="suave">
+            Dia encerrado: nada muda sem reabrir.{' '}
+            {editaCoordenacao(perfil) && (
+              <button className="link" disabled={ocupado} onClick={() => void reabrir()}>
+                Reabrir o dia (com justificativa)
+              </button>
+            )}
+          </p>
         )}
         <Aviso tipo="ok">{info}</Aviso>
         <Aviso>{erro}</Aviso>
@@ -275,6 +310,7 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
           <TabelaRotas
             rotas={rotas}
             marca={marca}
+            verOcorrencias={(r) => setOcorrenciasDe(ocorrenciasDe === r.id ? null : r.id)}
             acoes={
               editavel
                 ? {
@@ -283,12 +319,21 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
                       if (confirm(`Tirar a saída do veículo ${placaFormatada(r.placa)} do diário?`)) void executar(() => api.removerRota({ id: r.id }))
                     },
                     falta: (p) => void marcarFalta(p),
+                    jornada: (r) => setJornadaDe(jornadaDe === r.id ? null : r.id),
+                    cancelar: (r) => void cancelar(r),
                   }
                 : undefined
             }
           />
         )}
       </section>
+
+      {jornadaDe && rotas.some((r) => r.id === jornadaDe) && (
+        <FormularioJornada key={jornadaDe} rota={rotas.find((r) => r.id === jornadaDe)!} config={config} aoTerminar={() => setJornadaDe(null)} />
+      )}
+      {ocorrenciasDe && rotas.some((r) => r.id === ocorrenciasDe) && (
+        <Ocorrencias rota={rotas.find((r) => r.id === ocorrenciasDe)!} editavel={editavel} aoFechar={() => setOcorrenciasDe(null)} />
+      )}
 
       <Reserva operacaoId={operacaoId} data={data} diario={diario} rotas={rotas} marca={marca} editavel={editavel} usuarios={usuarios} />
 
@@ -319,9 +364,56 @@ function SeloMarca({ marca }: { marca: Marca }) {
   return <span className="selo">aguardando</span>
 }
 
-type Acoes = { alterar: (r: Rota) => void; remover: (r: Rota) => void; falta: (p: PessoaNaRota) => void }
+type Acoes = {
+  alterar: (r: Rota) => void
+  remover: (r: Rota) => void
+  falta: (p: PessoaNaRota) => void
+  jornada: (r: Rota) => void
+  cancelar: (r: Rota) => void
+}
 
-function TabelaRotas({ rotas, marca, acoes }: { rotas: Rota[]; marca?: (p: PessoaNaRota) => Marca; acoes?: Acoes }) {
+/** "12h05" a partir de minutos. */
+function horas(m: number | null | undefined): string {
+  return m === null || m === undefined ? '' : `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`
+}
+
+/** Resumo da jornada na tabela: horários, km, temperaturas e caixas. */
+function ResumoJornada({ rota }: { rota: Rota }) {
+  const j = rota.jornada
+  if (rota.tipoServico === 'cancelada') return <span className="suave">Cancelada: {rota.motivoCancelamento}</span>
+  if (!j) return <span className="suave">—</span>
+  const partes = [
+    j.horarioSaida || j.horarioChegada ? `${j.horarioSaida ?? '?'} → ${j.horarioChegada ?? '…'}${rota.minutosRodados ? ` (${horas(rota.minutosRodados)})` : ''}` : '',
+    rota.kmRodado !== null && rota.kmRodado !== undefined ? `${rota.kmRodado} km` : j.kmSaida !== null ? `km saída ${j.kmSaida}` : '',
+    j.kmUnb !== null ? `UNB ${j.kmUnb}${rota.kmRodado != null ? ` (dif. ${j.kmUnb - rota.kmRodado})` : ''}` : '',
+    j.temperaturaSaida !== null || j.temperaturaChegada !== null ? `${j.temperaturaSaida ?? '?'} / ${j.temperaturaChegada ?? '?'} °C` : '',
+    j.caixasCarregadas !== null ? `${j.caixasCarregadas} cx${rota.caixasEntregues != null ? `, ${rota.caixasEntregues} entregues` : ''}` : '',
+  ].filter(Boolean)
+  return (
+    <>
+      {partes.map((p) => (
+        <div key={p}>{p}</div>
+      ))}
+      {rota.avisos?.map((a) => (
+        <div key={a.codigo} className="selo selo-inativo" title={a.mensagem}>
+          ⚠ {a.mensagem}
+        </div>
+      ))}
+    </>
+  )
+}
+
+function TabelaRotas({
+  rotas,
+  marca,
+  acoes,
+  verOcorrencias,
+}: {
+  rotas: Rota[]
+  marca?: (p: PessoaNaRota) => Marca
+  acoes?: Acoes
+  verOcorrencias?: (r: Rota) => void
+}) {
   const pessoa = (p: PessoaNaRota) => {
     const m = marca?.(p)
     return (
@@ -346,7 +438,8 @@ function TabelaRotas({ rotas, marca, acoes }: { rotas: Rota[]; marca?: (p: Pesso
             <th>Motorista</th>
             <th>Ajudantes</th>
             <th>Cargas</th>
-            {acoes && <th></th>}
+            <th>Jornada</th>
+            {(acoes || verOcorrencias) && <th></th>}
           </tr>
         </thead>
         <tbody>
@@ -365,14 +458,35 @@ function TabelaRotas({ rotas, marca, acoes }: { rotas: Rota[]; marca?: (p: Pesso
               <td>{pessoa(r.motorista)}</td>
               <td>{r.ajudantes.length ? r.ajudantes.map(pessoa) : <span className="suave">sem ajudante</span>}</td>
               <td>{r.cargas.join(', ') || <span className="suave">—</span>}</td>
-              {acoes && (
-                <td>
-                  <button className="link" onClick={() => acoes.alterar(r)}>
-                    Alterar
-                  </button>{' '}
-                  <button className="link" onClick={() => acoes.remover(r)}>
-                    Tirar
-                  </button>
+              <td>
+                <ResumoJornada rota={r} />
+              </td>
+              {(acoes || verOcorrencias) && (
+                <td className="acoes-rota">
+                  {acoes && r.tipoServico !== 'cancelada' && (
+                    <>
+                      <button className="link" onClick={() => acoes.jornada(r)}>
+                        Jornada
+                      </button>
+                      <button className="link" onClick={() => acoes.alterar(r)}>
+                        Alterar
+                      </button>
+                      {r.jornada?.horarioSaida ? (
+                        <button className="link" onClick={() => acoes.cancelar(r)}>
+                          Cancelar saída
+                        </button>
+                      ) : (
+                        <button className="link" onClick={() => acoes.remover(r)}>
+                          Tirar
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {verOcorrencias && (
+                    <button className="link" onClick={() => verOcorrencias(r)}>
+                      Ocorrências{r.ocorrencias ? ` (${r.ocorrencias})` : ''}
+                    </button>
+                  )}
                 </td>
               )}
             </tr>
@@ -589,11 +703,13 @@ function FormularioRota({
         <label>
           Tipo de serviço
           <select value={tipoServico} onChange={(e) => setTipoServico(e.target.value as TipoServico)}>
-            {config.tiposServico.map((t) => (
-              <option key={t} value={t}>
-                {NOMES_SERVICO[t]}
-              </option>
-            ))}
+            {config.tiposServico
+              .filter((t) => t !== 'cancelada')
+              .map((t) => (
+                <option key={t} value={t}>
+                  {NOMES_SERVICO[t]}
+                </option>
+              ))}
           </select>
         </label>
         <label>
@@ -734,4 +850,199 @@ function useEquipeAgregado(dono: string | null): PessoaDoAgregado[] {
     )
   }, [dono])
   return dono ? equipe : []
+}
+
+type CampoTexto = 'horarioSaida' | 'kmSaida' | 'temperaturaSaida' | 'horarioChegada' | 'kmChegada' | 'temperaturaChegada' | 'kmUnb' | 'caixasCarregadas' | 'conferenteArmazem' | 'observacao'
+
+const CAMPOS_JORNADA: { campo: CampoTexto; config: keyof ConfigDiario['campos']; rotulo: string; tipo: 'time' | 'numero' | 'graus' | 'texto' }[] = [
+  { campo: 'horarioSaida', config: 'horarioSaida', rotulo: 'Largada (horário real)', tipo: 'time' },
+  { campo: 'kmSaida', config: 'kmSaida', rotulo: 'Km do painel na saída', tipo: 'numero' },
+  { campo: 'temperaturaSaida', config: 'temperaturaSaida', rotulo: 'Temperatura do baú na saída (°C)', tipo: 'graus' },
+  { campo: 'horarioChegada', config: 'horarioChegada', rotulo: 'Chegada (horário real)', tipo: 'time' },
+  { campo: 'kmChegada', config: 'kmChegada', rotulo: 'Km do painel na chegada', tipo: 'numero' },
+  { campo: 'temperaturaChegada', config: 'temperaturaChegada', rotulo: 'Temperatura do baú na chegada (°C)', tipo: 'graus' },
+  { campo: 'kmUnb', config: 'kmUnb', rotulo: 'KM UNB (rastreador)', tipo: 'numero' },
+  { campo: 'caixasCarregadas', config: 'caixasCarregadas', rotulo: 'Caixas carregadas (conferente)', tipo: 'numero' },
+  { campo: 'conferenteArmazem', config: 'conferenteArmazem', rotulo: 'Quem conferiu no armazém', tipo: 'texto' },
+  { campo: 'observacao', config: 'observacao', rotulo: 'Observação', tipo: 'texto' },
+]
+
+/**
+ * Lançar a jornada da saída. Pode ser em duas vezes (largada de manhã, chegada à tarde).
+ * Os avisos (largada atrasada, temperatura) não impedem; km ou caixas impossíveis impedem.
+ */
+function FormularioJornada({ rota, config, aoTerminar }: { rota: Rota; config: ConfigDiario; aoTerminar: () => void }) {
+  const j = rota.jornada
+  const [valores, setValores] = useState<Record<string, string>>(() =>
+    Object.fromEntries(CAMPOS_JORNADA.map(({ campo }) => [campo, j?.[campo] === null || j?.[campo] === undefined ? '' : String(j[campo])])),
+  )
+  const [retorno, setRetorno] = useState({
+    reentregaVarejo: String(j?.reentrega?.varejo ?? ''),
+    reentregaMercado: String(j?.reentrega?.mercado ?? ''),
+    devolucaoVarejo: String(j?.devolucao?.varejo ?? ''),
+    devolucaoMercado: String(j?.devolucao?.mercado ?? ''),
+  })
+  const [erro, setErro] = useState('')
+  const [avisos, setAvisos] = useState<string[]>([])
+  const [salvando, setSalvando] = useState(false)
+  const visiveis = CAMPOS_JORNADA.filter((c) => config.campos[c.config] !== 'oculto')
+  const comRetorno = config.campos.caixasRetorno !== 'oculto'
+  const vm = config.separarVarejoMercado
+
+  async function salvar(e: FormEvent) {
+    e.preventDefault()
+    setErro('')
+    setAvisos([])
+    const jornada: Record<string, unknown> = {}
+    for (const { campo } of visiveis) jornada[campo] = valores[campo].trim() || null
+    if (comRetorno) {
+      const par = (a: string, b: string) => (a.trim() || b.trim() ? { varejo: a.trim() || 0, mercado: vm ? b.trim() || 0 : 0 } : null)
+      jornada.reentrega = par(retorno.reentregaVarejo, retorno.reentregaMercado)
+      jornada.devolucao = par(retorno.devolucaoVarejo, retorno.devolucaoMercado)
+    }
+    setSalvando(true)
+    try {
+      const r = await api.registrarJornada({ id: rota.id, jornada })
+      if (r.avisos.length) setAvisos(r.avisos.map((a) => a.mensagem))
+      else aoTerminar()
+    } catch (err) {
+      setErro(mensagemDeErro(err))
+    }
+    setSalvando(false)
+  }
+
+  return (
+    <form className="cartao formulario" onSubmit={salvar}>
+      <h3>
+        Jornada da saída {rota.sequencia} · {placaFormatada(rota.placa)}
+      </h3>
+      <p className="suave">Lance o que já tiver: a largada de manhã e a chegada à tarde. Campos em branco ficam para depois.</p>
+      <div className="linha">
+        {visiveis.map(({ campo, config: c, rotulo, tipo }) => (
+          <label key={campo}>
+            {rotulo}
+            {config.campos[c] === 'obrigatorio' ? ' *' : ''}
+            <input
+              type={tipo === 'time' ? 'time' : 'text'}
+              inputMode={tipo === 'numero' ? 'numeric' : tipo === 'graus' ? 'decimal' : undefined}
+              value={valores[campo]}
+              onChange={(e) => setValores((v) => ({ ...v, [campo]: e.target.value }))}
+              placeholder={tipo === 'graus' ? '-32,5' : undefined}
+            />
+          </label>
+        ))}
+      </div>
+      {comRetorno && (
+        <fieldset>
+          <legend>Caixas que voltaram (conferidas no armazém com o motorista)</legend>
+          <div className="linha">
+            <label>
+              Reentrega{vm ? ' · varejo' : ''}
+              <input inputMode="numeric" value={retorno.reentregaVarejo} onChange={(e) => setRetorno({ ...retorno, reentregaVarejo: e.target.value })} />
+            </label>
+            {vm && (
+              <label>
+                Reentrega · mercado
+                <input inputMode="numeric" value={retorno.reentregaMercado} onChange={(e) => setRetorno({ ...retorno, reentregaMercado: e.target.value })} />
+              </label>
+            )}
+            <label>
+              Devolução{vm ? ' · varejo' : ''}
+              <input inputMode="numeric" value={retorno.devolucaoVarejo} onChange={(e) => setRetorno({ ...retorno, devolucaoVarejo: e.target.value })} />
+            </label>
+            {vm && (
+              <label>
+                Devolução · mercado
+                <input inputMode="numeric" value={retorno.devolucaoMercado} onChange={(e) => setRetorno({ ...retorno, devolucaoMercado: e.target.value })} />
+              </label>
+            )}
+          </div>
+          <span className="suave">Entregues = carregadas − reentrega − devolução (calculado).</span>
+        </fieldset>
+      )}
+      {avisos.length > 0 && (
+        <Aviso tipo="info">
+          Salvo, com aviso: {avisos.join(' ')}{' '}
+          <button type="button" className="link" onClick={aoTerminar}>
+            Fechar
+          </button>
+        </Aviso>
+      )}
+      <Aviso>{erro}</Aviso>
+      <div className="acoes">
+        <button type="submit" disabled={salvando}>
+          {salvando ? 'Salvando…' : 'Salvar jornada'}
+        </button>
+        <button type="button" className="secundario" onClick={aoTerminar}>
+          Fechar
+        </button>
+      </div>
+    </form>
+  )
+}
+
+/** Ocorrências da saída, com horário: pneu furado, cliente fechado, atraso, troca de pessoa… */
+function Ocorrencias({ rota, editavel, aoFechar }: { rota: Rota; editavel: boolean; aoFechar: () => void }) {
+  const [lista, setLista] = useState<Ocorrencia[]>([])
+  const [horario, setHorario] = useState('')
+  const [textoOcorrencia, setTextoOcorrencia] = useState('')
+  const [erro, setErro] = useState('')
+  useEffect(
+    () =>
+      onSnapshot(collection(db, 'rotas', rota.id, 'ocorrencias'), (snap) =>
+        setLista(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Ocorrencia).sort((a, b) => (a.horario ?? '').localeCompare(b.horario ?? ''))),
+      ),
+    [rota.id],
+  )
+
+  async function incluir(e: FormEvent) {
+    e.preventDefault()
+    setErro('')
+    try {
+      await api.registrarOcorrencia({ id: rota.id, horario: horario || null, texto: textoOcorrencia })
+      setHorario('')
+      setTextoOcorrencia('')
+    } catch (err) {
+      setErro(mensagemDeErro(err))
+    }
+  }
+
+  return (
+    <section className="cartao pilha">
+      <div className="cabecalho-secao">
+        <h3>
+          Ocorrências · saída {rota.sequencia} ({placaFormatada(rota.placa)})
+        </h3>
+        <button className="link" onClick={aoFechar}>
+          Fechar
+        </button>
+      </div>
+      {lista.length === 0 && <p className="suave">Nenhuma ocorrência.</p>}
+      <ul className="lista">
+        {lista.map((o) => (
+          <li key={o.id}>
+            <span>
+              {o.horario && <strong>{o.horario} </strong>}
+              {o.texto}
+            </span>
+            <span className="suave">{o.autorNome}</span>
+          </li>
+        ))}
+      </ul>
+      {editavel && (
+        <form onSubmit={incluir} className="linha">
+          <label>
+            Horário
+            <input type="time" value={horario} onChange={(e) => setHorario(e.target.value)} />
+          </label>
+          <label>
+            O que aconteceu
+            <input value={textoOcorrencia} onChange={(e) => setTextoOcorrencia(e.target.value)} minLength={3} required />
+          </label>
+          <button type="submit">Registrar</button>
+        </form>
+      )}
+      <Aviso>{erro}</Aviso>
+    </section>
+  )
 }
