@@ -129,6 +129,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "rotas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "operacaoId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

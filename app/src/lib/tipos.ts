@@ -158,6 +158,37 @@ export type Presenca = {
 export type Ausencia = { id: string; uid: string; nome: string; baseId: string | null; data: string; tipo: 'falta' | 'nao-escalado'; justificativa: string | null }
 
 export type Operacao = { id: string; nome: string; ativa: boolean; /** Como o Diário de Campo da operação aparece. */ diario?: import('./diario').ConfigDiario }
+// Escala por carro (etapa E4 do Diário de Campo).
+/** Prestador (faz check-in) ou alguém da equipe de um agregado (só o nome). */
+export type PessoaNaRota = { tipo: 'prestador'; uid: string; nome: string } | { tipo: 'agregado'; id: string; nome: string }
+export type SituacaoDiario = 'em-preparo' | 'escalado' | 'encerrado'
+export const NOMES_SITUACAO_DIARIO: Record<SituacaoDiario, string> = { 'em-preparo': 'Em preparo', escalado: 'Escala concluída', encerrado: 'Encerrado' }
+/** Documento em diarios/{operacaoId_data}. */
+export type Diario = { id: string; operacaoId: string; data: string; situacao: SituacaoDiario; reserva: string[] }
+/** Documento em rotas/{id}: uma saída de um veículo. */
+export type Rota = {
+  id: string
+  diarioId: string
+  operacaoId: string
+  data: string
+  sequencia: number
+  tipoServico: import('./diario').TipoServico
+  placa: string
+  veiculoTipo: TipoVeiculo
+  veiculoOrigem: 'casa' | 'agregado'
+  agregadoUid: string | null
+  agregadoNome: string | null
+  motorista: PessoaNaRota
+  ajudantes: PessoaNaRota[]
+  prestadores: string[]
+  cargas: string[]
+  roteiroId: string | null
+  modalidadeId: string | null
+  brokerId: string | null
+  perfilCobrado: TipoVeiculo
+  dataVolta: string | null
+}
+
 /** Roteiro da operação, ligado a uma região de entrega. */
 export type Roteiro = { id: string; nome: string; regiaoId: string | null; ativo: boolean }
 export type Modalidade = { id: string; nome: string; ativo: boolean }

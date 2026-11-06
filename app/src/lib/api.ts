@@ -2,7 +2,7 @@ import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
 import type { ConfigDiario } from './diario'
 import type { Faixa, Publico } from './eventos'
-import type { Alerta, Caminhao, CampoEmissao, Funcao, SituacaoVeiculo, TipoVeiculo, CamposEmissao, Contratante, DadosBancarios, DadosEmpresa, ModeloDocumento, Perfil, RelatorioImportacao, Representante } from './tipos'
+import type { Alerta, Caminhao, PessoaNaRota, CampoEmissao, Funcao, SituacaoVeiculo, TipoVeiculo, CamposEmissao, Contratante, DadosBancarios, DadosEmpresa, ModeloDocumento, Perfil, RelatorioImportacao, Representante } from './tipos'
 import type { CampoEmpresa, Escolha } from './acareacao'
 import type { Endereco } from './documentos'
 
@@ -117,6 +117,27 @@ export const api = {
     'salvarBase',
   ),
   gerarQrDoDia: chamada<{ baseId: string; dia: 'hoje' | 'amanha' }, { conteudo: string; data: string; baseNome: string }>('gerarQrDoDia'),
+  salvarRota: chamada<
+    {
+      id?: string
+      operacaoId: string
+      data: string
+      tipoServico: string
+      placa: string
+      motorista: PessoaNaRota
+      ajudantes: PessoaNaRota[]
+      cargas: string[]
+      roteiroId: string | null
+      modalidadeId: string | null
+      brokerId: string | null
+      perfilCobrado: string | null
+      dataVolta: string | null
+    },
+    { ok: true; id: string; sequencia: number }
+  >('salvarRota'),
+  removerRota: chamada<{ id: string }>('removerRota'),
+  salvarReserva: chamada<{ operacaoId: string; data: string; uids: string[] }>('salvarReserva'),
+  concluirEscala: chamada<{ operacaoId: string; data: string }, { ok: true; naoEscalados: number }>('concluirEscala'),
   salvarConfigDiario: chamada<{ operacaoId: string; config: ConfigDiario }>('salvarConfigDiario'),
   salvarItemOperacao: chamada<
     { operacaoId: string; lista: 'roteiros' | 'modalidades' | 'brokers'; id?: string; nome: string; ativo: boolean; regiaoId?: string | null; regiao?: string; contato?: string; telefone?: string },

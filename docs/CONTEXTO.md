@@ -3,7 +3,7 @@
 > Documento de referência para quem for continuar o projeto, seja uma pessoa ou uma IA.
 > Explica o que o app faz, o que ele deliberadamente **não** faz, as regras de negócio
 > decididas com o dono do projeto (e por quê), a arquitetura técnica e como retomar o trabalho.
-> Atualizado em 05/11/2026, após a etapa E3 do Diário de Campo (regras de cada operação).
+> Atualizado em 06/11/2026, após a etapa E4 do Diário de Campo (escala por carro).
 
 ---
 
@@ -313,6 +313,37 @@ Em Configurações › Operações › **Diário de campo** (coordenação edita
   `functions/src/regras/diario.ts`, com cópia do catálogo em `app/src/lib/diario.ts`. Os avisos
   passam a aparecer no diário na etapa E5.
 
+### 6.2.6 Escala por carro (etapa E4 do Diário de Campo)
+Aba **Diário de Campo** (`/equipe/diario`; ADM e coordenação editam, o Jurídico consulta):
+- Escolhe a **operação** (lembrada no aparelho) e o **dia** (setas para o dia anterior e o
+  seguinte). Com "até", mostra **vários dias** agrupados por data, só para consulta (como o
+  filtro de data do Excel). Faixa com a cor da operação.
+- **Diário do dia** (`diarios/{operacaoId_data}`): nasce na primeira saída. Situação: **em
+  preparo** → **escala concluída** (→ encerrado, na etapa E5).
+- **Saída (rota)** (`rotas/{id}`): sequência no dia, tipo de serviço (os ligados na operação),
+  veículo (só os **disponíveis**; mostra os em manutenção), motorista, até 2 ajudantes na tela (o
+  servidor aceita 4), cargas/DT, roteiro, modalidade, broker e perfil cobrado (vem o tipo do
+  veículo; pode mudar), conforme os campos que a operação mostra. **Viagem** pede o dia da volta
+  e ocupa as pessoas até lá. O mesmo veículo pode ter **segunda viagem** no dia.
+- **Pessoas:** prestador (com login) ou, no caminhão de agregado, a **equipe do agregado** (só o
+  nome). Equipe mista é permitida (prestador nosso no caminhão do agregado).
+- **Bloqueios no servidor** (`regras/escala.ts`): **CNH vencida ou não cadastrada** bloqueia o
+  motorista; veículo em manutenção ou inativo; **pessoa em dois carros** no mesmo dia (inclui
+  viagens ainda fora); pessoa repetida, inativa ou agregado; equipe de outro agregado; tipo de
+  serviço desligado; diário encerrado.
+- **Reserva** (no diário): pessoas na base sem carro, para cobrir faltas. Quem entra numa rota sai
+  da reserva.
+- **Concluir escala:** marca **não escalado (NE)** automático (`ausencias` com `origem: 'escala'`)
+  em quem tem função da operação e ficou fora de todas as rotas do dia (de qualquer operação), da
+  reserva e não tem presença nem marca. Pode ser repetido. Escalar a pessoa depois tira a marca;
+  o check-in também tira (como antes).
+- **Chegada ao vivo:** ao lado de cada pessoa, ✓ com o horário do check-in, F (falta), NE,
+  "aguardando" ou, depois do fim da janela de check-in da base (ou em dia passado), **"não
+  veio"** com o botão **marcar falta** (justificativa obrigatória, como no calendário). A troca é
+  feita alterando a saída. A tela lista também quem **chegou sem estar na escala**.
+- Ainda não existem os horários, km, temperaturas e caixas da saída (etapa E5) nem a presença
+  automática da viagem (etapa E6).
+
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
    `heberhub:<baseId>_<data>:<token>`; o token é secreto e só sai do servidor por essa tela.
@@ -498,7 +529,7 @@ docs/CONTEXTO.md          este documento
 | `eventos/{id}` | registros dos **lançamentos em grupo** (nome histórico) | coordenação e ADM Financeiro |
 | `fechamentos/{AAAA-MM}` | status, totais por pessoa, líquido, reabertura | coordenação e ADM Financeiro |
 | `eventosPresenca/{id}` | eventos de presença: dias, público, regras (faixas), status, resultado congelado | **só coordenação** |
-| `ausencias/{uid_data}` | falta ou não escalado: tipo, justificativa, baseId, quem marcou | ADM e coordenação |
+| `ausencias/{uid_data}` | falta ou não escalado: tipo, justificativa, baseId, quem marcou; `origem: 'escala'` no NE automático do Diário de Campo | ADM e coordenação |
 | `cadastrosOficiais/{uid}` | enviado (empresa, representante, contato), consulta à Receita, avisos, Cartão CNPJ (caminho no Storage até 60 dias), `oficial` (versão aprovada, com o que a Receita dizia nela), versaoAtual, divergenciasPendentes; do agregado, `caminhoes` e `crlvs` (por placa) | a própria pessoa; a equipe |
 | `cadastrosOficiais/{uid}/versoes/{n}` | histórico do Cadastro Oficial: fontes, descartados, motivo, autor, data | a equipe |
 | `dadosBancarios/{uid}` | banco, agência, conta, tipo, chave PIX, declaração de titularidade | a própria pessoa; quem vê valores (não o ADM comum) |
@@ -514,6 +545,8 @@ docs/CONTEXTO.md          este documento
 | `cnhs/{uid}` | número, categoria e validade da CNH (preenchidos pela equipe) | a equipe |
 | `regioes/{id}` | regiões de entrega: nome, descrição, ativa | a equipe |
 | `operacoes/{id}/roteiros`, `/modalidades`, `/brokers` | listas da operação para o diário (roteiro com `regiaoId`; broker com contato) | a equipe |
+| `diarios/{operacaoId_data}` | diário do dia: operação, data, situação, reserva (uids), quem concluiu | a equipe |
+| `rotas/{id}` | saída: diário, operação, data, sequência, tipo de serviço, placa, tipo e origem do veículo, agregado, motorista, ajudantes, `prestadores` (uids), cargas, roteiro, modalidade, broker, perfil cobrado, volta (viagem) | a equipe |
 | `valoresOperacao/{operacaoId_inicio}` | desconto do agregado (motorista, ajudante) e adicional de viagem por dia, em centavos | quem vê valores |
 | `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome, função, ativo | a equipe |
 | `valoresAgregado/{uid_inicio}` | fixo por saída, por caixa padrão e por caixa em cada região (centavos), início, documento que gravou | quem vê valores |
@@ -528,6 +561,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | --- | --- |
 | Agregados | `enviarCrlv` (no cadastro ou, pela equipe, num caminhão), `verCrlv`, `salvarCaminhao`, `salvarEquipeAgregado`, `salvarValorAgregado` |
 | Frota | `salvarVeiculo` (frota da casa), `salvarCnh`, `salvarRegiao` |
+| Escala | `salvarRota`, `removerRota`, `salvarReserva`, `concluirEscala` |
 | Diário (operação) | `salvarConfigDiario`, `salvarItemOperacao` (roteiros, modalidades, brokers), `salvarValoresOperacao` |
 | Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
@@ -597,11 +631,11 @@ o futuro: integração com o Clicksign e PDF gerado no servidor.
 **Em andamento: Diário de Campo** (`docs/PLANO-DIARIO-DE-CAMPO.md`, plano fechado com o dono):
 escala por carro, veículos, agregados, cargas e acompanhamento das rotas. **Etapa E1 (agregados)
 pronta. Etapas E2 (frota da casa, CNH e regiões de entrega) e E3 (regras de cada operação)
-prontas.** Próxima: **E4** (escala por carro: o diário do dia, rotas, pessoas nos carros, reserva,
-NE automático, check-in ao vivo, falta e troca).
+prontas. Etapa E4 (escala por carro) pronta.** Próxima: **E5** (jornada da saída: horários, km,
+KM UNB, temperaturas, caixas, ocorrências, cancelamento, avisos e encerramento do dia).
 
 **Pendências e ideias registradas:**
-- **Escala por carro:** é a etapa E4 do Diário de Campo; até lá, só a marca NE por dia.
+- **Escala por carro:** pronta (etapa E4). A marca NE manual continua existindo no calendário.
 - Dias marcados como NE contam como ausência nas regras de eventos ("todos os dias"). Confirmar
   com o dono se o NE deve ser desconsiderado nos eventos.
 - Revisão jurídica do termo de privacidade.
@@ -631,6 +665,7 @@ NE automático, check-in ao vivo, falta e troca).
 | Diário de Campo E1 | Cadastro de agregado (link próprio, caminhões com CRLV), caminhões aprovados como disponíveis, equipe e valores do agregado, variáveis de contrato, distrato tira os caminhões da escala, agregado sem check-in |
 | Diário de Campo E2 | Aba Frota (veículos da casa e dos agregados, manutenção com motivo e histórico, CRLV com validade), CNH de quem dirige (função "exige CNH"), regiões de entrega, valor por caixa do agregado por região, termo de privacidade v3 |
 | Diário de Campo E3 | Diário de campo de cada operação: cor, campos (não aparece, opcional, obrigatório), tipos de serviço, varejo e mercado, largada com tolerância, limites de temperatura, roteiros ligados à região, modalidades, brokers, desconto do agregado e adicional de viagem por dia |
+| Diário de Campo E4 | Aba Diário de Campo: diário por dia e operação, saídas com veículo, motorista, ajudantes e cargas, segunda viagem, viagem com volta, reserva, concluir escala com NE automático, bloqueios (CNH, veículo, pessoa em dois carros), check-in ao vivo, não veio e falta, vários dias |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
 

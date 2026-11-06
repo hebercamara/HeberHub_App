@@ -1418,3 +1418,13 @@ a.botao {
   border-radius: 8px;
   padding: 12px;
 }
+
+/* Diário de Campo: faixa com a cor da operação e pessoas dentro de cada saída. */
+.faixa-operacao {
+  height: 6px;
+  border-radius: 3px;
+}
+.pessoa-rota {
+  display: block;
+  white-space: nowrap;
+}

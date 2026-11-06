@@ -73,6 +73,14 @@ service cloud.firestore {
       allow read: if equipe();
     }
 
+    // Diário de Campo: o diário de cada dia e operação e as rotas (sem valores): a equipe.
+    match /diarios/{id} {
+      allow read: if equipe();
+    }
+    match /rotas/{id} {
+      allow read: if equipe();
+    }
+
     // Veículos (da casa e dos agregados) e a equipe de cada agregado: a equipe.
     match /veiculos/{placa} {
       allow read: if equipe();

@@ -62,6 +62,7 @@ export function Layout() {
           <nav className="abas" aria-label="Seções">
             <NavLink to="/equipe/presencas">Presenças</NavLink>
             {perfil !== 'juridico' && <NavLink to="/equipe/qr">QR do dia</NavLink>}
+            <NavLink to="/equipe/diario">Diário de Campo</NavLink>
             <NavLink to="/equipe/frota">Frota</NavLink>
             <NavLink to="/presenca">Minha presença</NavLink>
             {financeiro && <NavLink to="/financeiro">Financeiro</NavLink>}
