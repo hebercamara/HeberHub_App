@@ -4,7 +4,7 @@ import type { DocumentSnapshot } from 'firebase-admin/firestore'
 import { onCall } from 'firebase-functions/v2/https'
 import { idDiario } from './escala.js'
 import { agoraServidor, auditar, dataValida, db, exigirPerfil, falha, texto } from './infra.js'
-import { CAMPOS_DIARIO, configPadrao, type ConfigDiario } from './regras/diario.js'
+import { CAMPOS_DIARIO, caixasDeReentrega, configPadrao, type ConfigDiario } from './regras/diario.js'
 import { calcularJornada, JORNADA_VAZIA, lerJornada, pendenciasDaJornada, type Jornada } from './regras/jornada.js'
 import { placaFormatada } from './regras/veiculos.js'
 
@@ -47,6 +47,8 @@ export const registrarJornada = onCall(async (req) => {
     if (calculo.erros.length) throw falha(calculo.erros.join(' '), 'failed-precondition')
     tx.update(rota.ref, {
       jornada,
+      // Caixas de reentrega ficam pendentes para uma saída de reentrega nos próximos dias.
+      reentregaPendente: caixasDeReentrega(jornada.reentrega) > 0 && !rota.get('reentregaAtendidaPor'),
       kmRodado: calculo.kmRodado,
       minutosRodados: calculo.minutosRodados,
       caixasEntregues: calculo.entregues,
@@ -71,6 +73,9 @@ export const cancelarRota = onCall(async (req) => {
     const diario = await tx.get(diarios.doc(rota.get('diarioId')))
     if (diario.get('situacao') === 'encerrado') throw falha('O dia já foi encerrado.', 'failed-precondition')
     if (rota.get('tipoServico') === 'cancelada') throw falha('Esta saída já está cancelada.', 'failed-precondition')
+    // Reentrega cancelada: as caixas que ela ia levar voltam a ficar pendentes.
+    const origens = await Promise.all(((rota.get('reentregaDe') ?? []) as string[]).map((x) => tx.get(rotas.doc(x))))
+    origens.forEach((o) => o.exists && tx.update(o.ref, { reentregaPendente: true, reentregaAtendidaPor: null }))
     tx.update(rota.ref, { tipoServico: 'cancelada', tipoAntesDeCancelar: rota.get('tipoServico'), motivoCancelamento: motivo, canceladaPor: autor, canceladaEm: agoraServidor() })
     auditar(tx, { acao: 'rota-cancelada', autor, alvo: id, detalhes: { motivo, placa: rota.get('placa') } })
   })

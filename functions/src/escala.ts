@@ -76,6 +76,8 @@ export const salvarRota = onCall(async (req) => {
   const perfilCobradoPedido = typeof d.perfilCobrado === 'string' && d.perfilCobrado ? (d.perfilCobrado as TipoVeiculo) : null
   if (perfilCobradoPedido && !TIPOS_VEICULO.includes(perfilCobradoPedido)) throw falha('Perfil cobrado inválido.')
   const listas = { roteiroId: idOpcional(d.roteiroId), modalidadeId: idOpcional(d.modalidadeId), brokerId: idOpcional(d.brokerId) }
+  // Reentrega: as saídas de dias anteriores cujas caixas de reentrega esta saída vai levar.
+  const reentregaDe: string[] = tipoServico === 'reentrega' ? [...new Set<string>((Array.isArray(d.reentregaDe) ? (d.reentregaDe as unknown[]) : []).map(String))].slice(0, 20) : []
 
   const resultado = await db.runTransaction(async (tx) => {
     const refOperacao = db.collection('operacoes').doc(operacaoId)
@@ -112,6 +114,15 @@ export const salvarRota = onCall(async (req) => {
     const equipe = origem === 'agregado' ? await tx.get(db.collection('agregados').doc(dono).collection('equipe').where('ativo', '==', true)) : null
     const ocupam = await rotasQueOcupam(tx, data)
     const marcas = await lerMarcasAutomaticas(tx, uids, data)
+    // Pendências de reentrega: as novas precisam estar pendentes; as que saíram da lista voltam a ficar.
+    const antes = ((atual?.get('reentregaDe') ?? []) as string[]).filter((x) => !reentregaDe.includes(x))
+    const origens = await Promise.all([...reentregaDe, ...antes].map((x) => tx.get(rotas.doc(x))))
+    for (const o of origens.slice(0, reentregaDe.length)) {
+      const minha = id !== null && o.get('reentregaAtendidaPor') === id
+      if (!o.exists || o.get('operacaoId') !== operacaoId || o.get('data') >= data || (!o.get('reentregaPendente') && !minha)) {
+        throw falha('Uma das reentregas escolhidas não está pendente (ou é de outra operação ou dia).', 'failed-precondition')
+      }
+    }
 
     const config = (operacao.get('diario') as ConfigDiario | undefined) ?? configPadrao()
     const problema = problemaDaRota(
@@ -154,12 +165,15 @@ export const salvarRota = onCall(async (req) => {
       ...listas,
       perfilCobrado: perfilCobradoPedido ?? (veiculo.get('tipo') as TipoVeiculo),
       dataVolta,
+      reentregaDe,
     }
     tx.set(ref, { ...rota, atualizadoPor: autor, atualizadoEm: agoraServidor(), ...(atual ? {} : { criadoPor: autor, criadoEm: agoraServidor() }) }, { merge: true })
     // Diário do dia: nasce na primeira rota. Quem entrou numa rota sai da reserva.
     const reserva = ((diario.get('reserva') ?? []) as string[]).filter((uid) => !uids.includes(uid))
     tx.set(refDiario, { operacaoId, data, situacao: diario.get('situacao') ?? 'em-preparo', reserva, atualizadoEm: agoraServidor() }, { merge: true })
     for (const m of marcas) tx.delete(m.ref)
+    origens.slice(0, reentregaDe.length).forEach((o) => tx.update(o.ref, { reentregaPendente: false, reentregaAtendidaPor: ref.id }))
+    origens.slice(reentregaDe.length).forEach((o) => o.exists && tx.update(o.ref, { reentregaPendente: true, reentregaAtendidaPor: null }))
     auditar(tx, { acao: atual ? 'rota-alterada' : 'rota-incluida', autor, alvo: ref.id, detalhes: { operacaoId, data, placa, tipoServico, prestadores: uids } })
     return { id: ref.id, sequencia }
   })
@@ -177,7 +191,10 @@ export const removerRota = onCall(async (req) => {
     if (diario.get('situacao') === 'encerrado') throw falha('O diário deste dia já foi encerrado.', 'failed-precondition')
     // Depois da largada, a saída não some: cancela-se com motivo.
     if (rota.get('jornada.horarioSaida') || rota.get('tipoServico') === 'cancelada') throw falha('Esta saída já largou ou foi cancelada: use "Cancelar saída".', 'failed-precondition')
+    const origens = await Promise.all(((rota.get('reentregaDe') ?? []) as string[]).map((x) => tx.get(rotas.doc(x))))
     tx.delete(rota.ref)
+    // As caixas que esta saída ia reentregar voltam a ficar pendentes.
+    origens.forEach((o) => o.exists && tx.update(o.ref, { reentregaPendente: true, reentregaAtendidaPor: null }))
     auditar(tx, { acao: 'rota-removida', autor, alvo: id, detalhes: rota.data() ?? {} })
   })
   return { ok: true }

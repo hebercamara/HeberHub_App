@@ -149,7 +149,7 @@ export type Presenca = {
   horario: string
   distanciaMetros: number | null
   precisao: number | null
-  origem: 'qrcode' | 'localizacao' | 'manual'
+  origem: 'qrcode' | 'localizacao' | 'manual' | 'viagem'
   justificativa?: string
   cancelada?: boolean
 }
@@ -195,6 +195,13 @@ export type Rota = {
   avisos?: { codigo: string; mensagem: string }[]
   motivoCancelamento?: string
   ocorrencias?: number
+  /** Reentrega (etapa E6): saídas de dias anteriores cujas caixas esta saída leva. */
+  reentregaDe?: string[]
+  /** Esta saída teve caixas de reentrega que ainda não foram escaladas. */
+  reentregaPendente?: boolean
+  reentregaAtendidaPor?: string | null
+  /** Viagem: volta registrada (presença nos dias fora e adicional). */
+  voltaRegistrada?: { data: string; dias: number; presencas: number; adicionalPorPessoa: number }
 }
 export type CaixasRetorno = { varejo: number; mercado: number }
 export type Jornada = {

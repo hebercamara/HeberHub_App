@@ -3,7 +3,7 @@
 > Documento de referência para quem for continuar o projeto, seja uma pessoa ou uma IA.
 > Explica o que o app faz, o que ele deliberadamente **não** faz, as regras de negócio
 > decididas com o dono do projeto (e por quê), a arquitetura técnica e como retomar o trabalho.
-> Atualizado em 06/11/2026, após a etapa E5 do Diário de Campo (jornada da saída e encerramento do dia).
+> Atualizado em 07/11/2026, após a etapa E6 do Diário de Campo (viagem e reentrega).
 
 ---
 
@@ -341,7 +341,7 @@ Aba **Diário de Campo** (`/equipe/diario`; ADM e coordenação editam, o Juríd
   "aguardando" ou, depois do fim da janela de check-in da base (ou em dia passado), **"não
   veio"** com o botão **marcar falta** (justificativa obrigatória, como no calendário). A troca é
   feita alterando a saída. A tela lista também quem **chegou sem estar na escala**.
-- Ainda não existe a presença automática da viagem nem o adicional de viagem (etapa E6).
+- A presença da viagem, o adicional de viagem e as reentregas pendentes estão na seção 6.2.8.
 
 ### 6.2.7 Jornada da saída e encerramento do dia (etapa E5 do Diário de Campo)
 Na tabela do Diário de Campo, cada saída ganhou **Jornada**, **Ocorrências** e **Cancelar saída**:
@@ -366,6 +366,22 @@ Na tabela do Diário de Campo, cada saída ganhou **Jornada**, **Ocorrências** 
 - **Encerrar o dia** (ADM ou coordenação): confere, em cada saída não cancelada, os campos
   **obrigatórios** da operação e lista o que falta ("saída 2 (ABC1D23): Temperatura…").
   Encerrado, nada muda. **Reabrir o dia:** só a coordenação, com justificativa (auditoria).
+
+### 6.2.8 Viagem e reentrega (etapa E6 do Diário de Campo)
+- **Registrar volta** (na saída do tipo viagem; ADM ou coordenação; uma vez por viagem): informa o
+  dia em que a viagem voltou (pode ser antes ou depois do previsto; a saída passa a ter essa
+  volta). Para **cada prestador** da saída e **cada dia** da saída até a volta (inclusive):
+  presença de origem **viagem** (letra **V** no calendário, horário "viagem"), com a diária
+  vigente, **a não ser** que a pessoa já tenha presença nesse dia (ex.: check-in na saída) ou
+  falta marcada. O NE do dia sai. Depois, para cada prestador, um **adicional de viagem = dias ×
+  valor por dia da operação** (vigente na saída), lançado no dia da volta
+  (`lancamentos/viagem_{rota}_{uid}`). Mês fechado bloqueia. Equipe de agregado não recebe.
+- **Reentrega pendente:** ao lançar a jornada com caixas de **reentrega** (> 0), a saída fica com
+  `reentregaPendente`. O diário dos dias seguintes mostra **"Reentregas pendentes"** (data, saída,
+  placa, caixas). Ao criar uma saída do tipo **reentrega**, marcam-se quais pendências ela leva
+  (`reentregaDe`); elas deixam de estar pendentes (`reentregaAtendidaPor`). Tirar a pendência da
+  lista, cancelar ou tirar a saída de reentrega devolve as caixas para "pendente". Uma pendência
+  já atendida por outra saída não pode ser escolhida de novo.
 
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
@@ -544,7 +560,7 @@ docs/CONTEXTO.md          este documento
 | `usuarios/{uid}` | nome, e-mail, telefone, perfil, financeiro, status (pendente, ativo, inativo, recusado), baseId, funcaoId, deviceId, termoVersao, tipo (motorista ou ajudante), razão social, CNPJ, categoria (`agregado`; ausente = prestador) | a própria pessoa; ADM e coordenação |
 | `bases/{id}` | nome, lat, lng, raioMetros, precisaoMaxMetros, janelaInicio, janelaFim, ativa | qualquer pessoa logada |
 | `sessoes/{baseId_data}` | token do QR do dia | **ninguém** (só o servidor) |
-| `presencas/{uid_data}` | uid, nome, baseId, data, horário, origem (qrcode, localizacao, manual), distância, lat/lng/precisão (até 90 dias), justificativa, cancelada | a própria pessoa; ADM e coordenação |
+| `presencas/{uid_data}` | uid, nome, baseId, data, horário, origem (qrcode, localizacao, manual, viagem — com `rotaId`), distância, lat/lng/precisão (até 90 dias), justificativa, cancelada | a própria pessoa; ADM e coordenação |
 | `operacoes/{id}` | nome, ativa, `diario` (configuração do Diário de Campo) | ADM e coordenação |
 | `funcoes/{id}` | nome, operacaoId, operacaoNome, ativa | ADM e coordenação |
 | `valoresDiaria/{id}` | alvoChave (`funcao:<id>` ou `prestador:<uid>`), valor (centavos), início | coordenação e ADM Financeiro |
@@ -569,7 +585,7 @@ docs/CONTEXTO.md          este documento
 | `regioes/{id}` | regiões de entrega: nome, descrição, ativa | a equipe |
 | `operacoes/{id}/roteiros`, `/modalidades`, `/brokers` | listas da operação para o diário (roteiro com `regiaoId`; broker com contato) | a equipe |
 | `diarios/{operacaoId_data}` | diário do dia: operação, data, situação, reserva (uids), quem concluiu | a equipe |
-| `rotas/{id}` | saída: diário, operação, data, sequência, tipo de serviço, placa, tipo e origem do veículo, agregado, motorista, ajudantes, `prestadores` (uids), cargas, roteiro, modalidade, broker, perfil cobrado, volta (viagem); `jornada` (horários, km, KM UNB, temperaturas, caixas, conferente, observação), km rodado, minutos rodados, caixas entregues, avisos, motivo do cancelamento | a equipe |
+| `rotas/{id}` | saída: diário, operação, data, sequência, tipo de serviço, placa, tipo e origem do veículo, agregado, motorista, ajudantes, `prestadores` (uids), cargas, roteiro, modalidade, broker, perfil cobrado, volta (viagem); `jornada` (horários, km, KM UNB, temperaturas, caixas, conferente, observação), km rodado, minutos rodados, caixas entregues, avisos, motivo do cancelamento; `reentregaPendente`, `reentregaAtendidaPor`, `reentregaDe`, `voltaRegistrada` | a equipe |
 | `rotas/{id}/ocorrencias/{id}` | horário, texto, quem anotou | a equipe |
 | `valoresOperacao/{operacaoId_inicio}` | desconto do agregado (motorista, ajudante) e adicional de viagem por dia, em centavos | quem vê valores |
 | `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome, função, ativo | a equipe |
@@ -587,6 +603,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | Frota | `salvarVeiculo` (frota da casa), `salvarCnh`, `salvarRegiao` |
 | Escala | `salvarRota`, `removerRota`, `salvarReserva`, `concluirEscala` |
 | Jornada | `registrarJornada`, `registrarOcorrencia`, `cancelarRota`, `encerrarDiario`, `reabrirDiario` |
+| Viagem | `registrarVolta` (presença nos dias fora e adicional de viagem) |
 | Diário (operação) | `salvarConfigDiario`, `salvarItemOperacao` (roteiros, modalidades, brokers), `salvarValoresOperacao` |
 | Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
@@ -656,9 +673,9 @@ o futuro: integração com o Clicksign e PDF gerado no servidor.
 **Em andamento: Diário de Campo** (`docs/PLANO-DIARIO-DE-CAMPO.md`, plano fechado com o dono):
 escala por carro, veículos, agregados, cargas e acompanhamento das rotas. **Etapa E1 (agregados)
 pronta. Etapas E2 (frota da casa, CNH e regiões de entrega) e E3 (regras de cada operação)
-prontas. Etapas E4 (escala por carro) e E5 (jornada da saída e encerramento do dia) prontas.**
-Próxima: **E6** (viagem: presença automática nos dias fora e adicional por dia; reentregas
-pendentes para o dia seguinte).
+prontas. Etapas E4 (escala por carro), E5 (jornada da saída e encerramento do dia) e E6 (viagem
+e reentrega) prontas.** Próximas: **E7** (importar o roteiro do cliente e emplacar as cargas),
+**E8** (pagamento do agregado e fechamento quinzenal) e **E9** (relatórios).
 
 **Pendências e ideias registradas:**
 - **Escala por carro:** pronta (etapa E4). A marca NE manual continua existindo no calendário.
@@ -693,6 +710,7 @@ pendentes para o dia seguinte).
 | Diário de Campo E3 | Diário de campo de cada operação: cor, campos (não aparece, opcional, obrigatório), tipos de serviço, varejo e mercado, largada com tolerância, limites de temperatura, roteiros ligados à região, modalidades, brokers, desconto do agregado e adicional de viagem por dia |
 | Diário de Campo E4 | Aba Diário de Campo: diário por dia e operação, saídas com veículo, motorista, ajudantes e cargas, segunda viagem, viagem com volta, reserva, concluir escala com NE automático, bloqueios (CNH, veículo, pessoa em dois carros), check-in ao vivo, não veio e falta, vários dias |
 | Diário de Campo E5 | Jornada da saída (largada, chegada, km, KM UNB, temperaturas, caixas carregadas, reentrega e devolução em varejo e mercado, conferente), cálculos e avisos, ocorrências, cancelar saída com motivo, encerrar o dia com conferência dos obrigatórios e reabrir com justificativa |
+| Diário de Campo E6 | Registrar a volta da viagem (presença V nos dias fora, sem duplicar, e adicional de viagem por dia), reentregas pendentes ligadas à saída de reentrega, letra V no calendário |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
 

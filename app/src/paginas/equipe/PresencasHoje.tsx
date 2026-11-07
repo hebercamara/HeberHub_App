@@ -20,6 +20,7 @@ const ORIGEM: Record<Presenca['origem'], { marca: string; nome: string }> = {
   qrcode: { marca: '✓', nome: 'QR Code' },
   localizacao: { marca: 'L', nome: 'Localização' },
   manual: { marca: 'M', nome: 'Manual' },
+  viagem: { marca: 'V', nome: 'Viagem' },
 }
 const LETRA_DIA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
@@ -148,7 +149,7 @@ function ListaDoDia({ presencas, ausencias, baseId, data }: { presencas: Presenc
             <tbody>
               {ordenadas.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.origem === 'manual' ? '—' : p.horario}</td>
+                  <td>{p.origem === 'manual' || p.origem === 'viagem' ? '—' : p.horario}</td>
                   <td>{p.nome}</td>
                   <td>{p.funcao ? NOMES_FUNCAO[p.funcao] : '—'}</td>
                   <td>{ORIGEM[p.origem]?.nome ?? p.origem}</td>
@@ -212,7 +213,7 @@ function Calendario({ presencas, ausencias, baseId, datas }: { presencas: Presen
   return (
     <section className="cartao">
       <p className="suave legenda">
-        ✓ QR Code · L localização · M manual · F falta · NE não escalado · toque num dia para alterar
+        ✓ QR Code · L localização · M manual · V viagem · F falta · NE não escalado · toque num dia para alterar
       </p>
       <div className="rolagem">
         <table className="tabela calendario">

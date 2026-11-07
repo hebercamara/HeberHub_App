@@ -1,3 +1,5 @@
+import { somarDias } from './tempo.js'
+
 // Regras puras do Diário de Campo: o catálogo de campos (a "espinha dorsal" única de todas as
 // operações), a configuração de cada operação e os avisos de horário e temperatura.
 
@@ -129,4 +131,16 @@ export function avisoTemperaturaChegada(graus: number, limites: ConfigDiario['te
 /** Adicional de viagem: valor por dia × dias de viagem (em centavos). */
 export function adicionalDeViagem(dias: number, valorPorDia: number): number {
   return dias > 0 ? dias * valorPorDia : 0
+}
+
+/** Dias de uma viagem, da saída até a volta (inclusive): 03 a 04 = 2 dias. */
+export function diasDaViagem(saida: string, volta: string): string[] {
+  const dias: string[] = []
+  for (let d = saida; d <= volta && dias.length < 60; d = somarDias(d, 1)) dias.push(d)
+  return dias
+}
+
+/** Total de caixas de reentrega de uma saída (varejo + mercado). */
+export function caixasDeReentrega(reentrega: { varejo: number; mercado: number } | null | undefined): number {
+  return reentrega ? reentrega.varejo + reentrega.mercado : 0
 }

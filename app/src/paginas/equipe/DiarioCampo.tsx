@@ -166,6 +166,13 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
     ['data', '==', data],
   ]).sort((a, b) => a.sequencia - b.sequencia)
   const presencas = useConsulta<Presenca>('presencas', [['data', '==', data]]).filter((p) => !p.cancelada)
+  // Reentregas pendentes de dias anteriores (caixas que voltaram e ainda não foram escaladas).
+  const pendentes = useConsulta<Rota>('rotas', [
+    ['operacaoId', '==', operacaoId],
+    ['reentregaPendente', '==', true as unknown as string],
+  ])
+    .filter((r) => r.data < data)
+    .sort((a, b) => a.data.localeCompare(b.data))
   const ausencias = useConsulta<Ausencia>('ausencias', [['data', '==', data]])
   const usuarios = useUsuarios()
   const funcoes = useFuncoes()
@@ -226,6 +233,15 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
     const justificativa = prompt('Por que reabrir este dia?')
     if (!justificativa) return
     await executar(() => api.reabrirDiario({ operacaoId, data, justificativa }), 'Dia reaberto.')
+  }
+
+  async function registrarVolta(r: Rota) {
+    const volta = prompt(`Dia em que a viagem do ${placaFormatada(r.placa)} voltou (AAAA-MM-DD):`, r.dataVolta ?? '')
+    if (!volta) return
+    await executar(async () => {
+      const v = await api.registrarVolta({ id: r.id, dataVolta: volta.trim() })
+      setInfo(`Volta registrada: ${v.dias} dias de viagem, ${v.presencas} presença(s) lançada(s)${v.adicionalPorPessoa ? ' e o adicional de viagem' : ''}.`)
+    })
   }
 
   async function cancelar(r: Rota) {
@@ -299,6 +315,7 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
           config={config}
           rota={editando === 'nova' ? null : editando}
           rotasDoDia={rotas}
+          pendentes={pendentes}
           aoTerminar={() => setEditando(null)}
         />
       )}
@@ -320,6 +337,7 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
                     },
                     falta: (p) => void marcarFalta(p),
                     jornada: (r) => setJornadaDe(jornadaDe === r.id ? null : r.id),
+                    volta: (r) => void registrarVolta(r),
                     cancelar: (r) => void cancelar(r),
                   }
                 : undefined
@@ -333,6 +351,23 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
       )}
       {ocorrenciasDe && rotas.some((r) => r.id === ocorrenciasDe) && (
         <Ocorrencias rota={rotas.find((r) => r.id === ocorrenciasDe)!} editavel={editavel} aoFechar={() => setOcorrenciasDe(null)} />
+      )}
+
+      {pendentes.length > 0 && (
+        <section className="cartao">
+          <h3>Reentregas pendentes</h3>
+          <p className="suave">Caixas que voltaram como reentrega e ainda não foram escaladas. Crie uma saída do tipo "Reentrega" e marque quais ela leva.</p>
+          <ul className="lista">
+            {pendentes.map((r) => (
+              <li key={r.id}>
+                <span>
+                  {formatarData(r.data)} · saída {r.sequencia} · {placaFormatada(r.placa)}
+                </span>
+                <strong>{caixasReentrega(r)} caixa(s)</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <Reserva operacaoId={operacaoId} data={data} diario={diario} rotas={rotas} marca={marca} editavel={editavel} usuarios={usuarios} />
@@ -364,7 +399,13 @@ function SeloMarca({ marca }: { marca: Marca }) {
   return <span className="selo">aguardando</span>
 }
 
+function caixasReentrega(r: Rota): number {
+  const re = r.jornada?.reentrega
+  return re ? re.varejo + re.mercado : 0
+}
+
 type Acoes = {
+  volta: (r: Rota) => void
   alterar: (r: Rota) => void
   remover: (r: Rota) => void
   falta: (p: PessoaNaRota) => void
@@ -448,7 +489,13 @@ function TabelaRotas({
               <td>{r.sequencia}</td>
               <td>
                 {NOMES_SERVICO[r.tipoServico]}
-                {r.dataVolta && <div className="suave">volta {formatarData(r.dataVolta)}</div>}
+                {r.dataVolta && (
+                  <div className="suave">
+                    {r.voltaRegistrada ? `voltou ${formatarData(r.voltaRegistrada.data)} · ${r.voltaRegistrada.dias} dias` : `volta prevista ${formatarData(r.dataVolta)}`}
+                  </div>
+                )}
+                {r.reentregaDe && r.reentregaDe.length > 0 && <div className="suave">leva {r.reentregaDe.length} reentrega(s)</div>}
+                {r.reentregaPendente && <div className="selo">reentrega pendente</div>}
               </td>
               <td>
                 <strong>{placaFormatada(r.placa)}</strong> · {NOMES_TIPO_VEICULO[r.veiculoTipo]} · {r.veiculoOrigem === 'agregado' ? 'A' : 'C'}
@@ -468,6 +515,11 @@ function TabelaRotas({
                       <button className="link" onClick={() => acoes.jornada(r)}>
                         Jornada
                       </button>
+                      {r.tipoServico === 'viagem' && !r.voltaRegistrada && (
+                        <button className="link" onClick={() => acoes.volta(r)}>
+                          Registrar volta
+                        </button>
+                      )}
                       <button className="link" onClick={() => acoes.alterar(r)}>
                         Alterar
                       </button>
@@ -578,6 +630,7 @@ function FormularioRota({
   config,
   rota,
   rotasDoDia,
+  pendentes,
   aoTerminar,
 }: {
   operacaoId: string
@@ -585,6 +638,7 @@ function FormularioRota({
   config: ConfigDiario
   rota: Rota | null
   rotasDoDia: Rota[]
+  pendentes: Rota[]
   aoTerminar: () => void
 }) {
   const veiculos = useVeiculos()
@@ -604,6 +658,17 @@ function FormularioRota({
   const [brokerId, setBrokerId] = useState(rota?.brokerId ?? '')
   const [perfilCobrado, setPerfilCobrado] = useState<TipoVeiculo | ''>(rota?.perfilCobrado ?? '')
   const [dataVolta, setDataVolta] = useState(rota?.dataVolta ?? '')
+  const [reentregaDe, setReentregaDe] = useState<string[]>(rota?.reentregaDe ?? [])
+  // Pendências que esta saída pode levar: as pendentes e as que ela já leva.
+  const [jaLevadas, setJaLevadas] = useState<Rota[]>([])
+  useEffect(() => {
+    const ids = rota?.reentregaDe ?? []
+    if (!ids.length) return
+    return onSnapshot(query(collection(db, 'rotas'), where('reentregaAtendidaPor', '==', rota!.id)), (snap) =>
+      setJaLevadas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Rota)),
+    )
+  }, [rota])
+  const opcoesReentrega = [...jaLevadas, ...pendentes.filter((p) => !jaLevadas.some((j) => j.id === p.id))]
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
 
@@ -685,6 +750,7 @@ function FormularioRota({
         brokerId: brokerId || null,
         perfilCobrado: perfilCobrado || null,
         dataVolta: tipoServico === 'viagem' ? dataVolta || null : null,
+        reentregaDe: tipoServico === 'reentrega' ? reentregaDe : [],
       })
       aoTerminar()
     } catch (err) {
@@ -739,6 +805,22 @@ function FormularioRota({
           </label>
         )}
       </div>
+      {tipoServico === 'reentrega' && (
+        <fieldset>
+          <legend>Reentregas que esta saída leva</legend>
+          {opcoesReentrega.length === 0 && <p className="suave">Nenhuma reentrega pendente de dias anteriores.</p>}
+          {opcoesReentrega.map((p) => (
+            <label key={p.id} className="opcao">
+              <input
+                type="checkbox"
+                checked={reentregaDe.includes(p.id)}
+                onChange={(e) => setReentregaDe((l) => (e.target.checked ? [...l, p.id] : l.filter((x) => x !== p.id)))}
+              />
+              {formatarData(p.data)} · saída {p.sequencia} · {placaFormatada(p.placa)} · {caixasReentrega(p)} caixa(s)
+            </label>
+          ))}
+        </fieldset>
+      )}
       <div className="linha">
         <label>
           Motorista

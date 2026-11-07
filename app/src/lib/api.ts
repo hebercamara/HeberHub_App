@@ -132,6 +132,7 @@ export const api = {
       brokerId: string | null
       perfilCobrado: string | null
       dataVolta: string | null
+      reentregaDe?: string[]
     },
     { ok: true; id: string; sequencia: number }
   >('salvarRota'),
@@ -141,6 +142,7 @@ export const api = {
     { ok: true; avisos: { codigo: string; mensagem: string }[]; entregues: number | null; kmRodado: number | null }
   >('registrarJornada'),
   cancelarRota: chamada<{ id: string; motivo: string }>('cancelarRota'),
+  registrarVolta: chamada<{ id: string; dataVolta: string }, { ok: true; dias: number; presencas: number; adicionalPorPessoa: number }>('registrarVolta'),
   registrarOcorrencia: chamada<{ id: string; horario: string | null; texto: string }>('registrarOcorrencia'),
   encerrarDiario: chamada<{ operacaoId: string; data: string }>('encerrarDiario'),
   reabrirDiario: chamada<{ operacaoId: string; data: string; justificativa: string }>('reabrirDiario'),

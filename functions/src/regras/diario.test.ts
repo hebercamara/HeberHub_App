@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { adicionalDeViagem, atrasoLargada, avisoTemperaturaChegada, avisoTemperaturaSaida, configPadrao, lerConfigDiario } from './diario.js'
+import { adicionalDeViagem, caixasDeReentrega, diasDaViagem, atrasoLargada, avisoTemperaturaChegada, avisoTemperaturaSaida, configPadrao, lerConfigDiario } from './diario.js'
 
 describe('configuração do diário da operação', () => {
   it('sem configuração: tudo opcional, só entrega e cancelada', () => {
@@ -59,5 +59,18 @@ describe('avisos do diário', () => {
     expect(adicionalDeViagem(2, 7000)).toBe(14000)
     expect(adicionalDeViagem(3, 7000)).toBe(21000)
     expect(adicionalDeViagem(0, 7000)).toBe(0)
+  })
+})
+
+describe('viagem e reentrega', () => {
+  it('dias da viagem contam a saída e a volta', () => {
+    expect(diasDaViagem('2026-11-03', '2026-11-04')).toEqual(['2026-11-03', '2026-11-04'])
+    expect(diasDaViagem('2026-11-30', '2026-12-02')).toEqual(['2026-11-30', '2026-12-01', '2026-12-02'])
+    expect(diasDaViagem('2026-11-05', '2026-11-04')).toEqual([])
+  })
+
+  it('caixas de reentrega somam varejo e mercado', () => {
+    expect(caixasDeReentrega({ varejo: 3, mercado: 2 })).toBe(5)
+    expect(caixasDeReentrega(null)).toBe(0)
   })
 })
