@@ -13,8 +13,11 @@ import { mensagemDeErro } from '../../lib/erros'
 import { db } from '../../lib/firebase'
 import { useSessao } from '../../lib/sessao'
 import {
+  ehAgregado,
   NOMES_ESTADO_CIVIL,
   NOMES_FUNCAO,
+  NOMES_TIPO_VEICULO,
+  placaFormatada,
   NOMES_STATUS,
   NOMES_TIPO_CONTA,
   NOMES_TIPO_PIX,
@@ -33,7 +36,7 @@ export function Cadastros() {
 
   return (
     <div className="pilha">
-      <p className="suave">Prestadores que se cadastraram e aguardam aprovação.</p>
+      <p className="suave">Prestadores e agregados que se cadastraram e aguardam aprovação.</p>
       {pendentes.length === 0 && <p className="suave">Nenhum cadastro pendente.</p>}
       {pendentes.map((u) => (
         <CartaoPendente key={u.id} usuario={u} />
@@ -85,6 +88,7 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
   const [funcaoId, setFuncaoId] = useState('')
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const agregado = ehAgregado(usuario)
   const oficial = useCadastroOficial(usuario.cadastroOficial ? usuario.id : null)
   // Vínculo com a planilha: base e função vêm sugeridas de lá.
   const sugestao = oficial?.vinculo
@@ -114,7 +118,7 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
     setErro('')
     setEnviando(true)
     try {
-      await api.aprovarCadastro({ uid: usuario.id, aprovar, baseId: aprovar ? baseEscolhida : undefined, funcaoId: aprovar ? funcaoEscolhida || null : undefined, escolhas: aprovar ? escolhas : undefined,
+      await api.aprovarCadastro({ uid: usuario.id, aprovar, baseId: aprovar ? baseEscolhida : undefined, funcaoId: aprovar && !agregado ? funcaoEscolhida || null : undefined, escolhas: aprovar ? escolhas : undefined,
         conferenciaManual: aprovar && precisaConferir ? conferencia : undefined,
       })
     } catch (e) {
@@ -125,7 +129,9 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
 
   return (
     <section className="cartao">
-      <h2>{usuario.nome}</h2>
+      <h2>
+        {usuario.nome} {agregado && <span className="selo">Agregado</span>}
+      </h2>
       <dl className="dados">
         {usuario.funcao && (
           <>
@@ -143,6 +149,7 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
         <dd>{usuario.email}</dd>
       </dl>
       {oficial && <DetalheOficial uid={usuario.id} cadastro={oficial} />}
+      {agregado && oficial && <CaminhoesDoCadastro uid={usuario.id} cadastro={oficial} />}
       {divs.length > 0 && <Acareacao divergencias={divs} escolhas={escolhas} aoMudar={setEscolhas} rotuloCadastro="Formulário" />}
       {precisaConferir && (
         <label>
@@ -168,7 +175,7 @@ function CartaoPendente({ usuario }: { usuario: Usuario }) {
           </select>
         </label>
       )}
-      {funcoes.length > 0 && <SeletorFuncao funcoes={funcoes} valor={funcaoEscolhida} aoMudar={setFuncaoId} rotulo="Função (define o valor da diária)" />}
+      {funcoes.length > 0 && !agregado && <SeletorFuncao funcoes={funcoes} valor={funcaoEscolhida} aoMudar={setFuncaoId} rotulo="Função (define o valor da diária)" />}
       {ativas.length === 0 && <Aviso tipo="info">Cadastre uma base antes de aprovar prestadores.</Aviso>}
       <Aviso>{erro}</Aviso>
       <div className="acoes">
@@ -276,6 +283,42 @@ function DetalheOficial({ uid, cadastro }: { uid: string; cadastro: CadastroOfic
           Consultar a Receita de novo
         </button>
       </div>
+    </div>
+  )
+}
+
+/** Caminhões que o agregado informou, com o CRLV de cada um. Aprovado, eles entram como disponíveis. */
+function CaminhoesDoCadastro({ uid, cadastro }: { uid: string; cadastro: CadastroOficial }) {
+  const [erro, setErro] = useState('')
+  const caminhoes = cadastro.caminhoes ?? []
+  async function ver(placa: string) {
+    setErro('')
+    try {
+      const a = await api.verCrlv({ placa, uid })
+      abrirArquivo(a.tipo, a.base64)
+    } catch (e) {
+      setErro(mensagemDeErro(e))
+    }
+  }
+  return (
+    <div className="pilha">
+      <h3>Caminhões ({caminhoes.length})</h3>
+      <ul className="lista">
+        {caminhoes.map((c) => (
+          <li key={c.placa}>
+            <span>
+              <strong>{placaFormatada(c.placa)}</strong> · {c.tipo ? NOMES_TIPO_VEICULO[c.tipo] : '—'}
+              {c.modelo ? ` · ${c.modelo}` : ''}
+              {c.capacidadeCaixas ? ` · ${c.capacidadeCaixas} caixas` : ''}
+            </span>
+            <button className="link" onClick={() => void ver(c.placa)}>
+              Ver CRLV
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="suave">Ao aprovar, os caminhões entram como disponíveis para a escala. Agregado não tem função nem diária.</p>
+      <Aviso>{erro}</Aviso>
     </div>
   )
 }

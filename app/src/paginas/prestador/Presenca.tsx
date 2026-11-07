@@ -80,7 +80,7 @@ export function Presenca() {
           (presencaDeHoje ? (
             <div className="resultado ok">
               <div className="resultado-icone">✓</div>
-              <p>{presencaDeHoje.origem === 'manual' ? 'Presença de hoje lançada pela coordenação.' : `Presença de hoje registrada às ${presencaDeHoje.horario}.`}</p>
+              <p>{presencaDeHoje.origem === 'viagem' ? 'Presença de hoje: em viagem.' : presencaDeHoje.origem === 'manual' ? 'Presença de hoje lançada pela coordenação.' : `Presença de hoje registrada às ${presencaDeHoje.horario}.`}</p>
             </div>
           ) : (
             <>
@@ -148,7 +148,7 @@ export function Presenca() {
             {historico.map((p) => (
               <li key={p.id}>
                 <span>{formatarData(p.data)}</span>
-                <span className="suave">{p.origem === 'manual' ? 'lançada pela coordenação' : p.origem === 'localizacao' ? `${p.horario} · localização` : p.horario}</span>
+                <span className="suave">{p.origem === 'manual' ? 'lançada pela coordenação' : p.origem === 'viagem' ? 'em viagem' : p.origem === 'localizacao' ? `${p.horario} · localização` : p.horario}</span>
               </li>
             ))}
           </ul>

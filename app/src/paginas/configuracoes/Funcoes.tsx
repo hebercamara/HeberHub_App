@@ -104,7 +104,8 @@ function LinhaFuncao({ funcao, valores, selecionada, alternar }: { funcao: Funca
         <input type="checkbox" checked={selecionada} onChange={alternar} aria-label={`Selecionar ${funcao.nome}`} />
         <button className="linha-usuario" onClick={() => setAberta(!aberta)} aria-expanded={aberta}>
           <span>
-            <strong>{funcao.nome}</strong> {!funcao.ativa && <span className="selo selo-inativo">Inativa</span>}
+            <strong>{funcao.nome}</strong> {funcao.exigeCnh && <span className="selo">Dirige · exige CNH</span>}{' '}
+            {!funcao.ativa && <span className="selo selo-inativo">Inativa</span>}
           </span>
           <span>
             {atual ? <strong>{formatarReais(atual.valor)}</strong> : <span className="selo selo-recusado">Sem valor</span>}
@@ -184,6 +185,7 @@ function NovoValor({ funcaoId }: { funcaoId: string }) {
 function EditarFuncao({ funcao }: { funcao: FuncaoOperacional }) {
   const [nome, setNome] = useState(funcao.nome)
   const [ativa, setAtiva] = useState(funcao.ativa)
+  const [exigeCnh, setExigeCnh] = useState(funcao.exigeCnh === true)
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -194,7 +196,7 @@ function EditarFuncao({ funcao }: { funcao: FuncaoOperacional }) {
     setInfo('')
     setEnviando(true)
     try {
-      await api.salvarFuncao({ id: funcao.id, nome, operacaoId: funcao.operacaoId, ativa })
+      await api.salvarFuncao({ id: funcao.id, nome, operacaoId: funcao.operacaoId, ativa, exigeCnh })
       setInfo('Salvo.')
     } catch (err) {
       setErro(mensagemDeErro(err))
@@ -213,12 +215,16 @@ function EditarFuncao({ funcao }: { funcao: FuncaoOperacional }) {
           <input type="checkbox" checked={ativa} onChange={(e) => setAtiva(e.target.checked)} />
           Função ativa
         </label>
+        <label className="opcao">
+          <input type="checkbox" checked={exigeCnh} onChange={(e) => setExigeCnh(e.target.checked)} />
+          Dirige veículo (exige CNH válida)
+        </label>
       </div>
       <Aviso tipo="ok">{info}</Aviso>
       <Aviso>{erro}</Aviso>
       <div className="acoes" style={{ marginTop: 0 }}>
         <button type="submit" className="secundario" disabled={enviando}>
-          Salvar nome
+          Salvar
         </button>
       </div>
     </form>
@@ -230,6 +236,7 @@ function NovaFuncao({ operacoes, operacaoInicial, aoTerminar }: { operacoes: Ope
   const [operacaoId, setOperacaoId] = useState(operacaoInicial || operacoes[0]?.id || '')
   const [valor, setValor] = useState('')
   const [inicio, setInicio] = useState(hojeEmSaoPaulo())
+  const [exigeCnh, setExigeCnh] = useState(false)
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
 
@@ -240,7 +247,7 @@ function NovaFuncao({ operacoes, operacaoInicial, aoTerminar }: { operacoes: Ope
     if (valor && centavos === null) return setErro('Valor inválido. Exemplo: 150,00')
     setEnviando(true)
     try {
-      const { id } = await api.salvarFuncao({ nome, operacaoId, ativa: true })
+      const { id } = await api.salvarFuncao({ nome, operacaoId, ativa: true, exigeCnh })
       if (centavos !== null) await api.salvarValorDiaria({ alvo: 'funcao', alvoId: id, valor: centavos, inicio })
       aoTerminar()
     } catch (err) {
@@ -269,6 +276,10 @@ function NovaFuncao({ operacoes, operacaoInicial, aoTerminar }: { operacoes: Ope
             </select>
           </label>
         </div>
+        <label className="opcao">
+          <input type="checkbox" checked={exigeCnh} onChange={(e) => setExigeCnh(e.target.checked)} />
+          Dirige veículo (exige CNH válida): motorista, manobrista…
+        </label>
         <div className="linha">
           <label>
             Valor da diária (R$, opcional)

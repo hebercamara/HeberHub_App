@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { collection, doc, limit, onSnapshot, query, where } from 'firebase/firestore'
 import { useEffect, useMemo, useState } from 'react'
 import { Aviso } from '../../componentes/Aviso'
@@ -76,6 +77,9 @@ export function Financeiro() {
         <div>
           <h1>Financeiro</h1>
           <p className="suave impressao-titulo">Fechamento de {formatarCompetencia(competencia)}</p>
+          <p className="nao-imprimir">
+            <Link to="/financeiro/agregados">Agregados: fechamento quinzenal →</Link>
+          </p>
         </div>
         <label className="seletor-base nao-imprimir">
           Mês

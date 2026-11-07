@@ -13,6 +13,8 @@ import { ehCoordenacao, NOMES_TIPO_DOCUMENTO, type CampoEmissao, type CamposEmis
 const ROTULOS: Record<Exclude<CampoEmissao, 'TESTEMUNHAS'>, string> = {
   FUNCAO_PRESTADA: 'Função prestada',
   VALOR_DIARIA: 'Valor da diária (R$)',
+  VALOR_FIXO_SAIDA: 'Agregado: valor fixo por saída (R$)',
+  VALOR_POR_CAIXA: 'Agregado: valor por caixa entregue (R$)',
   DATA_INICIO_CONTRATO: 'Data de início',
   DATA_FIM_SERVICO: 'Último dia de serviço',
   DATA_CONTRATO_ORIGINAL: 'Data do contrato original',
@@ -32,7 +34,7 @@ export function Emitir() {
   const [uid, setUid] = useState('')
   const [modeloId, setModeloId] = useState('')
   const [preparo, setPreparo] = useState<Preparo | null>(null)
-  const [campos, setCampos] = useState<CamposEmissao & { valorTexto?: string }>({})
+  const [campos, setCampos] = useState<CamposEmissao & { valorTexto?: string; fixoTexto?: string; caixaTexto?: string }>({})
   // Testemunhas: nome e CPF digitados em cada emissão (cada contrato pode ter as suas).
   const [testemunhas, setTestemunhas] = useState([{ nome: '', cpf: '' }, { nome: '', cpf: '' }])
   const [previa, setPrevia] = useState<{ html: string; faltando: string[] } | null>(null)
@@ -59,7 +61,13 @@ export function Emitir() {
     try {
       const r = await api.prepararEmissao({ uid, modeloId })
       setPreparo({ campos: r.campos, avisos: r.avisos })
-      setCampos({ ...r.sugestoes, valorTexto: r.sugestoes.VALOR_DIARIA != null ? formatarReais(r.sugestoes.VALOR_DIARIA).replace('R$', '').trim() : '' })
+      const emTexto = (v: number | undefined) => (v ? formatarReais(v).replace('R$', '').trim() : '')
+      setCampos({
+        ...r.sugestoes,
+        valorTexto: r.sugestoes.VALOR_DIARIA != null ? formatarReais(r.sugestoes.VALOR_DIARIA).replace('R$', '').trim() : '',
+        fixoTexto: emTexto(r.sugestoes.VALOR_FIXO_SAIDA),
+        caixaTexto: emTexto(r.sugestoes.VALOR_POR_CAIXA),
+      })
       setTestemunhas([{ nome: '', cpf: '' }, { nome: '', cpf: '' }])
     } catch (e) {
       setErro(mensagemDeErro(e))
@@ -68,7 +76,7 @@ export function Emitir() {
   }
 
   function camposParaEnviar(): CamposEmissao | null {
-    const { valorTexto, ...resto } = campos
+    const { valorTexto, fixoTexto, caixaTexto, ...resto } = campos
     const envio: CamposEmissao = { ...resto }
     if (preparo?.campos.includes('VALOR_DIARIA')) {
       const valor = lerReais(valorTexto ?? '')
@@ -77,6 +85,19 @@ export function Emitir() {
         return null
       }
       envio.VALOR_DIARIA = valor
+    }
+    // Agregado: valor em branco vai zerado no contrato.
+    for (const [c, textoValor, nome] of [
+      ['VALOR_FIXO_SAIDA', fixoTexto, 'fixo por saída'],
+      ['VALOR_POR_CAIXA', caixaTexto, 'por caixa entregue'],
+    ] as const) {
+      if (!preparo?.campos.includes(c)) continue
+      const valor = textoValor?.trim() ? lerReais(textoValor) : 0
+      if (valor === null) {
+        setErro(`Valor ${nome} inválido. Exemplo: 1,50`)
+        return null
+      }
+      envio[c] = valor
     }
     if (preparo?.campos.includes('TESTEMUNHAS')) {
       const invalida = testemunhas.findIndex((t) => t.nome.trim().length < 3 || !cpfValido(t.cpf))
@@ -192,6 +213,20 @@ export function Emitir() {
               <span className="suave">Quando o documento for marcado como assinado, este valor vira a diária desta pessoa a partir da data de início.</span>
             </label>
           )}
+          {(
+            [
+              ['VALOR_FIXO_SAIDA', 'fixoTexto'],
+              ['VALOR_POR_CAIXA', 'caixaTexto'],
+            ] as const
+          )
+            .filter(([c]) => preparo.campos.includes(c))
+            .map(([c, chave]) => (
+              <label key={c}>
+                {ROTULOS[c]}
+                <input inputMode="decimal" value={campos[chave] ?? ''} onChange={(e) => setCampos((atual) => ({ ...atual, [chave]: e.target.value }))} placeholder="0,00" />
+                <span className="suave">Em branco = R$ 0,00 no contrato. Assinado, vira o valor do agregado a partir da data de início.</span>
+              </label>
+            ))}
           {(['DATA_INICIO_CONTRATO', 'DATA_FIM_SERVICO', 'DATA_CONTRATO_ORIGINAL', 'DATA_RESCISAO'] as const)
             .filter((c) => preparo.campos.includes(c))
             .map((c) => (

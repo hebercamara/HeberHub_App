@@ -12,7 +12,7 @@ import { datasEntre, diaDaSemana, fimDoMes, formatarCompetencia, formatarData, f
 import { mensagemDeErro } from '../../lib/erros'
 import { db } from '../../lib/firebase'
 import { useSessao } from '../../lib/sessao'
-import { NOMES_FUNCAO, type Ausencia, type Presenca, type Usuario } from '../../lib/tipos'
+import { ehAgregado, NOMES_FUNCAO, type Ausencia, type Presenca, type Usuario } from '../../lib/tipos'
 
 type Visao = 'dia' | 'semana' | 'mes'
 
@@ -20,6 +20,7 @@ const ORIGEM: Record<Presenca['origem'], { marca: string; nome: string }> = {
   qrcode: { marca: '✓', nome: 'QR Code' },
   localizacao: { marca: 'L', nome: 'Localização' },
   manual: { marca: 'M', nome: 'Manual' },
+  viagem: { marca: 'V', nome: 'Viagem' },
 }
 const LETRA_DIA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
@@ -107,7 +108,7 @@ function ListaDoDia({ presencas, ausencias, baseId, data }: { presencas: Presenc
   const [lancando, setLancando] = useState(false)
   const [menu, setMenu] = useState<AlvoMenu | null>(null)
   const doDia = ausencias.filter((a) => a.data === data)
-  const totalAtivos = usuarios.filter((u) => u.baseId === baseId && u.status === 'ativo').length
+  const totalAtivos = usuarios.filter((u) => u.baseId === baseId && u.status === 'ativo' && !ehAgregado(u)).length
   const ordenadas = [...presencas].sort((a, b) => a.horario.localeCompare(b.horario))
   const presentes = new Set(presencas.map((p) => p.uid))
   return (
@@ -126,7 +127,7 @@ function ListaDoDia({ presencas, ausencias, baseId, data }: { presencas: Presenc
         <LancarPresencaManual
           data={data}
           // Quem já tem presença no dia não aparece na busca.
-          pessoas={usuarios.filter((u) => u.status === 'ativo' && !presentes.has(u.id))}
+          pessoas={usuarios.filter((u) => u.status === 'ativo' && !ehAgregado(u) && !presentes.has(u.id))}
           aoTerminar={() => setLancando(false)}
         />
       )}
@@ -148,7 +149,7 @@ function ListaDoDia({ presencas, ausencias, baseId, data }: { presencas: Presenc
             <tbody>
               {ordenadas.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.origem === 'manual' ? '—' : p.horario}</td>
+                  <td>{p.origem === 'manual' || p.origem === 'viagem' ? '—' : p.horario}</td>
                   <td>{p.nome}</td>
                   <td>{p.funcao ? NOMES_FUNCAO[p.funcao] : '—'}</td>
                   <td>{ORIGEM[p.origem]?.nome ?? p.origem}</td>
@@ -199,7 +200,7 @@ function Calendario({ presencas, ausencias, baseId, datas }: { presencas: Presen
   // Ativos da base, mais quem teve presença no período (mesmo que hoje esteja em outra base ou inativo).
   const pessoas = useMemo(() => {
     const mapa = new Map<string, string>()
-    usuarios.filter((u) => u.baseId === baseId && u.status === 'ativo').forEach((u) => mapa.set(u.id, u.nome))
+    usuarios.filter((u) => u.baseId === baseId && u.status === 'ativo' && !ehAgregado(u)).forEach((u) => mapa.set(u.id, u.nome))
     presencas.forEach((p) => mapa.set(p.uid, mapa.get(p.uid) ?? p.nome))
     ausencias.forEach((a) => mapa.set(a.uid, mapa.get(a.uid) ?? a.nome))
     return [...mapa.entries()].map(([uid, nome]) => ({ uid, nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
@@ -212,7 +213,7 @@ function Calendario({ presencas, ausencias, baseId, datas }: { presencas: Presen
   return (
     <section className="cartao">
       <p className="suave legenda">
-        ✓ QR Code · L localização · M manual · F falta · NE não escalado · toque num dia para alterar
+        ✓ QR Code · L localização · M manual · V viagem · F falta · NE não escalado · toque num dia para alterar
       </p>
       <div className="rolagem">
         <table className="tabela calendario">

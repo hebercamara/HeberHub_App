@@ -5,6 +5,14 @@ import { montarSaude } from './saude.js'
 // Verificação de saúde usada pela tela da Fase 0.
 export const saude = onCall(() => montarSaude())
 
+export { enviarCrlv, salvarCaminhao, salvarEquipeAgregado, salvarValorAgregado, verCrlv } from './agregados.js'
+export { salvarCnh, salvarRegiao, salvarVeiculo } from './frota.js'
+export { salvarConfigDiario, salvarItemOperacao, salvarValoresOperacao } from './operacoesDiario.js'
+export { concluirEscala, removerRota, salvarReserva, salvarRota } from './escala.js'
+export { cancelarRota, encerrarDiario, reabrirDiario, registrarJornada, registrarOcorrencia } from './jornada.js'
+export { registrarVolta } from './viagem.js'
+export { emplacarPelaPlaca, importarRoteiro } from './cargas.js'
+export { decidirSaidaCancelada, fecharQuinzenaAgregado, previaQuinzenaAgregado, reabrirQuinzenaAgregado } from './fechamentoAgregado.js'
 export { salvarAparencia } from './aparencia.js'
 export { marcarAusencia } from './ausencias.js'
 export { salvarBase } from './bases.js'

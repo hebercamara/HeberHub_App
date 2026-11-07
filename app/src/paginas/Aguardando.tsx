@@ -27,7 +27,7 @@ export function Aguardando() {
         <>
           <Aviso>Seu cadastro foi recusado.</Aviso>
           <p>
-            <Link to="/cadastro">Corrigir e enviar de novo</Link>
+            <Link to={usuario?.categoria === 'agregado' ? '/cadastro-agregado' : '/cadastro'}>Corrigir e enviar de novo</Link>
           </p>
         </>
       )}

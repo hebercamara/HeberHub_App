@@ -8,7 +8,7 @@ export const PROJETO = 'demo-heberhub'
 // Os testes rodam com RELOGIO_FIXO=2026-11-03T10:00:00Z (07:00 em São Paulo), definido no script.
 export const HOJE = '2026-11-03'
 export const CNPJ_VALIDO = '11.222.333/0001-81'
-export const VERSAO_TERMO = 2
+export const VERSAO_TERMO = 3
 /** A Receita simulada não mostra sócios: a aprovação pede a conferência pelo Cartão CNPJ. */
 export const CONFERENCIA = 'Conferido no Cartão CNPJ de teste: ATIVA e dono confere'
 /** CPF válido usado nos cadastros de teste (o MEI simulado de João da Silva tem este CPF). */

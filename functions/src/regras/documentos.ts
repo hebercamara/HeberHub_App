@@ -121,6 +121,11 @@ export const VARIAVEIS: { nome: string; grupo: GrupoVariavel; descricao: string 
   { nome: 'FUNCAO_PRESTADA', grupo: 'Emissão', descricao: 'Função (sugere a função da pessoa)' },
   { nome: 'VALOR_DIARIA', grupo: 'Emissão', descricao: 'Valor da diária (sugere o valor vigente)' },
   { nome: 'VALOR_DIARIA_EXTENSO', grupo: 'Emissão', descricao: 'Valor da diária por extenso (automático)' },
+  { nome: 'VALOR_FIXO_SAIDA', grupo: 'Emissão', descricao: 'Agregado: valor fixo por saída (vazio = R$ 0,00)' },
+  { nome: 'VALOR_FIXO_SAIDA_EXTENSO', grupo: 'Emissão', descricao: 'Agregado: valor fixo por saída por extenso (automático)' },
+  { nome: 'VALOR_POR_CAIXA', grupo: 'Emissão', descricao: 'Agregado: valor por caixa padrão, nas regiões sem valor próprio (vazio = R$ 0,00)' },
+  { nome: 'VALOR_POR_CAIXA_EXTENSO', grupo: 'Emissão', descricao: 'Agregado: valor por caixa entregue por extenso (automático)' },
+  { nome: 'VALORES_POR_REGIAO', grupo: 'Emissão', descricao: 'Agregado: valor por caixa em cada região de entrega (automático, do cadastro do agregado)' },
   { nome: 'DATA_INICIO_CONTRATO', grupo: 'Emissão', descricao: 'Data de início (sugere hoje)' },
   { nome: 'DATA_FIM_SERVICO', grupo: 'Emissão', descricao: 'Último dia de serviço (sugere a última presença)' },
   { nome: 'DATA_CONTRATO_ORIGINAL', grupo: 'Emissão', descricao: 'Data do contrato original (sugere o último contrato emitido)' },
@@ -137,12 +142,16 @@ export const VARIAVEIS: { nome: string; grupo: GrupoVariavel; descricao: string 
 ]
 
 /** Campos preenchidos na hora de emitir (com sugestão). */
-export type CampoEmissao = 'FUNCAO_PRESTADA' | 'VALOR_DIARIA' | 'DATA_INICIO_CONTRATO' | 'DATA_FIM_SERVICO' | 'DATA_CONTRATO_ORIGINAL' | 'DATA_RESCISAO' | 'TESTEMUNHAS'
+export type CampoEmissao = 'FUNCAO_PRESTADA' | 'VALOR_DIARIA' | 'VALOR_FIXO_SAIDA' | 'VALOR_POR_CAIXA' | 'DATA_INICIO_CONTRATO' | 'DATA_FIM_SERVICO' | 'DATA_CONTRATO_ORIGINAL' | 'DATA_RESCISAO' | 'TESTEMUNHAS'
 
 const CAMPO_DA_VARIAVEL: Record<string, CampoEmissao> = {
   FUNCAO_PRESTADA: 'FUNCAO_PRESTADA',
   VALOR_DIARIA: 'VALOR_DIARIA',
   VALOR_DIARIA_EXTENSO: 'VALOR_DIARIA',
+  VALOR_FIXO_SAIDA: 'VALOR_FIXO_SAIDA',
+  VALOR_FIXO_SAIDA_EXTENSO: 'VALOR_FIXO_SAIDA',
+  VALOR_POR_CAIXA: 'VALOR_POR_CAIXA',
+  VALOR_POR_CAIXA_EXTENSO: 'VALOR_POR_CAIXA',
   DATA_INICIO_CONTRATO: 'DATA_INICIO_CONTRATO',
   DATA_FIM_SERVICO: 'DATA_FIM_SERVICO',
   DATA_CONTRATO_ORIGINAL: 'DATA_CONTRATO_ORIGINAL',

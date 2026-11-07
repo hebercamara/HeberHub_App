@@ -1,7 +1,8 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
+import type { ConfigDiario } from './diario'
 import type { Faixa, Publico } from './eventos'
-import type { Alerta, CampoEmissao, CamposEmissao, Contratante, DadosBancarios, DadosEmpresa, ModeloDocumento, Perfil, RelatorioImportacao, Representante } from './tipos'
+import type { Alerta, Caminhao, PessoaNaRota, CampoEmissao, Funcao, SituacaoVeiculo, TipoVeiculo, CamposEmissao, Contratante, DadosBancarios, DadosEmpresa, ModeloDocumento, Perfil, RelatorioImportacao, Representante } from './tipos'
 import type { CampoEmpresa, Escolha } from './acareacao'
 import type { Endereco } from './documentos'
 
@@ -38,6 +39,39 @@ export type EnvioCadastroOficial = {
   empresa: DadosEmpresa
   representante: Representante
   banco: Omit<DadosBancarios, 'declaracaoTitular'> & { declaracaoTitular: boolean }
+  /** Só no cadastro de agregado. */
+  categoria?: 'agregado'
+  caminhoes?: Caminhao[]
+}
+
+/** Dados do veículo que a equipe edita. Manutenção e inativo pedem o motivo. */
+export type DadosVeiculo = {
+  placa: string
+  tipo: TipoVeiculo
+  modelo: string
+  capacidadeCaixas: number | null
+  frota: string
+  rastreador: string
+  crlvValidade: string | null
+  situacao: Exclude<SituacaoVeiculo, 'pendente'>
+  motivo?: string
+  previsao?: string | null
+}
+
+/** Apuração da quinzena dos agregados (servidor: functions/src/fechamentoAgregado.ts). */
+export type ApuracaoQuinzena = {
+  quinzena: string
+  inicio: string
+  fim: string
+  diasAbertos: string[]
+  total: number
+  pendencias: number
+  agregados: {
+    uid: string
+    nome: string
+    totais: { saidas: number; fixo: number; caixas: number; valorCaixas: number; descontos: number; total: number; pendencias: number }
+    saidas: { rotaId: string; data: string; placa: string; tipoServico: string; fixo: number; caixas: number; valorPorCaixa: number; valorCaixas: number; descontos: number; total: number; pendencia: string | null }[]
+  }[]
 }
 
 export type RespostaCheckin =
@@ -49,6 +83,18 @@ export const api = {
   enviarCartaoCnpj: chamada<{ tipo: string; base64: string; cnpj?: string }, LeituraDoCartao>('enviarCartaoCnpj'),
   enviarCadastroOficial: chamada<EnvioCadastroOficial, { ok: true; alertas: Alerta[] }>('enviarCadastroOficial'),
   verCartaoCnpj: chamada<{ uid?: string }, { tipo: string; base64: string }>('verCartaoCnpj'),
+  /** paraVeiculo: a equipe troca o CRLV de um caminhão já aprovado. */
+  enviarCrlv: chamada<{ placa: string; tipo: string; base64: string; paraVeiculo?: boolean }>('enviarCrlv'),
+  verCrlv: chamada<{ placa: string; uid?: string }, { tipo: string; base64: string }>('verCrlv'),
+  salvarCaminhao: chamada<
+    DadosVeiculo & { uid: string },
+    { ok: true; placa: string }
+  >('salvarCaminhao'),
+  salvarVeiculo: chamada<DadosVeiculo & { baseId: string | null }, { ok: true; placa: string; novo: boolean }>('salvarVeiculo'),
+  salvarCnh: chamada<{ uid: string; numero: string; categoria: string; validade: string }>('salvarCnh'),
+  salvarRegiao: chamada<{ id?: string; nome: string; descricao: string; ativa: boolean }, { ok: true; id: string }>('salvarRegiao'),
+  salvarEquipeAgregado: chamada<{ uid: string; id?: string; nome: string; funcao: Funcao; ativo: boolean }, { ok: true; id: string }>('salvarEquipeAgregado'),
+  salvarValorAgregado: chamada<{ uid: string; fixoSaida: number; porCaixa: number; porRegiao: Record<string, number>; inicio: string }>('salvarValorAgregado'),
   importarPrestadores: chamada<{ cabecalho: string[]; linhas: string[][] }, RelatorioImportacao>('importarPrestadores'),
   excluirPreCadastro: chamada<{ cnpj: string }>('excluirPreCadastro'),
   salvarContratante: chamada<Contratante>('salvarContratante'),
@@ -96,13 +142,61 @@ export const api = {
     'salvarBase',
   ),
   gerarQrDoDia: chamada<{ baseId: string; dia: 'hoje' | 'amanha' }, { conteudo: string; data: string; baseNome: string }>('gerarQrDoDia'),
+  salvarRota: chamada<
+    {
+      id?: string
+      operacaoId: string
+      data: string
+      tipoServico: string
+      placa: string
+      motorista: PessoaNaRota
+      ajudantes: PessoaNaRota[]
+      cargas: string[]
+      roteiroId: string | null
+      modalidadeId: string | null
+      brokerId: string | null
+      perfilCobrado: string | null
+      dataVolta: string | null
+      reentregaDe?: string[]
+    },
+    { ok: true; id: string; sequencia: number; avisoCapacidade: string | null }
+  >('salvarRota'),
+  importarRoteiro: chamada<
+    { operacaoId: string; data: string; cabecalho: string[]; linhas: string[][] },
+    { ok: true; cargas: number; clientes: number; recusadas: { linha: number; motivo: string }[]; ignoradas: number }
+  >('importarRoteiro'),
+  emplacarPelaPlaca: chamada<{ operacaoId: string; data: string }, { ok: true; emplacadas: number; semSaida: string[] }>('emplacarPelaPlaca'),
+  removerRota: chamada<{ id: string }>('removerRota'),
+  registrarJornada: chamada<
+    { id: string; jornada: Record<string, unknown> },
+    { ok: true; avisos: { codigo: string; mensagem: string }[]; entregues: number | null; kmRodado: number | null }
+  >('registrarJornada'),
+  cancelarRota: chamada<{ id: string; motivo: string }>('cancelarRota'),
+  previaQuinzenaAgregado: chamada<{ quinzena: string }, { status: 'aberto' | 'fechado'; apuracao: ApuracaoQuinzena }>('previaQuinzenaAgregado'),
+  decidirSaidaCancelada: chamada<{ id: string; tipo: 'integral' | 'parcial' | 'nada'; valor: number; justificativa: string }>('decidirSaidaCancelada'),
+  fecharQuinzenaAgregado: chamada<{ quinzena: string }, { ok: true; total: number; agregados: number }>('fecharQuinzenaAgregado'),
+  reabrirQuinzenaAgregado: chamada<{ quinzena: string; justificativa: string }>('reabrirQuinzenaAgregado'),
+  registrarVolta: chamada<{ id: string; dataVolta: string }, { ok: true; dias: number; presencas: number; adicionalPorPessoa: number }>('registrarVolta'),
+  registrarOcorrencia: chamada<{ id: string; horario: string | null; texto: string }>('registrarOcorrencia'),
+  encerrarDiario: chamada<{ operacaoId: string; data: string }>('encerrarDiario'),
+  reabrirDiario: chamada<{ operacaoId: string; data: string; justificativa: string }>('reabrirDiario'),
+  salvarReserva: chamada<{ operacaoId: string; data: string; uids: string[] }>('salvarReserva'),
+  concluirEscala: chamada<{ operacaoId: string; data: string }, { ok: true; naoEscalados: number }>('concluirEscala'),
+  salvarConfigDiario: chamada<{ operacaoId: string; config: ConfigDiario }>('salvarConfigDiario'),
+  salvarItemOperacao: chamada<
+    { operacaoId: string; lista: 'roteiros' | 'modalidades' | 'brokers'; id?: string; nome: string; ativo: boolean; regiaoId?: string | null; regiao?: string; contato?: string; telefone?: string },
+    { ok: true; id: string }
+  >('salvarItemOperacao'),
+  salvarValoresOperacao: chamada<{ operacaoId: string; descontoMotoristaAgregado: number; descontoAjudanteAgregado: number; adicionalViagemDia: number; inicio: string }>(
+    'salvarValoresOperacao',
+  ),
   salvarOperacao: chamada<{ id?: string; nome: string; ativa: boolean }, { ok: true; id: string }>('salvarOperacao'),
   duplicarFuncoes: chamada<
     { funcaoIds: string[]; destinoOperacaoId: string; copiarValores: boolean; inicio: string },
     { ok: true; criadas: string[]; ignoradas: string[] }
   >('duplicarFuncoes'),
   salvarAparencia: chamada<{ primaria: string; secundaria: string; fundo: string }>('salvarAparencia'),
-  salvarFuncao: chamada<{ id?: string; nome: string; operacaoId: string; ativa: boolean }, { ok: true; id: string }>('salvarFuncao'),
+  salvarFuncao: chamada<{ id?: string; nome: string; operacaoId: string; ativa: boolean; exigeCnh?: boolean }, { ok: true; id: string }>('salvarFuncao'),
   salvarValorDiaria: chamada<{ alvo: 'funcao' | 'prestador'; alvoId: string; valor: number; inicio: string }, { ok: true; preenchidas: number }>('salvarValorDiaria'),
   lancarAjuste: chamada<{ uid: string; tipo: 'adicional' | 'desconto'; valor: number; data: string; justificativa: string }>('lancarAjuste'),
   lancarEvento: chamada<

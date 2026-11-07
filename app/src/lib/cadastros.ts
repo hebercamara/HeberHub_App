@@ -1,7 +1,7 @@
 import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { db } from './firebase'
-import type { CadastroOficial, FuncaoOperacional, Operacao, PreCadastro, Usuario } from './tipos'
+import type { CadastroOficial, Cnh, FuncaoOperacional, Operacao, PreCadastro, Regiao, Usuario, Veiculo } from './tipos'
 
 function useColecao<T>(nome: string, campoOrdem: string): T[] {
   const [itens, setItens] = useState<T[]>([])
@@ -15,6 +15,10 @@ function useColecao<T>(nome: string, campoOrdem: string): T[] {
 export const useOperacoes = () => useColecao<Operacao>('operacoes', 'nome')
 export const useFuncoes = () => useColecao<FuncaoOperacional>('funcoes', 'nome')
 export const useUsuarios = () => useColecao<Usuario>('usuarios', 'nome')
+export const useRegioes = () => useColecao<Regiao>('regioes', 'nome')
+/** Todos os veículos: da casa e dos agregados (o id é a placa). */
+export const useVeiculos = () => useColecao<Veiculo>('veiculos', 'placa')
+export const useCnhs = () => useColecao<Cnh>('cnhs', 'nome')
 export const usePreCadastros = () => useColecao<PreCadastro>('preCadastros', 'nome')
 /** Cadastros oficiais enviados (o id é o uid da pessoa). */
 export const useCadastrosOficiais = () => useColecao<CadastroOficial & { id: string }>('cadastrosOficiais', 'enviadoEm')

@@ -2,6 +2,7 @@ import { sendPasswordResetEmail } from 'firebase/auth'
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Aviso } from '../../componentes/Aviso'
+import { AgregadoUsuario } from './AgregadoUsuario'
 import { CadastroOficialUsuario } from './CadastroOficialUsuario'
 import { SeletorFuncao } from '../../componentes/SeletorFuncao'
 import { api } from '../../lib/api'
@@ -13,9 +14,9 @@ import { mascararCnpj } from '../../lib/cnpj'
 import { mensagemDeErro } from '../../lib/erros'
 import { auth, db } from '../../lib/firebase'
 import { useSessao } from '../../lib/sessao'
-import { editaCoordenacao, NOMES_PERFIL, NOMES_STATUS, type FuncaoOperacional, type Perfil, type Usuario, type ValorDiaria } from '../../lib/tipos'
+import { editaCoordenacao, ehAgregado, NOMES_PERFIL, NOMES_STATUS, type FuncaoOperacional, type Perfil, type Usuario, type ValorDiaria } from '../../lib/tipos'
 
-type Filtro = 'todos' | Perfil | 'inativos'
+type Filtro = 'todos' | Perfil | 'agregados' | 'inativos'
 
 /** Perfis que só a Gestão dá ou tira. */
 const RESTRITOS: Perfil[] = ['gestao', 'juridico']
@@ -44,7 +45,13 @@ export function Usuarios() {
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase()
     return usuarios.filter((u) => {
-      if (filtro === 'inativos' ? u.status !== 'inativo' && u.status !== 'recusado' : filtro !== 'todos' && u.perfil !== filtro) return false
+      if (filtro === 'inativos') {
+        if (u.status !== 'inativo' && u.status !== 'recusado') return false
+      } else if (filtro === 'agregados') {
+        if (!ehAgregado(u)) return false
+      } else if (filtro === 'prestador') {
+        if (u.perfil !== 'prestador' || ehAgregado(u)) return false
+      } else if (filtro !== 'todos' && u.perfil !== filtro) return false
       return !termo || `${u.nome} ${u.email} ${u.razaoSocial ?? ''}`.toLowerCase().includes(termo)
     })
   }, [usuarios, filtro, busca])
@@ -65,6 +72,7 @@ export function Usuarios() {
         <select value={filtro} onChange={(e) => setFiltro(e.target.value as Filtro)}>
           <option value="todos">Todos</option>
           <option value="prestador">Prestadores</option>
+          <option value="agregados">Agregados</option>
           <option value="adm">ADM</option>
           <option value="coordenacao">Coordenação</option>
           <option value="gestao">Gestão</option>
@@ -83,7 +91,7 @@ export function Usuarios() {
                   <strong>{u.nome}</strong>
                   <span className="suave">
                     {' '}
-                    · {u.funcaoId ? nomeDaFuncao(funcoes.find((f) => f.id === u.funcaoId)) : NOMES_PERFIL[u.perfil]}
+                    · {ehAgregado(u) ? 'Agregado' : u.funcaoId ? nomeDaFuncao(funcoes.find((f) => f.id === u.funcaoId)) : NOMES_PERFIL[u.perfil]}
                   </span>
                 </span>
                 <span className={`selo selo-${u.status}`}>{NOMES_STATUS[u.status]}</span>
@@ -108,6 +116,7 @@ function DetalheUsuario({ usuario, funcoes }: { usuario: Usuario; funcoes: Funca
   // Jurídico só consulta; Gestão e Jurídico só são alterados pela Gestão.
   const protegido = RESTRITOS.includes(usuario.perfil) && !souGestao
   const travado = enviando || !editaCoordenacao(perfil) || protegido
+  const agregado = ehAgregado(usuario)
 
   async function alterar(mudancas: Omit<Parameters<typeof api.atualizarUsuario>[0], 'uid'>, confirmacao?: string) {
     if (confirmacao && !confirm(confirmacao)) return
@@ -140,8 +149,17 @@ function DetalheUsuario({ usuario, funcoes }: { usuario: Usuario; funcoes: Funca
             </dd>
           </>
         )}
-        <dt>Aparelho</dt>
-        <dd>{usuario.deviceId ? 'Vinculado' : 'Nenhum (o próximo check-in vincula)'}</dd>
+        {agregado ? (
+          <>
+            <dt>Categoria</dt>
+            <dd>Agregado (empresa com caminhão próprio): não faz check-in nem recebe diária</dd>
+          </>
+        ) : (
+          <>
+            <dt>Aparelho</dt>
+            <dd>{usuario.deviceId ? 'Vinculado' : 'Nenhum (o próximo check-in vincula)'}</dd>
+          </>
+        )}
       </dl>
 
       {usuario.status !== 'pendente' && (
@@ -149,7 +167,7 @@ function DetalheUsuario({ usuario, funcoes }: { usuario: Usuario; funcoes: Funca
           <div className="linha">
             <label>
               Perfil
-              <select value={usuario.perfil} disabled={eu || travado} onChange={(e) => void alterar({ perfil: e.target.value as Perfil })}>
+              <select value={usuario.perfil} disabled={eu || travado || agregado} onChange={(e) => void alterar({ perfil: e.target.value as Perfil })}>
                 <OpcoesPerfil souGestao={souGestao} atual={usuario.perfil} />
               </select>
             </label>
@@ -168,7 +186,7 @@ function DetalheUsuario({ usuario, funcoes }: { usuario: Usuario; funcoes: Funca
             </label>
           </div>
 
-          <SeletorFuncao funcoes={funcoes} valor={usuario.funcaoId ?? ''} disabled={travado} aoMudar={(id) => void alterar({ funcaoId: id || null })} />
+          {!agregado && <SeletorFuncao funcoes={funcoes} valor={usuario.funcaoId ?? ''} disabled={travado} aoMudar={(id) => void alterar({ funcaoId: id || null })} />}
 
           {usuario.perfil === 'adm' && (
             <label className="opcao">
@@ -178,7 +196,7 @@ function DetalheUsuario({ usuario, funcoes }: { usuario: Usuario; funcoes: Funca
           )}
 
           <div className="acoes">
-            {usuario.deviceId && (
+            {usuario.deviceId && !agregado && (
               <button className="secundario" disabled={travado} onClick={() => void alterar({ liberarAparelho: true }, `Liberar o aparelho de ${usuario.nome}? O próximo celular usado no check-in será vinculado.`)}>
                 Liberar aparelho
               </button>
@@ -199,7 +217,8 @@ function DetalheUsuario({ usuario, funcoes }: { usuario: Usuario; funcoes: Funca
       {usuario.status === 'pendente' && <p className="suave">Aprove ou recuse este cadastro na aba Cadastros.</p>}
       {protegido && <p className="suave">Só a Gestão altera quem tem perfil Gestão ou Jurídico.</p>}
       <Aviso>{erro}</Aviso>
-      {usuario.status !== 'pendente' && <ValorIndividual usuario={usuario} />}
+      {usuario.status !== 'pendente' && !agregado && <ValorIndividual usuario={usuario} />}
+      {usuario.status !== 'pendente' && agregado && <AgregadoUsuario usuario={usuario} />}
     </div>
   )
 }

@@ -133,6 +133,7 @@ describe('validarCheckin', () => {
 
   it.each([
     ['usuario-inativo', { usuario: { status: 'pendente' as const } }],
+    ['agregado', { usuario: { categoria: 'agregado' as const } }],
     ['termo-pendente', { usuario: { termoVersao: undefined } }],
     ['sem-base', { usuario: { baseId: null } }],
     ['aparelho-diferente', { leitura: { deviceId: 'outro-aparelho' } }],

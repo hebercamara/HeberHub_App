@@ -2,6 +2,8 @@
 export type Perfil = 'prestador' | 'adm' | 'coordenacao' | 'gestao' | 'juridico'
 export type Status = 'pendente' | 'ativo' | 'inativo' | 'recusado'
 export type Funcao = 'motorista' | 'ajudante'
+/** Prestador: pessoa PJ que recebe diária. Agregado: empresa com caminhão próprio (não faz check-in). */
+export type Categoria = 'prestador' | 'agregado'
 
 /** Documento em usuarios/{uid}. */
 export type Usuario = {
@@ -17,6 +19,8 @@ export type Usuario = {
   funcaoId?: string | null
   /** Versão do termo de privacidade aceita (ausente = ainda não aceitou). */
   termoVersao?: number
+  /** Ausente = prestador. */
+  categoria?: Categoria
   // Só prestadores (dados da empresa)
   funcao?: Funcao
   razaoSocial?: string
@@ -50,7 +54,7 @@ export type Claims = { perfil?: Perfil; financeiro?: boolean }
 export type Operacao = { nome: string; ativa: boolean }
 
 /** Documento em funcoes/{id}: função dentro de uma operação. */
-export type FuncaoOperacional = { nome: string; operacaoId: string; operacaoNome: string; ativa: boolean }
+export type FuncaoOperacional = { nome: string; operacaoId: string; operacaoNome: string; ativa: boolean; /** Dirige veículo: exige CNH válida. */ exigeCnh?: boolean }
 
 /**
  * Documento em valoresDiaria/{id}. alvoChave = "funcao:<id>" ou "prestador:<uid>".

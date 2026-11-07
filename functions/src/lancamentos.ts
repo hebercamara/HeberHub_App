@@ -123,6 +123,7 @@ export const registrarPresencaManual = onCall(async (req) => {
     const usuarioSnap = await tx.get(usuarios.doc(uid))
     if (!usuarioSnap.exists) throw falha('Pessoa não encontrada.', 'not-found')
     const usuario = usuarioSnap.data() as Usuario
+    if (usuario.categoria === 'agregado') throw falha('Agregado não tem presença nem diária: as saídas do caminhão vão no Diário de Campo.', 'failed-precondition')
     if (!usuario.baseId) throw falha('Esta pessoa não tem base definida.', 'failed-precondition')
     const existente = await tx.get(presencaRef)
     if (existente.exists && !existente.get('cancelada')) throw falha('Esta pessoa já tem presença nesse dia.', 'already-exists')

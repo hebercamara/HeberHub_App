@@ -64,12 +64,59 @@ service cloud.firestore {
     // Cadastros operacionais: nomes, sem valores.
     match /operacoes/{id} {
       allow read: if equipe();
+      // Roteiros, modalidades e brokers da operação (Diário de Campo).
+      match /{lista}/{item} {
+        allow read: if equipe() && lista in ['roteiros', 'modalidades', 'brokers'];
+      }
     }
     match /funcoes/{id} {
       allow read: if equipe();
     }
 
+    // Diário de Campo: o diário de cada dia e operação e as rotas (sem valores): a equipe.
+    match /diarios/{id} {
+      allow read: if equipe();
+    }
+    match /cargas/{id} {
+      allow read: if equipe();
+    }
+    match /rotas/{id} {
+      allow read: if equipe();
+      match /ocorrencias/{ocorrencia} {
+        allow read: if equipe();
+      }
+    }
+
+    // Veículos (da casa e dos agregados) e a equipe de cada agregado: a equipe.
+    match /veiculos/{placa} {
+      allow read: if equipe();
+    }
+    match /veiculos/{placa}/manutencoes/{id} {
+      allow read: if equipe();
+    }
+    match /agregados/{uid}/equipe/{id} {
+      allow read: if equipe();
+    }
+    // CNH de quem dirige (preenchida pela equipe) e regiões de entrega: a equipe.
+    match /cnhs/{uid} {
+      allow read: if equipe();
+    }
+    match /regioes/{id} {
+      allow read: if equipe();
+    }
+
     // Tudo que tem dinheiro.
+    match /valoresAgregado/{id} {
+      allow read: if financeiro();
+    }
+    // Desconto do agregado e adicional de viagem de cada operação.
+    match /valoresOperacao/{id} {
+      allow read: if financeiro();
+    }
+    // Fechamento quinzenal dos agregados (resultado congelado por agregado e por saída).
+    match /fechamentosAgregado/{quinzena} {
+      allow read: if financeiro();
+    }
     match /valoresDiaria/{id} {
       allow read: if financeiro();
     }

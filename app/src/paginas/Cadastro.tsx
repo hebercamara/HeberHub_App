@@ -14,6 +14,12 @@ import { VERSAO_TERMO } from '../lib/privacidade'
 import { useSessao } from '../lib/sessao'
 import {
   NOMES_ESTADO_CIVIL,
+  NOMES_TIPO_VEICULO,
+  normalizarPlaca,
+  placaFormatada,
+  placaValida,
+  type Caminhao,
+  type TipoVeiculo,
   NOMES_TIPO_CONTA,
   NOMES_TIPO_PIX,
   type CadastroOficial,
@@ -28,13 +34,20 @@ import {
 /**
  * Cadastro oficial do prestador. Primeiro cria o login; depois envia os dados da
  * empresa, do representante e da conta, com o Cartão CNPJ. A equipe aprova.
+ * O agregado (empresa com caminhão próprio) usa o link /cadastro-agregado, com o passo
+ * a mais "Caminhões" (placa, tipo e CRLV de cada caminhão).
  */
-export function Cadastro() {
+export function Cadastro({ agregado = false }: { agregado?: boolean }) {
   const { login } = useSessao()
-  return <TelaSimples titulo="Cadastro de prestador">{login ? <FormularioOficial /> : <CriarAcesso />}</TelaSimples>
+  const passos = agregado ? PASSOS_AGREGADO : PASSOS
+  return (
+    <TelaSimples titulo={agregado ? 'Cadastro de agregado' : 'Cadastro de prestador'}>
+      {login ? <FormularioOficial agregado={agregado} passos={passos} /> : <CriarAcesso passos={passos} agregado={agregado} />}
+    </TelaSimples>
+  )
 }
 
-function CriarAcesso() {
+function CriarAcesso({ passos, agregado }: { passos: string[]; agregado: boolean }) {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [confirmacao, setConfirmacao] = useState('')
@@ -57,8 +70,12 @@ function CriarAcesso() {
 
   return (
     <>
-      <Progresso passo={1} />
-      <p className="suave">Crie seu acesso. Depois você preenche os dados da empresa e envia o Cartão CNPJ.</p>
+      <Progresso passo={1} passos={passos} />
+      <p className="suave">
+        {agregado
+          ? 'Para agregados: empresa com caminhão próprio. Crie seu acesso; depois você preenche os dados da empresa, envia o Cartão CNPJ e cadastra os caminhões.'
+          : 'Crie seu acesso. Depois você preenche os dados da empresa e envia o Cartão CNPJ.'}
+      </p>
       <form onSubmit={criar} className="formulario">
         <label>
           E-mail
@@ -88,16 +105,21 @@ type Banco = Omit<DadosBancarios, 'declaracaoTitular'>
 type Consulta = { tipo: 'nada' } | { tipo: 'consultando' } | { tipo: 'pronta'; resumo: ResumoReceita } | { tipo: 'erro'; mensagem: string }
 
 const PASSOS = ['Acesso', 'Empresa', 'Cartão CNPJ', 'Responsável', 'Pagamento', 'Revisão']
+const PASSOS_AGREGADO = ['Acesso', 'Empresa', 'Cartão CNPJ', 'Responsável', 'Pagamento', 'Caminhões', 'Revisão']
+
+/** Caminhão na tela: dados e situação do envio do CRLV. */
+type CaminhaoNaTela = Caminhao & { crlv: 'nenhum' | 'enviando' | 'enviado'; erro: string }
+const CAMINHAO_VAZIO: CaminhaoNaTela = { placa: '', tipo: '', modelo: '', capacidadeCaixas: null, crlv: 'nenhum', erro: '' }
 
 /** "Passo 3 de 6 · Cartão CNPJ" e a barrinha de progresso. */
-function Progresso({ passo }: { passo: number }) {
+function Progresso({ passo, passos }: { passo: number; passos: string[] }) {
   return (
-    <div className="progresso" aria-label={`Passo ${passo} de ${PASSOS.length}`}>
+    <div className="progresso" aria-label={`Passo ${passo} de ${passos.length}`}>
       <p className="suave">
-        Passo {passo} de {PASSOS.length} · <strong>{PASSOS[passo - 1]}</strong>
+        Passo {passo} de {passos.length} · <strong>{passos[passo - 1]}</strong>
       </p>
       <div className="progresso-barra">
-        {PASSOS.map((nome, i) => (
+        {passos.map((nome, i) => (
           <span key={nome} className={i < passo ? 'feito' : ''} />
         ))}
       </div>
@@ -105,9 +127,12 @@ function Progresso({ passo }: { passo: number }) {
   )
 }
 
-function FormularioOficial() {
+function FormularioOficial({ agregado, passos }: { agregado: boolean; passos: string[] }) {
   const { login, usuario, sair } = useSessao()
   const [passo, setPasso] = useState(2)
+  const nomePasso = passos[passo - 1]
+  const ultimoPasso = passos.length
+  const [caminhoes, setCaminhoes] = useState<CaminhaoNaTela[]>([CAMINHAO_VAZIO])
   const [empresa, setEmpresa] = useState<DadosEmpresa>({ cnpj: '', razaoSocial: '', endereco: ENDERECO_VAZIO })
   const [representante, setRepresentante] = useState<Representante>({
     nome: '',
@@ -160,6 +185,9 @@ function FormularioOficial() {
       if (dados?.empresa) setEmpresa({ ...dados.empresa, cnpj: mascararCnpj(dados.empresa.cnpj) })
       if (dados?.representante) setRepresentante({ ...dados.representante, cpf: mascararCpf(dados.representante.cpf) })
       if (dados?.cartao?.caminho) setCartao('enviado')
+      if (dados?.caminhoes?.length) {
+        setCaminhoes(dados.caminhoes.map((c) => ({ ...c, placa: placaFormatada(c.placa), crlv: dados.crlvs?.[c.placa] ? 'enviado' : 'nenhum', erro: '' })))
+      }
       const conta = b?.data() as DadosBancarios | undefined
       if (conta) setBanco({ banco: conta.banco, agencia: conta.agencia, conta: conta.conta, tipoConta: conta.tipoConta, pixTipo: conta.pixTipo, pixChave: conta.pixChave })
       // Consulta de novo para mostrar a situação e os sócios.
@@ -193,6 +221,24 @@ function FormularioOficial() {
     }
   }
 
+  const mudarCaminhao = (i: number, mudanca: Partial<CaminhaoNaTela>) => setCaminhoes((lista) => lista.map((c, j) => (j === i ? { ...c, ...mudanca } : c)))
+
+  async function enviarCrlv(i: number, arquivo: File | undefined) {
+    const caminhao = caminhoes[i]
+    if (!arquivo) return
+    if (!placaValida(caminhao.placa)) return mudarCaminhao(i, { erro: 'Preencha a placa antes de enviar o CRLV.' })
+    mudarCaminhao(i, { crlv: 'enviando', erro: '' })
+    try {
+      const preparado = await prepararArquivo(arquivo).catch(() => {
+        throw new Error('Envie um PDF ou uma foto do CRLV.')
+      })
+      await api.enviarCrlv({ placa: normalizarPlaca(caminhao.placa), ...preparado })
+      mudarCaminhao(i, { crlv: 'enviado' })
+    } catch (err) {
+      mudarCaminhao(i, { crlv: 'nenhum', erro: err instanceof Error && !('code' in err) ? err.message : mensagemDeErro(err) })
+    }
+  }
+
   const resumo = consulta.tipo === 'pronta' ? consulta.resumo : null
   const cnpjInapto = resumo?.situacao === 'encontrado' && !resumo.apto
   const listaResponsaveis = resumo?.situacao === 'encontrado' ? resumo.responsaveis : []
@@ -212,6 +258,15 @@ function FormularioOficial() {
     if (passo === 3 && leitura?.lido && leitura.situacao !== 'ATIVA') return `O Cartão CNPJ mostra a situação ${leitura.situacao}. Só CNPJ ATIVO pode ser cadastrado.`
     if (passo === 4 && !cpfValido(representante.cpf)) return 'CPF inválido. Confira os números.'
     if (passo === 5 && !declaracao) return 'Confirme que a conta e a chave PIX estão no nome da empresa.'
+    if (nomePasso === 'Caminhões') {
+      const placas = caminhoes.map((c) => normalizarPlaca(c.placa))
+      const invalida = caminhoes.find((c) => !placaValida(c.placa))
+      if (invalida) return `Placa ${invalida.placa || '(vazia)'} inválida. Use o formato ABC-1234 ou ABC1D23.`
+      if (new Set(placas).size !== placas.length) return 'Há placas repetidas.'
+      if (caminhoes.some((c) => !c.tipo)) return 'Escolha o tipo de cada caminhão.'
+      const semCrlv = caminhoes.find((c) => c.crlv !== 'enviado')
+      if (semCrlv) return `Envie o CRLV do caminhão ${placaFormatada(semCrlv.placa)}.`
+    }
     return ''
   }
 
@@ -220,7 +275,7 @@ function FormularioOficial() {
     const problema = problemaDoPasso()
     setErro(problema)
     if (problema) return
-    if (passo < 6) {
+    if (passo < ultimoPasso) {
       setPasso(passo + 1)
       window.scrollTo(0, 0)
       return
@@ -234,6 +289,12 @@ function FormularioOficial() {
         empresa,
         representante: { ...representante, endereco: enderecoRepresentante },
         banco: { ...banco, pixChave, declaracaoTitular: true },
+        ...(agregado
+          ? {
+              categoria: 'agregado' as const,
+              caminhoes: caminhoes.map(({ placa, tipo, modelo, capacidadeCaixas }) => ({ placa: normalizarPlaca(placa), tipo, modelo, capacidadeCaixas })),
+            }
+          : {}),
       })
       // O app segue sozinho para a tela de "aguardando aprovação".
     } catch (err) {
@@ -253,7 +314,7 @@ function FormularioOficial() {
   return (
     <>
       {usuario?.status === 'recusado' && <Aviso tipo="info">Seu cadastro anterior foi recusado. Corrija os dados e envie de novo.</Aviso>}
-      <Progresso passo={passo} />
+      <Progresso passo={passo} passos={passos} />
       <form onSubmit={avancar} className="formulario">
         {passo === 2 && (
           <fieldset>
@@ -441,7 +502,74 @@ function FormularioOficial() {
           </>
         )}
 
-        {passo === 6 && (
+        {nomePasso === 'Caminhões' && (
+          <fieldset>
+            <legend>Caminhões</legend>
+            <p className="suave">Cadastre cada caminhão que vai trabalhar com a gente e envie o CRLV (documento do veículo) de cada um, em PDF ou foto.</p>
+            {caminhoes.map((c, i) => (
+              <div key={i} className="pilha cartao-interno">
+                <strong>Caminhão {i + 1}</strong>
+                <div className="linha">
+                  <label>
+                    Placa
+                    <input
+                      value={c.placa}
+                      onChange={(e) => mudarCaminhao(i, { placa: e.target.value.toUpperCase(), crlv: c.crlv === 'enviado' && normalizarPlaca(e.target.value) !== normalizarPlaca(c.placa) ? 'nenhum' : c.crlv })}
+                      placeholder="ABC-1234 ou ABC1D23"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Tipo
+                    <select value={c.tipo} onChange={(e) => mudarCaminhao(i, { tipo: e.target.value as TipoVeiculo })} required>
+                      <option value="">Escolha…</option>
+                      {Object.entries(NOMES_TIPO_VEICULO).map(([v, nome]) => (
+                        <option key={v} value={v}>
+                          {nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="linha">
+                  <label>
+                    Modelo (opcional)
+                    <input value={c.modelo} onChange={(e) => mudarCaminhao(i, { modelo: e.target.value })} placeholder="Ex.: Accelo 815" />
+                  </label>
+                  <label>
+                    Capacidade em caixas (opcional)
+                    <input
+                      type="number"
+                      min={1}
+                      inputMode="numeric"
+                      value={c.capacidadeCaixas ?? ''}
+                      onChange={(e) => mudarCaminhao(i, { capacidadeCaixas: e.target.value ? Number(e.target.value) : null })}
+                    />
+                  </label>
+                </div>
+                <label>
+                  CRLV (PDF ou foto)
+                  <input type="file" accept="application/pdf,image/*" onChange={(e) => void enviarCrlv(i, e.target.files?.[0])} disabled={c.crlv === 'enviando'} />
+                </label>
+                {c.crlv === 'enviando' && <p className="suave">Enviando o CRLV…</p>}
+                {c.crlv === 'enviado' && <Aviso tipo="ok">CRLV recebido. Se quiser trocar, escolha outro arquivo.</Aviso>}
+                <Aviso>{c.erro}</Aviso>
+                {caminhoes.length > 1 && (
+                  <button type="button" className="link" onClick={() => setCaminhoes((lista) => lista.filter((_, j) => j !== i))}>
+                    Remover este caminhão
+                  </button>
+                )}
+              </div>
+            ))}
+            {caminhoes.length < 20 && (
+              <button type="button" className="secundario" onClick={() => setCaminhoes((lista) => [...lista, CAMINHAO_VAZIO])}>
+                Adicionar outro caminhão
+              </button>
+            )}
+          </fieldset>
+        )}
+
+        {nomePasso === 'Revisão' && (
           <fieldset>
             <legend>Confira antes de enviar</legend>
             <dl className="dados">
@@ -465,6 +593,12 @@ function FormularioOficial() {
               </dd>
               <dt>Cartão CNPJ</dt>
               <dd>Enviado</dd>
+              {agregado && (
+                <>
+                  <dt>Caminhões</dt>
+                  <dd>{caminhoes.map((c) => `${placaFormatada(c.placa)} (${c.tipo ? NOMES_TIPO_VEICULO[c.tipo] : '—'})`).join(' · ')}</dd>
+                </>
+              )}
             </dl>
             <label className="opcao">
               <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
@@ -486,7 +620,7 @@ function FormularioOficial() {
             </button>
           )}
           <button type="submit" disabled={enviando || cartao === 'enviando' || consulta.tipo === 'consultando'}>
-            {passo < 6 ? 'Continuar' : enviando ? 'Enviando…' : 'Enviar cadastro'}
+            {passo < ultimoPasso ? 'Continuar' : enviando ? 'Enviando…' : 'Enviar cadastro'}
           </button>
         </div>
       </form>
