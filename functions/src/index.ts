@@ -12,6 +12,7 @@ export { concluirEscala, removerRota, salvarReserva, salvarRota } from './escala
 export { cancelarRota, encerrarDiario, reabrirDiario, registrarJornada, registrarOcorrencia } from './jornada.js'
 export { registrarVolta } from './viagem.js'
 export { emplacarPelaPlaca, importarRoteiro } from './cargas.js'
+export { decidirSaidaCancelada, fecharQuinzenaAgregado, previaQuinzenaAgregado, reabrirQuinzenaAgregado } from './fechamentoAgregado.js'
 export { salvarAparencia } from './aparencia.js'
 export { marcarAusencia } from './ausencias.js'
 export { salvarBase } from './bases.js'

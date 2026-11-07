@@ -58,6 +58,22 @@ export type DadosVeiculo = {
   previsao?: string | null
 }
 
+/** Apuração da quinzena dos agregados (servidor: functions/src/fechamentoAgregado.ts). */
+export type ApuracaoQuinzena = {
+  quinzena: string
+  inicio: string
+  fim: string
+  diasAbertos: string[]
+  total: number
+  pendencias: number
+  agregados: {
+    uid: string
+    nome: string
+    totais: { saidas: number; fixo: number; caixas: number; valorCaixas: number; descontos: number; total: number; pendencias: number }
+    saidas: { rotaId: string; data: string; placa: string; tipoServico: string; fixo: number; caixas: number; valorPorCaixa: number; valorCaixas: number; descontos: number; total: number; pendencia: string | null }[]
+  }[]
+}
+
 export type RespostaCheckin =
   | { ok: true; horario: string; data: string; baseNome: string; distanciaMetros: number; jaRegistrada: boolean }
   | { ok: false; motivo: string; mensagem: string }
@@ -147,6 +163,10 @@ export const api = {
     { ok: true; avisos: { codigo: string; mensagem: string }[]; entregues: number | null; kmRodado: number | null }
   >('registrarJornada'),
   cancelarRota: chamada<{ id: string; motivo: string }>('cancelarRota'),
+  previaQuinzenaAgregado: chamada<{ quinzena: string }, { status: 'aberto' | 'fechado'; apuracao: ApuracaoQuinzena }>('previaQuinzenaAgregado'),
+  decidirSaidaCancelada: chamada<{ id: string; tipo: 'integral' | 'parcial' | 'nada'; valor: number; justificativa: string }>('decidirSaidaCancelada'),
+  fecharQuinzenaAgregado: chamada<{ quinzena: string }, { ok: true; total: number; agregados: number }>('fecharQuinzenaAgregado'),
+  reabrirQuinzenaAgregado: chamada<{ quinzena: string; justificativa: string }>('reabrirQuinzenaAgregado'),
   registrarVolta: chamada<{ id: string; dataVolta: string }, { ok: true; dias: number; presencas: number; adicionalPorPessoa: number }>('registrarVolta'),
   registrarOcorrencia: chamada<{ id: string; horario: string | null; texto: string }>('registrarOcorrencia'),
   encerrarDiario: chamada<{ operacaoId: string; data: string }>('encerrarDiario'),

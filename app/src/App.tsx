@@ -29,6 +29,7 @@ import { Prestadores } from './paginas/juridico/Prestadores'
 import { Entrar } from './paginas/Entrar'
 import { Eventos } from './paginas/eventos/Eventos'
 import { Financeiro } from './paginas/financeiro/Financeiro'
+import { Agregados } from './paginas/financeiro/Agregados'
 import { PresencasHoje } from './paginas/equipe/PresencasHoje'
 import { Cnhs, Frota, Veiculos } from './paginas/equipe/Frota'
 import { DiarioCampo } from './paginas/equipe/DiarioCampo'
@@ -123,6 +124,7 @@ function App() {
           </>
         )}
         {financeiro && <Route path="/financeiro" element={<Financeiro />} />}
+        {financeiro && <Route path="/financeiro/agregados" element={<Agregados />} />}
         {coordenacao && (
           <>
             <Route path="/coordenacao/usuarios" element={<Usuarios />} />

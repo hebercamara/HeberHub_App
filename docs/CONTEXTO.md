@@ -3,7 +3,7 @@
 > Documento de referência para quem for continuar o projeto, seja uma pessoa ou uma IA.
 > Explica o que o app faz, o que ele deliberadamente **não** faz, as regras de negócio
 > decididas com o dono do projeto (e por quê), a arquitetura técnica e como retomar o trabalho.
-> Atualizado em 07/11/2026, após a etapa E7 do Diário de Campo (roteiro do cliente e emplacamento).
+> Atualizado em 07/11/2026, após a etapa E8 do Diário de Campo (pagamento do agregado e fechamento quinzenal).
 
 ---
 
@@ -268,7 +268,7 @@ Plano completo em `docs/PLANO-DIARIO-DE-CAMPO.md`.
 - **Distrato assinado:** o agregado fica inativo e **todos os caminhões dele ficam inativos** (saem
   da escala) na mesma hora. Inativar pela tela de Usuários faz o mesmo. Com o agregado inativo, o
   caminhão não volta a ficar disponível.
-- Ainda **não** existe pagamento ao agregado nem fechamento quinzenal (etapa E8).
+- O pagamento ao agregado e o fechamento quinzenal estão na seção 6.2.10.
 
 ### 6.2.4 Frota da casa, CNH e regiões (etapa E2 do Diário de Campo)
 - **Aba Frota** (toda a equipe; ADM e coordenação editam, o Jurídico só consulta):
@@ -399,6 +399,25 @@ Na tabela do Diário de Campo, cada saída ganhou **Jornada**, **Ocorrências** 
   guarda as **caixas previstas** (soma das cargas) e um **aviso de capacidade** quando passa da
   capacidade do veículo (não bloqueia). Tirar a carga da saída, tirar ou cancelar a saída solta a
   carga.
+
+### 6.2.10 Pagamento do agregado e fechamento quinzenal (etapa E8 do Diário de Campo)
+Em **Financeiro › Agregados: fechamento quinzenal** (`/financeiro/agregados`; só quem vê valores):
+- **Quinzenas:** 1ª = dias 1 a 15; 2ª = dia 16 ao último dia do mês (`AAAA-MM-1` / `AAAA-MM-2`).
+- **Apuração** (no servidor, `regras/pagamentoAgregado.ts`), a partir das **saídas dos caminhões
+  de agregados no Diário de Campo** da quinzena. Por saída: **fixo por saída** + **caixas
+  entregues × valor por caixa da região** (a região vem do **roteiro** da saída; sem valor próprio,
+  usa o padrão) − **desconto** por motorista nosso e por ajudante nosso (valores da operação).
+  Valores vigentes na data da saída. Mostra totais por agregado e o detalhe de cada saída.
+  **Não gera lançamentos** no mês dos prestadores: é um fechamento à parte.
+- **Pendências** que impedem o fechamento: dia do diário com saída de agregado **não encerrado**;
+  **saída cancelada sem decisão**; caixas entregues não lançadas (quando há valor por caixa);
+  agregado sem valores na data.
+- **Saída cancelada:** a coordenação ou o ADM Financeiro decide caso a caso: **fixo inteiro**, um
+  **valor menor** ou **nada**, com justificativa (`rotas/{id}.decisaoAgregado`).
+- **Fechar a quinzena** (só a coordenação, depois do último dia): congela a apuração em
+  `fechamentosAgregado/{quinzena}`. Fechada, a tela mostra o resultado congelado; decisões e a
+  **reabertura de dia** do diário com saída de agregado ficam bloqueadas. **Reabrir a quinzena:**
+  coordenação, com justificativa. O pagamento em si (dia 25/30 e 10/15) acontece fora do app.
 
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
@@ -603,6 +622,7 @@ docs/CONTEXTO.md          este documento
 | `operacoes/{id}/roteiros`, `/modalidades`, `/brokers` | listas da operação para o diário (roteiro com `regiaoId`; broker com contato) | a equipe |
 | `diarios/{operacaoId_data}` | diário do dia: operação, data, situação, reserva (uids), quem concluiu | a equipe |
 | `rotas/{id}` | saída: diário, operação, data, sequência, tipo de serviço, placa, tipo e origem do veículo, agregado, motorista, ajudantes, `prestadores` (uids), cargas, roteiro, modalidade, broker, perfil cobrado, volta (viagem); `jornada` (horários, km, KM UNB, temperaturas, caixas, conferente, observação), km rodado, minutos rodados, caixas entregues, avisos, motivo do cancelamento; `reentregaPendente`, `reentregaAtendidaPor`, `reentregaDe`, `voltaRegistrada` | a equipe |
+| `fechamentosAgregado/{AAAA-MM-Q}` | quinzena fechada: status, apuração congelada (por agregado e por saída), total, quem fechou, reabertura | quem vê valores |
 | `cargas/{operacao_data_numero}` | carga do roteiro do cliente: número, placa sugerida, clientes (tipo, nome, endereço, bairro, cidade, caixas, peso), totais, saída em que está (`rotaId`, placa, sequência) | a equipe |
 | `rotas/{id}/ocorrencias/{id}` | horário, texto, quem anotou | a equipe |
 | `valoresOperacao/{operacaoId_inicio}` | desconto do agregado (motorista, ajudante) e adicional de viagem por dia, em centavos | quem vê valores |
@@ -623,6 +643,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | Jornada | `registrarJornada`, `registrarOcorrencia`, `cancelarRota`, `encerrarDiario`, `reabrirDiario` |
 | Viagem | `registrarVolta` (presença nos dias fora e adicional de viagem) |
 | Cargas | `importarRoteiro`, `emplacarPelaPlaca` (e o emplacamento dentro de `salvarRota`) |
+| Pagamento do agregado | `previaQuinzenaAgregado`, `decidirSaidaCancelada`, `fecharQuinzenaAgregado`, `reabrirQuinzenaAgregado` |
 | Diário (operação) | `salvarConfigDiario`, `salvarItemOperacao` (roteiros, modalidades, brokers), `salvarValoresOperacao` |
 | Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
@@ -693,8 +714,8 @@ o futuro: integração com o Clicksign e PDF gerado no servidor.
 escala por carro, veículos, agregados, cargas e acompanhamento das rotas. **Etapa E1 (agregados)
 pronta. Etapas E2 (frota da casa, CNH e regiões de entrega) e E3 (regras de cada operação)
 prontas. Etapas E4 (escala por carro), E5 (jornada da saída e encerramento do dia) e E6 (viagem
-e reentrega) e E7 (roteiro do cliente e emplacamento) prontas.** Próximas: **E8** (pagamento do
-agregado e fechamento quinzenal) e **E9** (relatórios).
+e reentrega), E7 (roteiro do cliente e emplacamento) e E8 (pagamento do agregado e fechamento
+quinzenal) prontas.** Próxima: **E9** (relatórios).
 
 **Pendências e ideias registradas:**
 - **Escala por carro:** pronta (etapa E4). A marca NE manual continua existindo no calendário.
@@ -731,6 +752,7 @@ agregado e fechamento quinzenal) e **E9** (relatórios).
 | Diário de Campo E5 | Jornada da saída (largada, chegada, km, KM UNB, temperaturas, caixas carregadas, reentrega e devolução em varejo e mercado, conferente), cálculos e avisos, ocorrências, cancelar saída com motivo, encerrar o dia com conferência dos obrigatórios e reabrir com justificativa |
 | Diário de Campo E6 | Registrar a volta da viagem (presença V nos dias fora, sem duplicar, e adicional de viagem por dia), reentregas pendentes ligadas à saída de reentrega, letra V no calendário |
 | Diário de Campo E7 | Importar o roteiro do cliente (.xlsx ou .csv, subtotais ignorados), cargas do dia com clientes, caixas e peso, emplacar pela placa do roteiro ou no formulário da saída, uma carga por veículo, caixas previstas e aviso de capacidade |
+| Diário de Campo E8 | Pagamento do agregado pela quinzena (fixo por saída, caixas × valor da região pelo roteiro, desconto por motorista e ajudante nossos), pendências, decisão das saídas canceladas, fechar e reabrir a quinzena, dia do diário travado com a quinzena fechada |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
 

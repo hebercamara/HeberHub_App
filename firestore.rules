@@ -113,6 +113,10 @@ service cloud.firestore {
     match /valoresOperacao/{id} {
       allow read: if financeiro();
     }
+    // Fechamento quinzenal dos agregados (resultado congelado por agregado e por saída).
+    match /fechamentosAgregado/{quinzena} {
+      allow read: if financeiro();
+    }
     match /valoresDiaria/{id} {
       allow read: if financeiro();
     }

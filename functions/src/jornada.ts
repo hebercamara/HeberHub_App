@@ -6,6 +6,7 @@ import { gravarEmplacamento, lerCargas } from './cargas.js'
 import { idDiario } from './escala.js'
 import { agoraServidor, auditar, dataValida, db, exigirPerfil, falha, texto } from './infra.js'
 import { CAMPOS_DIARIO, caixasDeReentrega, configPadrao, type ConfigDiario } from './regras/diario.js'
+import { quinzenaDe } from './regras/pagamentoAgregado.js'
 import { calcularJornada, JORNADA_VAZIA, lerJornada, pendenciasDaJornada, type Jornada } from './regras/jornada.js'
 import { placaFormatada } from './regras/veiculos.js'
 
@@ -141,6 +142,12 @@ export const reabrirDiario = onCall(async (req) => {
   await db.runTransaction(async (tx) => {
     const diario = await tx.get(ref)
     if (diario.get('situacao') !== 'encerrado') throw falha('Este dia não está encerrado.', 'failed-precondition')
+    // Com saída de agregado numa quinzena já fechada, o dia só reabre depois de reabrir a quinzena.
+    const fechada = await tx.get(db.collection('fechamentosAgregado').doc(quinzenaDe(data)))
+    if (fechada.get('status') === 'fechado') {
+      const deAgregado = await tx.get(rotas.where('diarioId', '==', ref.id).where('veiculoOrigem', '==', 'agregado'))
+      if (!deAgregado.empty) throw falha('A quinzena dos agregados deste dia já foi fechada. Reabra a quinzena antes (Financeiro › Agregados).', 'failed-precondition')
+    }
     tx.update(ref, { situacao: 'escalado', reabertoPor: autor, reabertoEm: agoraServidor(), justificativaReabertura: justificativa })
     auditar(tx, { acao: 'diario-reaberto', autor, alvo: ref.id, detalhes: { justificativa } })
   })
