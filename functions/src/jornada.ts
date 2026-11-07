@@ -2,6 +2,7 @@
 // caixas, ocorrências, cancelamento e o encerramento do dia (com reabertura justificada).
 import type { DocumentSnapshot } from 'firebase-admin/firestore'
 import { onCall } from 'firebase-functions/v2/https'
+import { gravarEmplacamento, lerCargas } from './cargas.js'
 import { idDiario } from './escala.js'
 import { agoraServidor, auditar, dataValida, db, exigirPerfil, falha, texto } from './infra.js'
 import { CAMPOS_DIARIO, caixasDeReentrega, configPadrao, type ConfigDiario } from './regras/diario.js'
@@ -75,7 +76,10 @@ export const cancelarRota = onCall(async (req) => {
     if (rota.get('tipoServico') === 'cancelada') throw falha('Esta saída já está cancelada.', 'failed-precondition')
     // Reentrega cancelada: as caixas que ela ia levar voltam a ficar pendentes.
     const origens = await Promise.all(((rota.get('reentregaDe') ?? []) as string[]).map((x) => tx.get(rotas.doc(x))))
+    // As cargas da saída cancelada ficam livres para outra saída.
+    const soltas = await lerCargas(tx, rota.get('operacaoId'), rota.get('data'), (rota.get('cargas') ?? []) as string[])
     origens.forEach((o) => o.exists && tx.update(o.ref, { reentregaPendente: true, reentregaAtendidaPor: null }))
+    gravarEmplacamento(tx, [], soltas, { id, placa: rota.get('placa'), sequencia: rota.get('sequencia') })
     tx.update(rota.ref, { tipoServico: 'cancelada', tipoAntesDeCancelar: rota.get('tipoServico'), motivoCancelamento: motivo, canceladaPor: autor, canceladaEm: agoraServidor() })
     auditar(tx, { acao: 'rota-cancelada', autor, alvo: id, detalhes: { motivo, placa: rota.get('placa') } })
   })

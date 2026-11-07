@@ -200,6 +200,9 @@ export type Rota = {
   /** Esta saída teve caixas de reentrega que ainda não foram escaladas. */
   reentregaPendente?: boolean
   reentregaAtendidaPor?: string | null
+  /** Emplacamento (etapa E7): caixas das cargas importadas e aviso de capacidade. */
+  caixasPrevistas?: number
+  avisoCapacidade?: string | null
   /** Viagem: volta registrada (presença nos dias fora e adicional). */
   voltaRegistrada?: { data: string; dias: number; presencas: number; adicionalPorPessoa: number }
 }
@@ -217,6 +220,20 @@ export type Jornada = {
   devolucao: CaixasRetorno | null
   conferenteArmazem: string | null
   observacao: string | null
+}
+/** Carga importada do roteiro do cliente, em cargas/{operacao_data_numero}. */
+export type Carga = {
+  id: string
+  operacaoId: string
+  data: string
+  numero: string
+  placaSugerida: string | null
+  clientes: { tipo: string; nome: string; endereco: string; bairro: string; cidade: string; caixas: number; peso: number }[]
+  totalCaixas: number
+  totalPeso: number
+  rotaId?: string | null
+  rotaPlaca?: string | null
+  rotaSequencia?: number | null
 }
 export type Ocorrencia = { id: string; horario: string | null; texto: string; autorNome: string }
 

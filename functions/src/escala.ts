@@ -3,6 +3,7 @@
 import type { DocumentSnapshot, Transaction } from 'firebase-admin/firestore'
 import { onCall } from 'firebase-functions/v2/https'
 import { lerPlaca } from './agregados.js'
+import { conferirEmplacamento, gravarEmplacamento, lerCargas } from './cargas.js'
 import { agoraServidor, auditar, dataValida, db, exigirPerfil, falha, texto } from './infra.js'
 import { configPadrao, TIPOS_SERVICO, type ConfigDiario, type TipoServico } from './regras/diario.js'
 import { naoEscalados, prestadoresDaRota, problemaDaRota, type PessoaNaRota, type PrestadorNaEscala, type SituacaoDiario } from './regras/escala.js'
@@ -124,6 +125,11 @@ export const salvarRota = onCall(async (req) => {
       }
     }
 
+    // Emplacamento: cargas importadas do roteiro que esta saída leva (e as que deixou de levar).
+    const cargasNovas = await lerCargas(tx, operacaoId, data, cargas)
+    const cargasSoltas = await lerCargas(tx, operacaoId, data, ((atual?.get('cargas') ?? []) as string[]).filter((n) => !cargas.includes(n)))
+    const emplacamento = conferirEmplacamento(cargasNovas, id, veiculo.get('capacidadeCaixas') as number | null)
+
     const config = (operacao.get('diario') as ConfigDiario | undefined) ?? configPadrao()
     const problema = problemaDaRota(
       {
@@ -166,16 +172,19 @@ export const salvarRota = onCall(async (req) => {
       perfilCobrado: perfilCobradoPedido ?? (veiculo.get('tipo') as TipoVeiculo),
       dataVolta,
       reentregaDe,
+      caixasPrevistas: emplacamento.caixasPrevistas,
+      avisoCapacidade: emplacamento.aviso,
     }
     tx.set(ref, { ...rota, atualizadoPor: autor, atualizadoEm: agoraServidor(), ...(atual ? {} : { criadoPor: autor, criadoEm: agoraServidor() }) }, { merge: true })
     // Diário do dia: nasce na primeira rota. Quem entrou numa rota sai da reserva.
     const reserva = ((diario.get('reserva') ?? []) as string[]).filter((uid) => !uids.includes(uid))
     tx.set(refDiario, { operacaoId, data, situacao: diario.get('situacao') ?? 'em-preparo', reserva, atualizadoEm: agoraServidor() }, { merge: true })
     for (const m of marcas) tx.delete(m.ref)
+    gravarEmplacamento(tx, cargasNovas, cargasSoltas, { id: ref.id, placa, sequencia })
     origens.slice(0, reentregaDe.length).forEach((o) => tx.update(o.ref, { reentregaPendente: false, reentregaAtendidaPor: ref.id }))
     origens.slice(reentregaDe.length).forEach((o) => o.exists && tx.update(o.ref, { reentregaPendente: true, reentregaAtendidaPor: null }))
     auditar(tx, { acao: atual ? 'rota-alterada' : 'rota-incluida', autor, alvo: ref.id, detalhes: { operacaoId, data, placa, tipoServico, prestadores: uids } })
-    return { id: ref.id, sequencia }
+    return { id: ref.id, sequencia, avisoCapacidade: emplacamento.aviso }
   })
   return { ok: true, ...resultado }
 })
@@ -192,7 +201,9 @@ export const removerRota = onCall(async (req) => {
     // Depois da largada, a saída não some: cancela-se com motivo.
     if (rota.get('jornada.horarioSaida') || rota.get('tipoServico') === 'cancelada') throw falha('Esta saída já largou ou foi cancelada: use "Cancelar saída".', 'failed-precondition')
     const origens = await Promise.all(((rota.get('reentregaDe') ?? []) as string[]).map((x) => tx.get(rotas.doc(x))))
+    const soltas = await lerCargas(tx, rota.get('operacaoId'), rota.get('data'), (rota.get('cargas') ?? []) as string[])
     tx.delete(rota.ref)
+    gravarEmplacamento(tx, [], soltas, { id, placa: rota.get('placa'), sequencia: rota.get('sequencia') })
     // As caixas que esta saída ia reentregar voltam a ficar pendentes.
     origens.forEach((o) => o.exists && tx.update(o.ref, { reentregaPendente: true, reentregaAtendidaPor: null }))
     auditar(tx, { acao: 'rota-removida', autor, alvo: id, detalhes: rota.data() ?? {} })

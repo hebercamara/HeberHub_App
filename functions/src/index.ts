@@ -11,6 +11,7 @@ export { salvarConfigDiario, salvarItemOperacao, salvarValoresOperacao } from '.
 export { concluirEscala, removerRota, salvarReserva, salvarRota } from './escala.js'
 export { cancelarRota, encerrarDiario, reabrirDiario, registrarJornada, registrarOcorrencia } from './jornada.js'
 export { registrarVolta } from './viagem.js'
+export { emplacarPelaPlaca, importarRoteiro } from './cargas.js'
 export { salvarAparencia } from './aparencia.js'
 export { marcarAusencia } from './ausencias.js'
 export { salvarBase } from './bases.js'

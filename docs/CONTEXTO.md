@@ -3,7 +3,7 @@
 > Documento de referência para quem for continuar o projeto, seja uma pessoa ou uma IA.
 > Explica o que o app faz, o que ele deliberadamente **não** faz, as regras de negócio
 > decididas com o dono do projeto (e por quê), a arquitetura técnica e como retomar o trabalho.
-> Atualizado em 07/11/2026, após a etapa E6 do Diário de Campo (viagem e reentrega).
+> Atualizado em 07/11/2026, após a etapa E7 do Diário de Campo (roteiro do cliente e emplacamento).
 
 ---
 
@@ -383,6 +383,23 @@ Na tabela do Diário de Campo, cada saída ganhou **Jornada**, **Ocorrências** 
   lista, cancelar ou tirar a saída de reentrega devolve as caixas para "pendente". Uma pendência
   já atendida por outra saída não pode ser escolhida de novo.
 
+### 6.2.9 Roteiro do cliente e emplacamento (etapa E7 do Diário de Campo)
+- **Importar roteiro** (no diário do dia; ADM ou coordenação; .xlsx ou .csv): a planilha do
+  cliente como vem hoje. Colunas reconhecidas pelo nome, sem acento: tipo de cliente, nome do
+  cliente, endereço, bairro, cidade, **caixa(s)**, peso, **carga** ("CARGA JDE", "DT"…) e placa.
+  Carga, cliente e caixas são obrigatórios. **Linhas de subtotal ("Total") são ignoradas**;
+  linhas sem carga ou com caixas inválidas são recusadas com o número da linha.
+- Cada número de carga vira `cargas/{operacao_data_numero}`: clientes, total de caixas, total de
+  peso e a **placa sugerida** (a que mais aparece nas linhas da carga). Importar de novo atualiza
+  e **mantém o emplacamento**. O resumo da última importação fica em `diarios/{id}.roteiro`.
+- **Emplacar** = pôr a carga numa saída: **"Emplacar pela placa do roteiro"** (cada carga sem
+  veículo vai para a saída do dia com a placa sugerida; se a placa tiver duas saídas no dia, fica
+  para a equipe escolher) ou marcando as cargas no formulário da saída.
+- **Uma carga vai num só veículo** (o servidor recusa e diz em qual saída ela está). A saída
+  guarda as **caixas previstas** (soma das cargas) e um **aviso de capacidade** quando passa da
+  capacidade do veículo (não bloqueia). Tirar a carga da saída, tirar ou cancelar a saída solta a
+  carga.
+
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
    `heberhub:<baseId>_<data>:<token>`; o token é secreto e só sai do servidor por essa tela.
@@ -586,6 +603,7 @@ docs/CONTEXTO.md          este documento
 | `operacoes/{id}/roteiros`, `/modalidades`, `/brokers` | listas da operação para o diário (roteiro com `regiaoId`; broker com contato) | a equipe |
 | `diarios/{operacaoId_data}` | diário do dia: operação, data, situação, reserva (uids), quem concluiu | a equipe |
 | `rotas/{id}` | saída: diário, operação, data, sequência, tipo de serviço, placa, tipo e origem do veículo, agregado, motorista, ajudantes, `prestadores` (uids), cargas, roteiro, modalidade, broker, perfil cobrado, volta (viagem); `jornada` (horários, km, KM UNB, temperaturas, caixas, conferente, observação), km rodado, minutos rodados, caixas entregues, avisos, motivo do cancelamento; `reentregaPendente`, `reentregaAtendidaPor`, `reentregaDe`, `voltaRegistrada` | a equipe |
+| `cargas/{operacao_data_numero}` | carga do roteiro do cliente: número, placa sugerida, clientes (tipo, nome, endereço, bairro, cidade, caixas, peso), totais, saída em que está (`rotaId`, placa, sequência) | a equipe |
 | `rotas/{id}/ocorrencias/{id}` | horário, texto, quem anotou | a equipe |
 | `valoresOperacao/{operacaoId_inicio}` | desconto do agregado (motorista, ajudante) e adicional de viagem por dia, em centavos | quem vê valores |
 | `agregados/{uid}/equipe/{id}` | motorista e ajudante do agregado: nome, função, ativo | a equipe |
@@ -604,6 +622,7 @@ Inativar uma pessoa limpa os claims e revoga a sessão.
 | Escala | `salvarRota`, `removerRota`, `salvarReserva`, `concluirEscala` |
 | Jornada | `registrarJornada`, `registrarOcorrencia`, `cancelarRota`, `encerrarDiario`, `reabrirDiario` |
 | Viagem | `registrarVolta` (presença nos dias fora e adicional de viagem) |
+| Cargas | `importarRoteiro`, `emplacarPelaPlaca` (e o emplacamento dentro de `salvarRota`) |
 | Diário (operação) | `salvarConfigDiario`, `salvarItemOperacao` (roteiros, modalidades, brokers), `salvarValoresOperacao` |
 | Cadastro oficial | `consolidarCadastro` (nova versão após mudança na Receita), `consultarCnpj`, `enviarCartaoCnpj`, `enviarCadastroOficial`, `verCartaoCnpj`, `reconsultarReceita`, `limparCartoes` (agendada, 03:30) |
 | Planilha | `importarPrestadores`, `excluirPreCadastro` |
@@ -674,8 +693,8 @@ o futuro: integração com o Clicksign e PDF gerado no servidor.
 escala por carro, veículos, agregados, cargas e acompanhamento das rotas. **Etapa E1 (agregados)
 pronta. Etapas E2 (frota da casa, CNH e regiões de entrega) e E3 (regras de cada operação)
 prontas. Etapas E4 (escala por carro), E5 (jornada da saída e encerramento do dia) e E6 (viagem
-e reentrega) prontas.** Próximas: **E7** (importar o roteiro do cliente e emplacar as cargas),
-**E8** (pagamento do agregado e fechamento quinzenal) e **E9** (relatórios).
+e reentrega) e E7 (roteiro do cliente e emplacamento) prontas.** Próximas: **E8** (pagamento do
+agregado e fechamento quinzenal) e **E9** (relatórios).
 
 **Pendências e ideias registradas:**
 - **Escala por carro:** pronta (etapa E4). A marca NE manual continua existindo no calendário.
@@ -711,6 +730,7 @@ e reentrega) prontas.** Próximas: **E7** (importar o roteiro do cliente e empla
 | Diário de Campo E4 | Aba Diário de Campo: diário por dia e operação, saídas com veículo, motorista, ajudantes e cargas, segunda viagem, viagem com volta, reserva, concluir escala com NE automático, bloqueios (CNH, veículo, pessoa em dois carros), check-in ao vivo, não veio e falta, vários dias |
 | Diário de Campo E5 | Jornada da saída (largada, chegada, km, KM UNB, temperaturas, caixas carregadas, reentrega e devolução em varejo e mercado, conferente), cálculos e avisos, ocorrências, cancelar saída com motivo, encerrar o dia com conferência dos obrigatórios e reabrir com justificativa |
 | Diário de Campo E6 | Registrar a volta da viagem (presença V nos dias fora, sem duplicar, e adicional de viagem por dia), reentregas pendentes ligadas à saída de reentrega, letra V no calendário |
+| Diário de Campo E7 | Importar o roteiro do cliente (.xlsx ou .csv, subtotais ignorados), cargas do dia com clientes, caixas e peso, emplacar pela placa do roteiro ou no formulário da saída, uma carga por veículo, caixas previstas e aviso de capacidade |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
 

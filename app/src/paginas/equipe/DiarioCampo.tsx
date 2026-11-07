@@ -2,6 +2,7 @@ import { collection, doc, onSnapshot, query, where } from 'firebase/firestore'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Aviso } from '../../componentes/Aviso'
 import { api } from '../../lib/api'
+import { lerPlanilha } from '../../lib/planilha'
 import { useBases } from '../../lib/bases'
 import { useCnhs, useFuncoes, useOperacoes, useUsuarios, useVeiculos } from '../../lib/cadastros'
 import { formatarData, formatarDataLonga, hojeEmSaoPaulo, somarDias } from '../../lib/datas'
@@ -18,6 +19,7 @@ import {
   situacaoCnh,
   type Ausencia,
   type Broker,
+  type Carga,
   type Diario,
   type Ocorrencia,
   type Modalidade,
@@ -174,6 +176,10 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
     .filter((r) => r.data < data)
     .sort((a, b) => a.data.localeCompare(b.data))
   const ausencias = useConsulta<Ausencia>('ausencias', [['data', '==', data]])
+  const cargasDoDia = useConsulta<Carga>('cargas', [
+    ['operacaoId', '==', operacaoId],
+    ['data', '==', data],
+  ]).sort((a, b) => a.numero.localeCompare(b.numero))
   const usuarios = useUsuarios()
   const funcoes = useFuncoes()
   const { bases } = useBases()
@@ -316,6 +322,7 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
           rota={editando === 'nova' ? null : editando}
           rotasDoDia={rotas}
           pendentes={pendentes}
+          cargasDoDia={cargasDoDia}
           aoTerminar={() => setEditando(null)}
         />
       )}
@@ -352,6 +359,8 @@ function DiaDoDiario({ operacaoId, nome, data, config }: { operacaoId: string; n
       {ocorrenciasDe && rotas.some((r) => r.id === ocorrenciasDe) && (
         <Ocorrencias rota={rotas.find((r) => r.id === ocorrenciasDe)!} editavel={editavel} aoFechar={() => setOcorrenciasDe(null)} />
       )}
+
+      <CargasDoDia operacaoId={operacaoId} data={data} cargas={cargasDoDia} editavel={editavel} />
 
       {pendentes.length > 0 && (
         <section className="cartao">
@@ -504,7 +513,11 @@ function TabelaRotas({
               </td>
               <td>{pessoa(r.motorista)}</td>
               <td>{r.ajudantes.length ? r.ajudantes.map(pessoa) : <span className="suave">sem ajudante</span>}</td>
-              <td>{r.cargas.join(', ') || <span className="suave">—</span>}</td>
+              <td>
+                {r.cargas.join(', ') || <span className="suave">—</span>}
+                {r.caixasPrevistas ? <div className="suave">{r.caixasPrevistas} caixas previstas</div> : null}
+                {r.avisoCapacidade && <div className="selo selo-inativo">⚠ {r.avisoCapacidade}</div>}
+              </td>
               <td>
                 <ResumoJornada rota={r} />
               </td>
@@ -631,6 +644,7 @@ function FormularioRota({
   rota,
   rotasDoDia,
   pendentes,
+  cargasDoDia,
   aoTerminar,
 }: {
   operacaoId: string
@@ -639,6 +653,7 @@ function FormularioRota({
   rota: Rota | null
   rotasDoDia: Rota[]
   pendentes: Rota[]
+  cargasDoDia: Carga[]
   aoTerminar: () => void
 }) {
   const veiculos = useVeiculos()
@@ -673,6 +688,17 @@ function FormularioRota({
   const [salvando, setSalvando] = useState(false)
 
   const veiculo = veiculos.find((v) => v.placa === placa)
+  // Emplacamento: cargas importadas livres (ou já nesta saída) e as caixas previstas.
+  const numerosEscolhidos = cargas
+    .split(/[,;\n]/)
+    .map((c) => c.trim())
+    .filter(Boolean)
+  const livres = cargasDoDia.filter((c) => !c.rotaId || c.rotaId === rota?.id)
+  const previstas = cargasDoDia.filter((c) => numerosEscolhidos.includes(c.numero)).reduce((t, c) => t + c.totalCaixas, 0)
+  function alternarCarga(numero: string, marcar: boolean) {
+    const lista = marcar ? [...new Set([...numerosEscolhidos, numero])] : numerosEscolhidos.filter((n) => n !== numero)
+    setCargas(lista.join(', '))
+  }
   const equipeAgregado = useEquipeAgregado(veiculo?.origem === 'agregado' ? veiculo.dono : null)
   const mostra = (campo: keyof ConfigDiario['campos']) => config.campos[campo] !== 'oculto'
   const obrigatorio = (campo: keyof ConfigDiario['campos']) => config.campos[campo] === 'obrigatorio'
@@ -805,6 +831,18 @@ function FormularioRota({
           </label>
         )}
       </div>
+      {mostra('carga') && livres.length > 0 && (
+        <fieldset>
+          <legend>Cargas do roteiro ainda sem veículo</legend>
+          {livres.map((c) => (
+            <label key={c.id} className="opcao">
+              <input type="checkbox" checked={numerosEscolhidos.includes(c.numero)} onChange={(e) => alternarCarga(c.numero, e.target.checked)} />
+              {c.numero} · {c.totalCaixas} caixas · {c.clientes.length} cliente(s)
+              {c.placaSugerida ? ` · placa do roteiro ${placaFormatada(c.placaSugerida)}` : ''}
+            </label>
+          ))}
+        </fieldset>
+      )}
       {tipoServico === 'reentrega' && (
         <fieldset>
           <legend>Reentregas que esta saída leva</legend>
@@ -851,6 +889,11 @@ function FormularioRota({
           <label>
             Cargas / DT (separe por vírgula)
             <input value={cargas} onChange={(e) => setCargas(e.target.value)} placeholder="26243001, 26243002" />
+            {previstas > 0 && (
+              <span className={veiculo?.capacidadeCaixas && previstas > veiculo.capacidadeCaixas ? 'aviso aviso-erro' : 'suave'}>
+                {previstas} caixas previstas{veiculo?.capacidadeCaixas ? ` · capacidade ${veiculo.capacidadeCaixas}` : ''}
+              </span>
+            )}
           </label>
         )}
         {mostra('roteiro') && (
@@ -1124,6 +1167,132 @@ function Ocorrencias({ rota, editavel, aoFechar }: { rota: Rota; editavel: boole
           <button type="submit">Registrar</button>
         </form>
       )}
+      <Aviso>{erro}</Aviso>
+    </section>
+  )
+}
+
+/** Cargas do roteiro do cliente: importar a planilha, ver clientes e caixas, emplacar pela placa. */
+function CargasDoDia({ operacaoId, data, cargas, editavel }: { operacaoId: string; data: string; cargas: Carga[]; editavel: boolean }) {
+  const [aberta, setAberta] = useState<string | null>(null)
+  const [erro, setErro] = useState('')
+  const [info, setInfo] = useState('')
+  const [ocupado, setOcupado] = useState(false)
+  const semSaida = cargas.filter((c) => !c.rotaId)
+
+  async function executar(fazer: () => Promise<string>) {
+    setErro('')
+    setInfo('')
+    setOcupado(true)
+    try {
+      setInfo(await fazer())
+    } catch (e) {
+      setErro(e instanceof Error && !('code' in e) ? e.message : mensagemDeErro(e))
+    }
+    setOcupado(false)
+  }
+
+  async function importar(arquivo: File | undefined) {
+    if (!arquivo) return
+    await executar(async () => {
+      const planilha = await lerPlanilha(arquivo).catch(() => {
+        throw new Error('Não foi possível ler a planilha. Envie um arquivo .xlsx ou .csv.')
+      })
+      const r = await api.importarRoteiro({ operacaoId, data, ...planilha })
+      const recusas = r.recusadas.length ? ` ${r.recusadas.length} linha(s) recusada(s): ${r.recusadas.slice(0, 3).map((x) => `linha ${x.linha} (${x.motivo})`).join('; ')}.` : ''
+      return `Roteiro importado: ${r.cargas} carga(s), ${r.clientes} cliente(s).${recusas}`
+    })
+  }
+
+  return (
+    <section className="cartao pilha">
+      <div className="cabecalho-secao">
+        <h3>Cargas do roteiro</h3>
+        {editavel && (
+          <span className="acoes" style={{ marginTop: 0 }}>
+            <label className="botao secundario">
+              Importar roteiro (.xlsx ou .csv)
+              <input type="file" accept=".xlsx,.csv" hidden disabled={ocupado} onChange={(e) => void importar(e.target.files?.[0])} />
+            </label>
+            {semSaida.some((c) => c.placaSugerida) && (
+              <button
+                className="secundario"
+                disabled={ocupado}
+                onClick={() =>
+                  void executar(async () => {
+                    const r = await api.emplacarPelaPlaca({ operacaoId, data })
+                    return `${r.emplacadas} carga(s) emplacada(s) pela placa do roteiro.${r.semSaida.length ? ` Ficaram sem veículo: ${r.semSaida.join(', ')}.` : ''}`
+                  })
+                }
+              >
+                Emplacar pela placa do roteiro
+              </button>
+            )}
+          </span>
+        )}
+      </div>
+      <p className="suave">
+        O roteiro que o cliente manda (clientes, caixas, peso, carga e placa). Emplacar é pôr a carga numa saída: pela placa do roteiro ou no campo "Cargas"
+        da saída.
+      </p>
+      {cargas.length === 0 ? (
+        <p className="suave">Nenhum roteiro importado para este dia.</p>
+      ) : (
+        <>
+          <p className="suave">
+            {cargas.length} carga(s) · {cargas.reduce((t, c) => t + c.totalCaixas, 0)} caixas · {semSaida.length} sem veículo
+          </p>
+          <ul className="lista">
+            {cargas.map((c) => (
+              <li key={c.id} className="pilha">
+                <div className="cabecalho-secao">
+                  <button className="link" onClick={() => setAberta(aberta === c.id ? null : c.id)} aria-expanded={aberta === c.id}>
+                    <strong>{c.numero}</strong> · {c.clientes.length} cliente(s) · {c.totalCaixas} caixas · {c.totalPeso.toLocaleString('pt-BR')} kg
+                  </button>
+                  {c.rotaId ? (
+                    <span className="selo selo-ativo">
+                      saída {c.rotaSequencia} · {placaFormatada(c.rotaPlaca ?? '')}
+                    </span>
+                  ) : (
+                    <span className="selo">sem veículo{c.placaSugerida ? ` (roteiro: ${placaFormatada(c.placaSugerida)})` : ''}</span>
+                  )}
+                </div>
+                {aberta === c.id && (
+                  <div className="rolagem">
+                    <table className="tabela">
+                      <thead>
+                        <tr>
+                          <th>Tipo</th>
+                          <th>Cliente</th>
+                          <th>Endereço</th>
+                          <th>Bairro</th>
+                          <th>Cidade</th>
+                          <th>Caixas</th>
+                          <th>Peso</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {c.clientes.map((cl, i) => (
+                          <tr key={i}>
+                            <td>{cl.tipo}</td>
+                            <td>{cl.nome}</td>
+                            <td>{cl.endereco}</td>
+                            <td>{cl.bairro}</td>
+                            <td>{cl.cidade}</td>
+                            <td>{cl.caixas}</td>
+                            <td>{cl.peso.toLocaleString('pt-BR')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <Aviso tipo="ok">{info}</Aviso>
       <Aviso>{erro}</Aviso>
     </section>
   )

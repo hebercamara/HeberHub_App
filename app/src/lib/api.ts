@@ -134,8 +134,13 @@ export const api = {
       dataVolta: string | null
       reentregaDe?: string[]
     },
-    { ok: true; id: string; sequencia: number }
+    { ok: true; id: string; sequencia: number; avisoCapacidade: string | null }
   >('salvarRota'),
+  importarRoteiro: chamada<
+    { operacaoId: string; data: string; cabecalho: string[]; linhas: string[][] },
+    { ok: true; cargas: number; clientes: number; recusadas: { linha: number; motivo: string }[]; ignoradas: number }
+  >('importarRoteiro'),
+  emplacarPelaPlaca: chamada<{ operacaoId: string; data: string }, { ok: true; emplacadas: number; semSaida: string[] }>('emplacarPelaPlaca'),
   removerRota: chamada<{ id: string }>('removerRota'),
   registrarJornada: chamada<
     { id: string; jornada: Record<string, unknown> },
