@@ -70,7 +70,7 @@ describe('modelos e emissão de documentos (onboarding C e D)', () => {
     await gestao.chamar('salvarContratante', { ...base, assinante: { nome: 'Fulano Exemplo', email: 'Fulano@Exemplo.com', cpf: '529.982.247-25' } })
     expect((await db.collection('configuracoes').doc('contratante').get()).get('assinante')).toEqual({ nome: 'Fulano Exemplo', email: 'fulano@exemplo.com', cpf: '52998224725' })
     // Nos emuladores não há token: o teste avisa, sem quebrar.
-    expect(await gestao.chamar('testarClicksign')).toEqual({ ok: false, ambiente: 'sandbox', motivo: 'sem-token' })
+    expect(await gestao.chamar('testarClicksign')).toEqual({ ok: false, ambiente: 'sandbox', motivo: 'sem-token', tentativas: [] })
     await expect(adm.chamar('testarClicksign')).rejects.toThrow(/permissão/)
   })
 
