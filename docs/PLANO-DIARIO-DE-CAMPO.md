@@ -307,7 +307,7 @@ Nenhum CPF aparece na rota, no diário ou nas exportações.
 | **E6. Viagem e reentrega** ✅ | Presença automática por viagem, adicional por dia de viagem, reentregas pendentes para o dia seguinte | Depende de E4 e E5. **Pronta em 07/11/2026** (ver `CONTEXTO.md` 6.2.8) |
 | **E7. Cargas** ✅ | Importação do roteiro do cliente e emplacamento | Ajustado na prática. **Pronta em 07/11/2026** (ver `CONTEXTO.md` 6.2.9) |
 | **E8. Dinheiro do agregado** ✅ | Lançamentos por saída/caixa com desconto, fechamento quinzenal com aviso das saídas canceladas | Precisa das caixas conferidas (E5). **Pronta em 07/11/2026** (ver `CONTEXTO.md` 6.2.10) |
-| **E9. Relatórios** | Por dia, veículo, pessoa, rota, operação: km, diferenças, horários, caixas, temperaturas; Excel e PDF (sem CPF) | Aproveita os dados acumulados |
+| **E9. Relatórios** ✅ | Por dia, veículo, pessoa, rota, operação: km, diferenças, horários, caixas, temperaturas; Excel e PDF (sem CPF) | Aproveita os dados acumulados. **Pronta em 07/11/2026** (ver `CONTEXTO.md` 6.2.11) |
 | **Futuro** | Baús, leitura da CNH, km puxado do rastreador, aviso de km fora do normal, faturamento ao cliente, CNH do motorista do agregado | Adiados pelo dono |
 
 ## 11. Pontos confirmados no fim

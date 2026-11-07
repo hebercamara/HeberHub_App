@@ -103,7 +103,7 @@ export function DiarioCampo() {
   return (
     <div className="pilha">
       <h1>Diário de Campo</h1>
-      <div className="filtros">
+      <div className="filtros-linha">
         <select value={operacao.id} onChange={(e) => escolher(e.target.value)} aria-label="Operação">
           {operacoes.map((o) => (
             <option key={o.id} value={o.id}>
@@ -118,10 +118,8 @@ export function DiarioCampo() {
         <button className="secundario" onClick={() => setData(somarDias(data, 1))} aria-label="Dia seguinte">
           ›
         </button>
-        <label className="linha-funcao">
-          até
-          <input type="date" value={ate} min={data} onChange={(e) => setAte(e.target.value)} aria-label="Até (vários dias)" />
-        </label>
+        <span className="suave">até</span>
+        <input type="date" value={ate} min={data} onChange={(e) => setAte(e.target.value)} aria-label="Até (vários dias)" />
         {ate && (
           <button className="link" onClick={() => setAte('')}>
             Ver só um dia
@@ -445,7 +443,7 @@ function ResumoJornada({ rota }: { rota: Rota }) {
         <div key={p}>{p}</div>
       ))}
       {rota.avisos?.map((a) => (
-        <div key={a.codigo} className="selo selo-inativo" title={a.mensagem}>
+        <div key={a.codigo} className="aviso-mini" title={a.mensagem}>
           ⚠ {a.mensagem}
         </div>
       ))}
@@ -516,7 +514,7 @@ function TabelaRotas({
               <td>
                 {r.cargas.join(', ') || <span className="suave">—</span>}
                 {r.caixasPrevistas ? <div className="suave">{r.caixasPrevistas} caixas previstas</div> : null}
-                {r.avisoCapacidade && <div className="selo selo-inativo">⚠ {r.avisoCapacidade}</div>}
+                {r.avisoCapacidade && <div className="aviso-mini">⚠ {r.avisoCapacidade}</div>}
               </td>
               <td>
                 <ResumoJornada rota={r} />

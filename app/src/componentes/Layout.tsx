@@ -64,6 +64,7 @@ export function Layout() {
             {perfil !== 'juridico' && <NavLink to="/equipe/qr">QR do dia</NavLink>}
             <NavLink to="/equipe/diario">Diário de Campo</NavLink>
             <NavLink to="/equipe/frota">Frota</NavLink>
+            <NavLink to="/equipe/relatorios">Relatórios</NavLink>
             <NavLink to="/presenca">Minha presença</NavLink>
             {financeiro && <NavLink to="/financeiro">Financeiro</NavLink>}
             {ehCoordenacao(perfil) && (
@@ -81,7 +82,8 @@ export function Layout() {
         )
       )}
 
-      <main className="conteudo">
+      {/* Telas de tabela larga (diário, relatórios, agregados) usam a largura toda. */}
+      <main className={`conteudo ${/^\/(equipe\/diario|equipe\/relatorios|financeiro\/agregados)/.test(pathname) ? 'conteudo-largo' : ''}`}>
         {perfil === 'juridico' && !juridico && (
           <Aviso tipo="info">Modo consulta: aqui o Jurídico só vê. Para trabalhar, use a área Jurídica (botão no topo).</Aviso>
         )}

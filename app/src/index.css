@@ -1432,3 +1432,54 @@ a.botao {
   display: block;
   white-space: nowrap;
 }
+
+/* Relatórios: tabela larga, letra menor; na impressão, sem rolagem. */
+.tabela-relatorio {
+  font-size: 0.85rem;
+}
+.tabela-relatorio td {
+  white-space: nowrap;
+}
+@media print {
+  .rolagem {
+    overflow: visible;
+  }
+  .tabela-relatorio {
+    font-size: 7pt;
+  }
+  .tabela-relatorio td {
+    white-space: normal;
+  }
+}
+
+/* Largura maior para as telas de tabela (Diário de Campo, Relatórios, Agregados). */
+.conteudo.conteudo-largo {
+  max-width: 1440px;
+}
+/* Filtros numa linha só, cada um do tamanho do conteúdo (quebram no celular). */
+.filtros-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.filtros-linha > select,
+.filtros-linha input[type='date'] {
+  width: auto;
+}
+.filtros-linha > button {
+  padding: 10px 14px;
+}
+
+/* Aviso curto dentro da tabela (quebra linha em vez de alargar a coluna). */
+.aviso-mini {
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--cor-erro-fundo);
+  color: var(--cor-erro);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: normal;
+  max-width: 260px;
+}

@@ -3,7 +3,7 @@
 > Documento de referência para quem for continuar o projeto, seja uma pessoa ou uma IA.
 > Explica o que o app faz, o que ele deliberadamente **não** faz, as regras de negócio
 > decididas com o dono do projeto (e por quê), a arquitetura técnica e como retomar o trabalho.
-> Atualizado em 07/11/2026, após a etapa E8 do Diário de Campo (pagamento do agregado e fechamento quinzenal).
+> Atualizado em 07/11/2026, após a etapa E9 do Diário de Campo (relatórios). O plano do Diário de Campo está completo.
 
 ---
 
@@ -419,6 +419,20 @@ Em **Financeiro › Agregados: fechamento quinzenal** (`/financeiro/agregados`; 
   **reabertura de dia** do diário com saída de agregado ficam bloqueadas. **Reabrir a quinzena:**
   coordenação, com justificativa. O pagamento em si (dia 25/30 e 10/15) acontece fora do app.
 
+### 6.2.11 Relatórios (etapa E9 do Diário de Campo)
+- Aba **Relatórios** (`/equipe/relatorios`; toda a equipe): período (de/até) e operação (ou
+  todas). Quatro visões: **Saídas** (uma linha por saída com a jornada completa: horários, horas,
+  km, KM UNB e diferença, temperaturas, caixas, avisos, cancelamento, observação), **Por veículo**
+  (saídas, canceladas, km, KM UNB, diferença, horas, caixas, avisos de temperatura), **Por
+  pessoa** (saídas como motorista e ajudante, dias com presença, dias em viagem, faltas, NE) e
+  **Por operação** (saídas, canceladas, km, caixas, aproveitamento, largadas atrasadas, avisos).
+- **Exportar Excel** (a visão da tela) e **Imprimir ou PDF** (pelo navegador). **Nenhum CPF.**
+- Os relatórios só organizam o que já está gravado (`app/src/lib/relatorios.ts`); nenhuma regra
+  de dinheiro é calculada no app.
+- Em Financeiro › Agregados, **Exportar Excel** gera a planilha da quinzena para o pagamento
+  (resumo por agregado e cada saída).
+- As telas de tabela larga (Diário de Campo, Relatórios, Agregados) usam a largura toda da tela.
+
 ### 6.3 Check-in diário (o coração do app)
 1. O ADM gera o **QR do dia** (de hoje ou de amanhã) para a base e o imprime. O QR contém
    `heberhub:<baseId>_<data>:<token>`; o token é secreto e só sai do servidor por essa tela.
@@ -715,7 +729,8 @@ escala por carro, veículos, agregados, cargas e acompanhamento das rotas. **Eta
 pronta. Etapas E2 (frota da casa, CNH e regiões de entrega) e E3 (regras de cada operação)
 prontas. Etapas E4 (escala por carro), E5 (jornada da saída e encerramento do dia) e E6 (viagem
 e reentrega), E7 (roteiro do cliente e emplacamento) e E8 (pagamento do agregado e fechamento
-quinzenal) prontas.** Próxima: **E9** (relatórios).
+quinzenal) e E9 (relatórios) prontas: o plano do Diário de Campo está completo.** Próximo passo:
+o dono testar no ambiente dev e ajustar na prática (ver "Pendências" abaixo).
 
 **Pendências e ideias registradas:**
 - **Escala por carro:** pronta (etapa E4). A marca NE manual continua existindo no calendário.
@@ -753,6 +768,7 @@ quinzenal) prontas.** Próxima: **E9** (relatórios).
 | Diário de Campo E6 | Registrar a volta da viagem (presença V nos dias fora, sem duplicar, e adicional de viagem por dia), reentregas pendentes ligadas à saída de reentrega, letra V no calendário |
 | Diário de Campo E7 | Importar o roteiro do cliente (.xlsx ou .csv, subtotais ignorados), cargas do dia com clientes, caixas e peso, emplacar pela placa do roteiro ou no formulário da saída, uma carga por veículo, caixas previstas e aviso de capacidade |
 | Diário de Campo E8 | Pagamento do agregado pela quinzena (fixo por saída, caixas × valor da região pelo roteiro, desconto por motorista e ajudante nossos), pendências, decisão das saídas canceladas, fechar e reabrir a quinzena, dia do diário travado com a quinzena fechada |
+| Diário de Campo E9 | Aba Relatórios (saídas, por veículo, por pessoa, por operação) com Excel e PDF, planilha da quinzena dos agregados, telas de tabela na largura toda |
 
 ## 11. Como retomar o trabalho (para pessoa ou IA)
 

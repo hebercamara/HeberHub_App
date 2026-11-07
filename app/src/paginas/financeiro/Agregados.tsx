@@ -5,6 +5,7 @@ import { api, type ApuracaoQuinzena } from '../../lib/api'
 import { formatarData, hojeEmSaoPaulo } from '../../lib/datas'
 import { formatarReais, lerReais } from '../../lib/dinheiro'
 import { mensagemDeErro } from '../../lib/erros'
+import { exportarQuinzenaAgregados } from '../../lib/relatorios'
 import { useSessao } from '../../lib/sessao'
 import { editaCoordenacao, placaFormatada } from '../../lib/tipos'
 
@@ -36,7 +37,13 @@ function quinzenasRecentes(): string[] {
   return lista
 }
 
-const NOMES_SERVICO: Record<string, string> = { entrega: 'Entrega', reentrega: 'Reentrega', viagem: 'Viagem', 'porta-de-loja': 'Porta de loja', cancelada: 'Cancelada' }
+const NOMES_SERVICO: Record<string, string> = {
+  entrega: 'Entrega',
+  reentrega: 'Reentrega',
+  viagem: 'Viagem',
+  'porta-de-loja': 'Porta de loja',
+  cancelada: 'Cancelada',
+}
 
 /**
  * Pagamento dos agregados: apuração da quinzena a partir do Diário de Campo (fixo por saída,
@@ -46,7 +53,10 @@ export function Agregados() {
   const { perfil } = useSessao()
   const opcoes = quinzenasRecentes()
   const [quinzena, setQuinzena] = useState(opcoes[1])
-  const [resultado, setResultado] = useState<{ status: 'aberto' | 'fechado'; apuracao: ApuracaoQuinzena } | null>(null)
+  const [resultado, setResultado] = useState<{
+    status: 'aberto' | 'fechado'
+    apuracao: ApuracaoQuinzena
+  } | null>(null)
   const [aberto, setAberto] = useState<string | null>(null)
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
@@ -132,73 +142,95 @@ export function Agregados() {
         <section className="cartao pilha">
           <div className="cabecalho-secao">
             <span>
-              <span className={`selo ${fechado ? 'selo-ativo' : ''}`}>{fechado ? 'Fechada' : 'Aberta (prévia)'}</span> {formatarData(a.inicio)} a {formatarData(a.fim)} ·{' '}
-              {a.agregados.length} agregado(s) · <strong>{formatarReais(a.total)}</strong>
+              <span className={`selo ${fechado ? 'selo-ativo' : ''}`}>{fechado ? 'Fechada' : 'Aberta (prévia)'}</span> {formatarData(a.inicio)} a{' '}
+              {formatarData(a.fim)} · {a.agregados.length} agregado(s) · <strong>{formatarReais(a.total)}</strong>
             </span>
-            {coordenacao && (
-              <span className="acoes" style={{ marginTop: 0 }}>
-                {!fechado && (
-                  <button
-                    disabled={ocupado || a.pendencias > 0}
-                    onClick={() => {
-                      if (confirm(`Fechar a ${nomeQuinzena(quinzena)}? O resultado fica congelado.`)) void executar(() => api.fecharQuinzenaAgregado({ quinzena }), 'Quinzena fechada.')
-                    }}
-                  >
-                    Fechar a quinzena
-                  </button>
-                )}
-                {fechado && (
-                  <button
-                    className="secundario"
-                    disabled={ocupado}
-                    onClick={() => {
-                      const justificativa = prompt('Por que reabrir esta quinzena?')
-                      if (justificativa) void executar(() => api.reabrirQuinzenaAgregado({ quinzena, justificativa }), 'Quinzena reaberta.')
-                    }}
-                  >
-                    Reabrir
-                  </button>
-                )}
-              </span>
-            )}
+            <span className="acoes" style={{ marginTop: 0 }}>
+              <button
+                className="secundario"
+                disabled={a.agregados.length === 0}
+                onClick={() => void exportarQuinzenaAgregados(a, fechado ? 'fechada' : 'prévia').catch((e: unknown) => setErro(mensagemDeErro(e)))}
+              >
+                Exportar Excel
+              </button>
+              {coordenacao && (
+                <>
+                  {!fechado && (
+                    <button
+                      disabled={ocupado || a.pendencias > 0}
+                      onClick={() => {
+                        if (confirm(`Fechar a ${nomeQuinzena(quinzena)}? O resultado fica congelado.`))
+                          void executar(() => api.fecharQuinzenaAgregado({ quinzena }), 'Quinzena fechada.')
+                      }}
+                    >
+                      Fechar a quinzena
+                    </button>
+                  )}
+                  {fechado && (
+                    <button
+                      className="secundario"
+                      disabled={ocupado}
+                      onClick={() => {
+                        const justificativa = prompt('Por que reabrir esta quinzena?')
+                        if (justificativa)
+                          void executar(
+                            () =>
+                              api.reabrirQuinzenaAgregado({
+                                quinzena,
+                                justificativa,
+                              }),
+                            'Quinzena reaberta.',
+                          )
+                      }}
+                    >
+                      Reabrir
+                    </button>
+                  )}
+                </>
+              )}
+            </span>
           </div>
           {a.diasAbertos.length > 0 && (
-            <Aviso tipo="info">{a.diasAbertos.length} dia(s) do Diário de Campo com saída de agregado ainda não encerrado(s). Encerre antes de fechar a quinzena.</Aviso>
+            <Aviso tipo="info">
+              {a.diasAbertos.length} dia(s) do Diário de Campo com saída de agregado ainda não encerrado(s). Encerre antes de fechar a quinzena.
+            </Aviso>
           )}
           {a.pendencias > 0 && <Aviso tipo="info">{a.pendencias} pendência(s) para resolver antes de fechar (veja as saídas marcadas).</Aviso>}
           {a.agregados.length === 0 && <p className="suave">Nenhuma saída de caminhão de agregado nesta quinzena.</p>}
-          <div className="rolagem">
-            <table className="tabela">
-              <thead>
-                <tr>
-                  <th>Agregado</th>
-                  <th>Saídas</th>
-                  <th>Fixo</th>
-                  <th>Caixas</th>
-                  <th>Por caixas</th>
-                  <th>Descontos</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {a.agregados.map((g) => (
-                  <tr key={g.uid} className="linha-clicavel" onClick={() => setAberto(aberto === g.uid ? null : g.uid)}>
-                    <td>
-                      {g.nome} {g.totais.pendencias > 0 && <span className="selo selo-inativo">{g.totais.pendencias} pendência(s)</span>}
-                    </td>
-                    <td>{g.totais.saidas}</td>
-                    <td>{formatarReais(g.totais.fixo)}</td>
-                    <td>{g.totais.caixas}</td>
-                    <td>{formatarReais(g.totais.valorCaixas)}</td>
-                    <td>{g.totais.descontos ? `− ${formatarReais(g.totais.descontos)}` : '—'}</td>
-                    <td>
-                      <strong>{formatarReais(g.totais.total)}</strong>
-                    </td>
+          {a.agregados.length > 0 && (
+            <div className="rolagem">
+              <table className="tabela">
+                <thead>
+                  <tr>
+                    <th>Agregado</th>
+                    <th>Saídas</th>
+                    <th>Fixo</th>
+                    <th>Caixas</th>
+                    <th>Por caixas</th>
+                    <th>Descontos</th>
+                    <th>Total</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {a.agregados.map((g) => (
+                    <tr key={g.uid} className="linha-clicavel" onClick={() => setAberto(aberto === g.uid ? null : g.uid)}>
+                      <td>
+                        {g.nome} {g.totais.pendencias > 0 && <span className="selo selo-inativo">{g.totais.pendencias} pendência(s)</span>}
+                      </td>
+                      <td>{g.totais.saidas}</td>
+                      <td>{formatarReais(g.totais.fixo)}</td>
+                      <td>{g.totais.caixas}</td>
+                      <td>{formatarReais(g.totais.valorCaixas)}</td>
+                      <td>{g.totais.descontos ? `− ${formatarReais(g.totais.descontos)}` : '—'}</td>
+                      <td>
+                        <strong>{formatarReais(g.totais.total)}</strong>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           {a.agregados
             .filter((g) => g.uid === aberto)
             .map((g) => (

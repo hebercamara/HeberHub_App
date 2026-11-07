@@ -33,6 +33,7 @@ import { Agregados } from './paginas/financeiro/Agregados'
 import { PresencasHoje } from './paginas/equipe/PresencasHoje'
 import { Cnhs, Frota, Veiculos } from './paginas/equipe/Frota'
 import { DiarioCampo } from './paginas/equipe/DiarioCampo'
+import { Relatorios } from './paginas/equipe/Relatorios'
 import { QrDoDia } from './paginas/equipe/QrDoDia'
 import { PrimeiroAcesso } from './paginas/PrimeiroAcesso'
 import { Presenca } from './paginas/prestador/Presenca'
@@ -92,6 +93,7 @@ function App() {
             <Route path="/equipe/presencas" element={<PresencasHoje />} />
             <Route path="/equipe/qr" element={<QrDoDia />} />
             <Route path="/equipe/diario" element={<DiarioCampo />} />
+            <Route path="/equipe/relatorios" element={<Relatorios />} />
             <Route path="/equipe/frota" element={<Frota />}>
               <Route index element={<Veiculos />} />
               <Route path="cnhs" element={<Cnhs />} />
